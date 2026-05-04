@@ -1,7 +1,5 @@
--- ================================
 -- INPOSTSOCIAL — Database Schema
 -- Esegui questo su Supabase → SQL Editor
--- ================================
 
 -- TABELLA UTENTI
 CREATE TABLE IF NOT EXISTS users (
