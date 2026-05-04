@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InPostSocial — Il tuo Social Media Manager Virtuale</title>
+<meta name="description" content="InPostSocial è il social media manager virtuale powered by AI che crea la tua strategia, scrive i post e li pubblica automaticamente su Instagram, Facebook e TikTok.">
+<link rel="icon" href="assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- LANGUAGE SWITCHER + NAV -->
+<header class="header" id="header">
+  <nav class="nav container">
+    <a href="/" class="logo">
+      <img src="assets/logo.png" alt="InPostSocial" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <span class="logo-text" style="display:none">InPost<span>Social</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="#come-funziona" data-it="Come funziona" data-en="How it works">Come funziona</a>
+      <a href="#funzionalita" data-it="Funzionalità" data-en="Features">Funzionalità</a>
+      <a href="#prezzi" data-it="Prezzi" data-en="Pricing">Prezzi</a>
+      <a href="#contatti" data-it="Contatti" data-en="Contact">Contatti</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="it">IT</button>
+        <span>/</span>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <a href="#prezzi" class="btn-nav" data-it="Inizia gratis" data-en="Start free">Inizia gratis</a>
+    </div>
+    <button class="hamburger" id="hamburger">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="#come-funziona" data-it="Come funziona" data-en="How it works">Come funziona</a>
+    <a href="#funzionalita" data-it="Funzionalità" data-en="Features">Funzionalità</a>
+    <a href="#prezzi" data-it="Prezzi" data-en="Pricing">Prezzi</a>
+    <a href="#contatti" data-it="Contatti" data-en="Contact">Contatti</a>
+    <a href="#prezzi" class="btn-mobile" data-it="Inizia gratis" data-en="Start free">Inizia gratis</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="grid-lines"></div>
+  </div>
+  <div class="container hero-content">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      <span data-it="AI Social Media Manager" data-en="AI Social Media Manager">AI Social Media Manager</span>
+    </div>
+    <h1 class="hero-title">
+      <span data-it="Smetti di pensare" data-en="Stop thinking about">Smetti di pensare</span><br>
+      <em data-it="ai social." data-en="social media."></em><br>
+      <span data-it="Ci pensa InPostSocial." data-en="InPostSocial handles it.">Ci pensa InPostSocial.</span>
+    </h1>
+    <p class="hero-sub" data-it="Raccontaci del tuo business. La nostra AI crea la strategia perfetta, scrive i post e li pubblica automaticamente su Instagram, Facebook e TikTok — ogni giorno, senza che tu debba fare nulla." data-en="Tell us about your business. Our AI creates the perfect strategy, writes your posts and publishes them automatically on Instagram, Facebook and TikTok — every day, without you lifting a finger.">
+      Raccontaci del tuo business. La nostra AI crea la strategia perfetta, scrive i post e li pubblica automaticamente su Instagram, Facebook e TikTok — ogni giorno, senza che tu debba fare nulla.
+    </p>
+    <div class="hero-actions">
+      <a href="#demo" class="btn-primary" data-it="Prova gratis ora →" data-en="Try for free →">Prova gratis ora →</a>
+      <a href="#come-funziona" class="btn-ghost" data-it="Scopri come funziona" data-en="See how it works">Scopri come funziona</a>
+    </div>
+    <div class="hero-social-proof">
+      <div class="avatars">
+        <div class="av" style="background:#f4a261">M</div>
+        <div class="av" style="background:#e76f51">L</div>
+        <div class="av" style="background:#2a9d8f">G</div>
+        <div class="av" style="background:#457b9d">S</div>
+        <div class="av" style="background:#e9c46a">R</div>
+      </div>
+      <p data-it="Già <strong>1.200+ business</strong> gestiti dall'AI" data-en="Already <strong>1,200+ businesses</strong> managed by AI">Già <strong>1.200+ business</strong> gestiti dall'AI</p>
+    </div>
+    <div class="hero-platforms">
+      <div class="platform-pill">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>
+        Instagram
+      </div>
+      <div class="platform-pill">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Facebook
+      </div>
+      <div class="platform-pill">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.5"/><path d="M21 8v8M17 6v12M13 10v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        TikTok
+      </div>
+      <div class="platform-pill">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><rect x="2" y="9" width="4" height="12" stroke="currentColor" stroke-width="1.5"/><circle cx="4" cy="4" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+        LinkedIn
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO LIVE -->
+<section class="demo-section" id="demo">
+  <div class="container">
+    <div class="section-label" data-it="Demo live" data-en="Live demo">Demo live</div>
+    <h2 class="section-title" data-it="Provalo adesso, è gratis" data-en="Try it now, it's free">Provalo adesso, è gratis</h2>
+    <p class="section-sub" data-it="Inserisci il tuo business e guarda l'AI al lavoro in tempo reale" data-en="Enter your business details and watch AI work in real time">Inserisci il tuo business e guarda l'AI al lavoro in tempo reale</p>
+
+    <div class="demo-card">
+      <div class="demo-form">
+        <div class="demo-form-group">
+          <label data-it="Nome del tuo business *" data-en="Your business name *">Nome del tuo business *</label>
+          <input type="text" id="demo-brand" placeholder="es. Pizzeria Da Mario..." class="demo-input">
+        </div>
+        <div class="demo-form-group">
+          <label data-it="Di cosa ti occupi? *" data-en="What do you do? *">Di cosa ti occupi? *</label>
+          <textarea id="demo-desc" class="demo-input" rows="3" placeholder="Descrivi il tuo business, i tuoi prodotti o servizi..."></textarea>
+        </div>
+        <div class="demo-row">
+          <div class="demo-form-group">
+            <label data-it="Settore" data-en="Industry">Settore</label>
+            <select id="demo-sector" class="demo-input">
+              <option value="Ristorazione">🍕 Ristorazione</option>
+              <option value="Moda">👗 Moda & Lifestyle</option>
+              <option value="Bellezza">💅 Bellezza & Benessere</option>
+              <option value="Professioni">💼 Professionisti</option>
+              <option value="E-commerce">🛍️ E-commerce</option>
+              <option value="Fitness">💪 Fitness & Sport</option>
+              <option value="Turismo">✈️ Turismo</option>
+              <option value="Altro">📦 Altro</option>
+            </select>
+          </div>
+          <div class="demo-form-group">
+            <label data-it="Tono di voce" data-en="Voice tone">Tono di voce</label>
+            <select id="demo-tone" class="demo-input">
+              <option value="professionale">Professionale</option>
+              <option value="amichevole">Amichevole</option>
+              <option value="creativo">Creativo</option>
+              <option value="divertente">Divertente</option>
+              <option value="premium">Premium</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-demo" id="demo-btn" onclick="runDemo()">
+          <span id="demo-btn-text" data-it="✨ Genera strategia e post gratis" data-en="✨ Generate strategy & posts free">✨ Genera strategia e post gratis</span>
+        </button>
+      </div>
+
+      <!-- RISULTATI DEMO -->
+      <div class="demo-result" id="demo-result" style="display:none">
+        <div class="result-tabs">
+          <button class="tab-btn active" onclick="showTab('strategy')" data-it="Strategia" data-en="Strategy">Strategia</button>
+          <button class="tab-btn" onclick="showTab('posts')" data-it="Post pronti" data-en="Ready posts">Post pronti</button>
+        </div>
+        <div class="tab-content" id="tab-strategy"></div>
+        <div class="tab-content" id="tab-posts" style="display:none"></div>
+        <div class="demo-cta">
+          <p data-it="Ti piace? Attiva il piano gratuito e inizia subito →" data-en="Like it? Activate the free plan and start now →">Ti piace? Attiva il piano gratuito e inizia subito →</p>
+          <a href="#prezzi" class="btn-primary sm" data-it="Inizia gratis" data-en="Start free">Inizia gratis</a>
+        </div>
+      </div>
+      <div class="demo-loading" id="demo-loading" style="display:none">
+        <div class="loading-ring"></div>
+        <p data-it="L'AI sta analizzando il tuo business..." data-en="AI is analyzing your business...">L'AI sta analizzando il tuo business...</p>
+        <div class="loading-steps-list">
+          <div class="ls" id="ls1">📊 <span data-it="Analisi del settore" data-en="Industry analysis">Analisi del settore</span></div>
+          <div class="ls" id="ls2">🎯 <span data-it="Creazione strategia" data-en="Strategy creation">Creazione strategia</span></div>
+          <div class="ls" id="ls3">✍️ <span data-it="Scrittura post" data-en="Writing posts">Scrittura post</span></div>
+          <div class="ls" id="ls4">🏷️ <span data-it="Ottimizzazione hashtag" data-en="Hashtag optimization">Ottimizzazione hashtag</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COME FUNZIONA -->
+<section class="how-section" id="come-funziona">
+  <div class="container">
+    <div class="section-label" data-it="Come funziona" data-en="How it works">Come funziona</div>
+    <h2 class="section-title" data-it="3 passi e sei online" data-en="3 steps and you're live">3 passi e sei online</h2>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-icon">🏢</div>
+        <h3 data-it="Raccontaci il tuo business" data-en="Tell us about your business">Raccontaci il tuo business</h3>
+        <p data-it="Inserisci nome, settore, obiettivi e tono di voce. In 2 minuti hai un profilo completo." data-en="Enter your name, industry, goals and tone. In 2 minutes you have a complete profile.">Inserisci nome, settore, obiettivi e tono di voce. In 2 minuti hai un profilo completo.</p>
+      </div>
+      <div class="step-connector">→</div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-icon">🤖</div>
+        <h3 data-it="L'AI crea la tua strategia" data-en="AI creates your strategy">L'AI crea la tua strategia</h3>
+        <p data-it="Strategia personalizzata, post scritti ad hoc, hashtag ottimizzati. Tutto in pochi secondi." data-en="Personalized strategy, tailored posts, optimized hashtags. All in seconds.">Strategia personalizzata, post scritti ad hoc, hashtag ottimizzati. Tutto in pochi secondi.</p>
+      </div>
+      <div class="step-connector">→</div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-icon">🚀</div>
+        <h3 data-it="Pubblica automaticamente" data-en="Auto-publish">Pubblica automaticamente</h3>
+        <p data-it="Connetti i tuoi social e i post vengono pubblicati agli orari migliori, ogni giorno." data-en="Connect your socials and posts are published at the best times, every day.">Connetti i tuoi social e i post vengono pubblicati agli orari migliori, ogni giorno.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FUNZIONALITÀ -->
+<section class="features-section" id="funzionalita">
+  <div class="container">
+    <div class="section-label" data-it="Funzionalità" data-en="Features">Funzionalità</div>
+    <h2 class="section-title" data-it="Tutto quello che ti serve, già incluso" data-en="Everything you need, already included">Tutto quello che ti serve, già incluso</h2>
+    <div class="features-grid">
+      <div class="feature-card large">
+        <div class="feature-icon">🎯</div>
+        <h3 data-it="Strategia AI personalizzata" data-en="Personalized AI strategy">Strategia AI personalizzata</h3>
+        <p data-it="Non template generici. L'AI analizza il tuo settore, i tuoi competitor e crea una strategia su misura per il tuo business specifico." data-en="No generic templates. AI analyzes your industry, competitors and creates a tailored strategy for your specific business.">Non template generici. L'AI analizza il tuo settore, i tuoi competitor e crea una strategia su misura per il tuo business specifico.</p>
+        <div class="feature-tags">
+          <span>Analisi competitor</span>
+          <span>Target audience</span>
+          <span>Content calendar</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✍️</div>
+        <h3 data-it="Copywriting professionale" data-en="Professional copywriting">Copywriting professionale</h3>
+        <p data-it="Post scritti nel tuo tono di voce, con call to action efficaci e ottimizzati per ogni piattaforma." data-en="Posts written in your tone of voice, with effective calls to action optimized for each platform.">Post scritti nel tuo tono di voce, ottimizzati per ogni piattaforma.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📅</div>
+        <h3 data-it="Calendario editoriale" data-en="Editorial calendar">Calendario editoriale</h3>
+        <p data-it="Visualizza e modifica il piano di pubblicazione. Approva o rifiuta ogni post prima che venga pubblicato." data-en="View and edit your publishing schedule. Approve or reject each post before it goes live.">Visualizza e modifica il piano di pubblicazione. Approva ogni post prima della pubblicazione.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3 data-it="Analytics e report" data-en="Analytics & reports">Analytics e report</h3>
+        <p data-it="Monitora like, reach, engagement e crescita follower. Report settimanale automatico nella tua email." data-en="Monitor likes, reach, engagement and follower growth. Automatic weekly report in your email.">Monitora like, reach, engagement e crescita follower in tempo reale.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔗</div>
+        <h3 data-it="Multi-piattaforma" data-en="Multi-platform">Multi-piattaforma</h3>
+        <p data-it="Instagram, Facebook, TikTok, LinkedIn. Connetti tutti i tuoi profili e gestisci tutto da un unico posto." data-en="Instagram, Facebook, TikTok, LinkedIn. Connect all your profiles and manage everything from one place.">Instagram, Facebook, TikTok, LinkedIn. Un unico posto per tutto.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3 data-it="Pubblicazione automatica" data-en="Auto publishing">Pubblicazione automatica</h3>
+        <p data-it="I post vengono pubblicati automaticamente agli orari in cui il tuo pubblico è più attivo. Zero effort." data-en="Posts are automatically published at the times when your audience is most active. Zero effort.">Pubblicazione automatica negli orari in cui il tuo pubblico è più attivo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<section class="proof-section">
+  <div class="container">
+    <div class="section-label" data-it="Testimonianze" data-en="Testimonials">Testimonianze</div>
+    <h2 class="section-title" data-it="Chi lo usa, non torna indietro" data-en="Those who use it never go back">Chi lo usa, non torna indietro</h2>
+    <div class="reviews-grid">
+      <div class="review-card">
+        <div class="stars">★★★★★</div>
+        <p data-it="&ldquo;Ho una pizzeria e non avevo tempo per i social. InPostSocial gestisce tutto e in 3 mesi ho raddoppiato i follower su Instagram.&rdquo;" data-en="&ldquo;I have a pizzeria and had no time for social media. InPostSocial manages everything and in 3 months I doubled my Instagram followers.&rdquo;">"Ho una pizzeria e non avevo tempo per i social. InPostSocial gestisce tutto e in 3 mesi ho raddoppiato i follower su Instagram."</p>
+        <div class="reviewer">
+          <div class="reviewer-av" style="background:#f4a261">M</div>
+          <div>
+            <strong>Mario Conti</strong>
+            <span>Pizzeria Da Mario, Napoli</span>
+          </div>
+        </div>
+      </div>
+      <div class="review-card featured">
+        <div class="review-badge" data-it="Più popolare" data-en="Most popular">Più popolare</div>
+        <div class="stars">★★★★★</div>
+        <p data-it="&ldquo;Come avvocato non sapevo nemmeno da dove iniziare con i social. Ora pubblico ogni giorno contenuti professionali senza toccare nulla.&rdquo;" data-en="&ldquo;As a lawyer I didn't even know where to start with social media. Now I publish professional content every day without touching anything.&rdquo;">"Come avvocato non sapevo nemmeno da dove iniziare con i social. Ora pubblico ogni giorno contenuti professionali senza toccare nulla."</p>
+        <div class="reviewer">
+          <div class="reviewer-av" style="background:#457b9d">L</div>
+          <div>
+            <strong>Laura Ricci</strong>
+            <span>Studio Legale Ricci, Milano</span>
+          </div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="stars">★★★★★</div>
+        <p data-it="&ldquo;Gestisco un e-commerce di moda. L'AI capisce esattamente il mio brand e scrive post che sembrano scritti da un copywriter professionista.&rdquo;" data-en="&ldquo;I run a fashion e-commerce. The AI understands my brand exactly and writes posts that look written by a professional copywriter.&rdquo;">"Gestisco un e-commerce di moda. L'AI capisce il mio brand e scrive post che sembrano di un copywriter professionista."</p>
+        <div class="reviewer">
+          <div class="reviewer-av" style="background:#2a9d8f">G</div>
+          <div>
+            <strong>Giulia Ferretti</strong>
+            <span>Boutique Ferretti, Roma</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stats-bar">
+      <div class="stat">
+        <strong>1.200+</strong>
+        <span data-it="Business attivi" data-en="Active businesses">Business attivi</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <strong>48.000+</strong>
+        <span data-it="Post pubblicati" data-en="Posts published">Post pubblicati</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <strong>+340%</strong>
+        <span data-it="Engagement medio" data-en="Average engagement">Engagement medio</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <strong>4.9/5</strong>
+        <span data-it="Valutazione media" data-en="Average rating">Valutazione media</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PREZZI -->
+<section class="pricing-section" id="prezzi">
+  <div class="container">
+    <div class="section-label" data-it="Prezzi" data-en="Pricing">Prezzi</div>
+    <h2 class="section-title" data-it="Inizia gratis, cresci quando vuoi" data-en="Start free, grow when you want">Inizia gratis, cresci quando vuoi</h2>
+    <p class="section-sub" data-it="Nessuna carta di credito richiesta per il piano gratuito" data-en="No credit card required for the free plan">Nessuna carta di credito richiesta per il piano gratuito</p>
+
+    <div class="pricing-grid">
+      <!-- FREE -->
+      <div class="pricing-card">
+        <div class="plan-name" data-it="Gratis" data-en="Free">Gratis</div>
+        <div class="plan-price">
+          <span class="price-amount">€0</span>
+          <span class="price-period" data-it="/mese" data-en="/month">/mese</span>
+        </div>
+        <p class="plan-desc" data-it="Perfetto per iniziare e capire se fa per te" data-en="Perfect to start and see if it's right for you">Perfetto per iniziare e capire se fa per te</p>
+        <ul class="plan-features">
+          <li>✅ <span data-it="2 post a settimana" data-en="2 posts per week">2 post a settimana</span></li>
+          <li>✅ <span data-it="1 profilo social" data-en="1 social profile">1 profilo social</span></li>
+          <li>✅ <span data-it="Strategia AI base" data-en="Basic AI strategy">Strategia AI base</span></li>
+          <li>✅ <span data-it="Caption + hashtag" data-en="Caption + hashtags">Caption + hashtag</span></li>
+          <li>✅ <span data-it="Approvazione manuale post" data-en="Manual post approval">Approvazione manuale post</span></li>
+          <li class="disabled">❌ <span data-it="Pubblicazione automatica" data-en="Auto publishing">Pubblicazione automatica</span></li>
+          <li class="disabled">❌ <span data-it="Analytics avanzate" data-en="Advanced analytics">Analytics avanzate</span></li>
+          <li class="disabled">❌ <span data-it="Multi-piattaforma" data-en="Multi-platform">Multi-piattaforma</span></li>
+          <li class="disabled">❌ <span data-it="Immagini AI generate" data-en="AI generated images">Immagini AI generate</span></li>
+        </ul>
+        <a href="#demo" class="btn-plan ghost" data-it="Inizia gratis" data-en="Start free">Inizia gratis</a>
+      </div>
+
+      <!-- PRO -->
+      <div class="pricing-card popular">
+        <div class="popular-badge" data-it="Più scelto" data-en="Most popular">Più scelto</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">
+          <span class="price-amount">€35</span>
+          <span class="price-period" data-it="/mese" data-en="/month">/mese</span>
+        </div>
+        <p class="plan-desc" data-it="Per chi vuole crescere sui social senza pensarci" data-en="For those who want to grow on social without worrying">Per chi vuole crescere sui social senza pensarci</p>
+        <ul class="plan-features">
+          <li>✅ <span data-it="Post illimitati" data-en="Unlimited posts">Post illimitati</span></li>
+          <li>✅ <span data-it="Fino a 4 profili social" data-en="Up to 4 social profiles">Fino a 4 profili social</span></li>
+          <li>✅ <span data-it="Strategia AI avanzata" data-en="Advanced AI strategy">Strategia AI avanzata</span></li>
+          <li>✅ <span data-it="Pubblicazione automatica" data-en="Auto publishing">Pubblicazione automatica</span></li>
+          <li>✅ <span data-it="Calendario editoriale" data-en="Editorial calendar">Calendario editoriale</span></li>
+          <li>✅ <span data-it="Analytics e report settimanale" data-en="Analytics & weekly report">Analytics e report settimanale</span></li>
+          <li>✅ <span data-it="Immagini AI generate" data-en="AI generated images">Immagini AI generate</span></li>
+          <li>✅ <span data-it="Instagram + Facebook + LinkedIn" data-en="Instagram + Facebook + LinkedIn">Instagram + Facebook + LinkedIn</span></li>
+          <li>✅ <span data-it="Supporto prioritario" data-en="Priority support">Supporto prioritario</span></li>
+        </ul>
+        <a href="#" class="btn-plan primary" data-it="Inizia con Pro →" data-en="Start with Pro →">Inizia con Pro →</a>
+      </div>
+
+      <!-- BUSINESS -->
+      <div class="pricing-card">
+        <div class="plan-name">Business</div>
+        <div class="plan-price">
+          <span class="price-amount">€200</span>
+          <span class="price-period" data-it="/anno" data-en="/year">/anno</span>
+        </div>
+        <p class="plan-desc" data-it="Per agenzie e aziende con più brand da gestire" data-en="For agencies and companies managing multiple brands">Per agenzie e aziende con più brand da gestire</p>
+        <ul class="plan-features">
+          <li>✅ <span data-it="Tutto il piano Pro" data-en="Everything in Pro">Tutto il piano Pro</span></li>
+          <li>✅ <span data-it="Fino a 10 profili social" data-en="Up to 10 social profiles">Fino a 10 profili social</span></li>
+          <li>✅ <span data-it="Multi-brand dashboard" data-en="Multi-brand dashboard">Multi-brand dashboard</span></li>
+          <li>✅ <span data-it="Report mensile avanzato" data-en="Advanced monthly report">Report mensile avanzato</span></li>
+          <li>✅ <span data-it="TikTok incluso" data-en="TikTok included">TikTok incluso</span></li>
+          <li>✅ <span data-it="Personalizzazione AI avanzata" data-en="Advanced AI customization">Personalizzazione AI avanzata</span></li>
+          <li>✅ <span data-it="Account manager dedicato" data-en="Dedicated account manager">Account manager dedicato</span></li>
+          <li>✅ <span data-it="Onboarding personalizzato" data-en="Personalized onboarding">Onboarding personalizzato</span></li>
+          <li>✅ <span data-it="2 mesi gratis vs mensile" data-en="2 months free vs monthly">2 mesi gratis vs mensile</span></li>
+        </ul>
+        <a href="#contatti" class="btn-plan ghost" data-it="Contattaci →" data-en="Contact us →">Contattaci →</a>
+      </div>
+    </div>
+
+    <div class="pricing-note">
+      <p data-it="💡 Tutti i piani includono: nessun contratto, cancellazione quando vuoi, assistenza in italiano." data-en="💡 All plans include: no contract, cancel anytime, Italian-language support.">💡 Tutti i piani includono: nessun contratto, cancellazione quando vuoi, assistenza in italiano.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <div class="container">
+    <div class="section-label">FAQ</div>
+    <h2 class="section-title" data-it="Domande frequenti" data-en="Frequently asked questions">Domande frequenti</h2>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          <span data-it="Devo avere un account Instagram Business?" data-en="Do I need a Business Instagram account?">Devo avere un account Instagram Business?</span>
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a" data-it="Sì, per la pubblicazione automatica su Instagram è necessario un profilo di tipo Business o Creator, collegato a una pagina Facebook. È gratuito e si imposta in 2 minuti direttamente dall'app Instagram." data-en="Yes, for automatic Instagram publishing you need a Business or Creator profile, linked to a Facebook page. It's free and takes 2 minutes to set up in the Instagram app.">Sì, per la pubblicazione automatica su Instagram è necessario un profilo di tipo Business o Creator, collegato a una pagina Facebook. È gratuito e si imposta in 2 minuti.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          <span data-it="Posso modificare i post prima che vengano pubblicati?" data-en="Can I edit posts before they're published?">Posso modificare i post prima che vengano pubblicati?</span>
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a" data-it="Assolutamente sì. Puoi approvare, modificare o rifiutare ogni post dalla tua dashboard prima che venga pubblicato. Sei sempre in controllo." data-en="Absolutely yes. You can approve, edit or reject every post from your dashboard before it's published. You're always in control.">Assolutamente sì. Puoi approvare, modificare o rifiutare ogni post dalla tua dashboard prima della pubblicazione.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          <span data-it="Quanto tempo ci vuole per configurare tutto?" data-en="How long does setup take?">Quanto tempo ci vuole per configurare tutto?</span>
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a" data-it="Meno di 5 minuti. Inserisci le informazioni del tuo business, connetti i tuoi social con un click e l'AI inizia subito a lavorare per te." data-en="Less than 5 minutes. Enter your business information, connect your socials with one click and AI starts working for you immediately.">Meno di 5 minuti. Inserisci le info del tuo business, connetti i social con un click e l'AI inizia subito.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          <span data-it="Posso cancellare quando voglio?" data-en="Can I cancel anytime?">Posso cancellare quando voglio?</span>
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a" data-it="Sì, nessun vincolo contrattuale. Puoi cancellare il piano in qualsiasi momento dalla dashboard. Non ci sono penali o costi nascosti." data-en="Yes, no contractual obligations. You can cancel your plan at any time from the dashboard. No penalties or hidden costs.">Sì, nessun vincolo. Puoi cancellare il piano in qualsiasi momento dalla dashboard, senza penali.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          <span data-it="L'AI scrive in italiano?" data-en="Does AI write in Italian?">L'AI scrive in italiano?</span>
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a" data-it="Sì, l'AI scrive in italiano perfetto, adattando il tono al tuo brand. Puoi scegliere tra tono professionale, amichevole, creativo, divertente o premium." data-en="Yes, the AI writes in perfect Italian, adapting the tone to your brand. You can choose between professional, friendly, creative, fun or premium tone.">Sì, l'AI scrive in italiano perfetto adattando il tono al tuo brand. Puoi scegliere tra diversi stili.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          <span data-it="Che differenza c'è tra piano Pro e Business?" data-en="What's the difference between Pro and Business?">Che differenza c'è tra piano Pro e Business?</span>
+          <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a" data-it="Il piano Pro è perfetto per singoli business con un brand. Il piano Business è pensato per agenzie, studi professionali o aziende che gestiscono più brand contemporaneamente, con fino a 10 profili social e un account manager dedicato." data-en="The Pro plan is perfect for individual businesses with one brand. The Business plan is designed for agencies, professional firms or companies managing multiple brands, with up to 10 social profiles and a dedicated account manager.">Il Pro è per singoli business. Il Business è per agenzie o chi gestisce più brand, con fino a 10 profili e account manager dedicato.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINALE -->
+<section class="final-cta">
+  <div class="container">
+    <div class="cta-card">
+      <div class="cta-blob"></div>
+      <h2 data-it="Pronto a delegare i tuoi social all'AI?" data-en="Ready to delegate your social media to AI?">Pronto a delegare i tuoi social all'AI?</h2>
+      <p data-it="Inizia gratis oggi. Nessuna carta di credito, nessun contratto." data-en="Start free today. No credit card, no contract.">Inizia gratis oggi. Nessuna carta di credito, nessun contratto.</p>
+      <div class="cta-actions">
+        <a href="#demo" class="btn-primary lg" data-it="Inizia gratis ora →" data-en="Start free now →">Inizia gratis ora →</a>
+        <a href="#contatti" class="btn-ghost lg" data-it="Parla con noi" data-en="Talk to us">Parla con noi</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTATTI -->
+<section class="contact-section" id="contatti">
+  <div class="container">
+    <div class="section-label" data-it="Contatti" data-en="Contact">Contatti</div>
+    <h2 class="section-title" data-it="Hai domande? Scrivici." data-en="Got questions? Write to us.">Hai domande? Scrivici.</h2>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <div class="contact-item">
+          <div class="contact-icon">✉️</div>
+          <div>
+            <strong>Email</strong>
+            <a href="mailto:info@inpostsocial.com">info@inpostsocial.com</a>
+          </div>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">⏰</div>
+          <div>
+            <strong data-it="Orari" data-en="Hours">Orari</strong>
+            <span data-it="Lun–Ven, 9:00–18:00" data-en="Mon–Fri, 9:00–18:00">Lun–Ven, 9:00–18:00</span>
+          </div>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">💬</div>
+          <div>
+            <strong data-it="Risposta media" data-en="Average response">Risposta media</strong>
+            <span data-it="Entro 24 ore" data-en="Within 24 hours">Entro 24 ore</span>
+          </div>
+        </div>
+      </div>
+      <form class="contact-form" id="contact-form" onsubmit="submitContact(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label data-it="Nome" data-en="Name">Nome</label>
+            <input type="text" id="c-name" required placeholder="Mario Rossi">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="c-email" required placeholder="mario@email.com">
+          </div>
+        </div>
+        <div class="form-group">
+          <label data-it="Messaggio" data-en="Message">Messaggio</label>
+          <textarea id="c-message" rows="4" required placeholder="Come possiamo aiutarti?"></textarea>
+        </div>
+        <button type="submit" class="btn-primary" data-it="Invia messaggio →" data-en="Send message →">Invia messaggio →</button>
+        <div class="form-success" id="form-success" style="display:none" data-it="✅ Messaggio inviato! Ti risponderemo entro 24 ore." data-en="✅ Message sent! We'll reply within 24 hours.">✅ Messaggio inviato! Ti risponderemo entro 24 ore.</div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="/" class="logo">
+          <img src="assets/logo.png" alt="InPostSocial" class="logo-img" style="filter:brightness(0) invert(1)" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <span class="logo-text" style="display:none;color:white">InPost<span style="color:#b8a9f0">Social</span></span>
+        </a>
+        <p data-it="Il social media manager virtuale powered by AI. Strategia, contenuti e pubblicazione automatica per il tuo business." data-en="The AI-powered virtual social media manager. Strategy, content and auto-publishing for your business.">Il social media manager virtuale powered by AI.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <strong data-it="Prodotto" data-en="Product">Prodotto</strong>
+          <a href="#come-funziona" data-it="Come funziona" data-en="How it works">Come funziona</a>
+          <a href="#funzionalita" data-it="Funzionalità" data-en="Features">Funzionalità</a>
+          <a href="#prezzi" data-it="Prezzi" data-en="Pricing">Prezzi</a>
+          <a href="#demo" data-it="Demo live" data-en="Live demo">Demo live</a>
+        </div>
+        <div class="footer-col">
+          <strong data-it="Legale" data-en="Legal">Legale</strong>
+          <a href="privacy.html" data-it="Privacy Policy" data-en="Privacy Policy">Privacy Policy</a>
+          <a href="termini.html" data-it="Termini di servizio" data-en="Terms of service">Termini di servizio</a>
+          <a href="elimina-dati.html" data-it="Elimina dati" data-en="Delete data">Elimina dati</a>
+        </div>
+        <div class="footer-col">
+          <strong data-it="Contatti" data-en="Contact">Contatti</strong>
+          <a href="mailto:info@inpostsocial.com">info@inpostsocial.com</a>
+          <a href="#contatti" data-it="Scrivici" data-en="Write us">Scrivici</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 InPostSocial. <span data-it="Tutti i diritti riservati." data-en="All rights reserved.">Tutti i diritti riservati.</span></p>
+      <div class="footer-lang">
+        <button class="lang-btn-footer active" data-lang="it">🇮🇹 IT</button>
+        <button class="lang-btn-footer" data-lang="en">🇬🇧 EN</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

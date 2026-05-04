@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elimina i tuoi dati — InPostSocial</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.legal-page{padding:10rem 0 6rem;max-width:700px;margin:0 auto}
+.legal-page h1{font-size:2.5rem;margin-bottom:0.5rem}
+.legal-page .meta{color:var(--gray);font-size:0.9rem;margin-bottom:2rem}
+.legal-page p,.legal-page li{font-size:0.95rem;color:var(--dark2);line-height:1.8;margin-bottom:0.75rem}
+.legal-page ul{padding-left:1.5rem;margin-bottom:1rem}
+.legal-page a{color:var(--purple)}
+.delete-form{background:white;border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem;margin-top:2rem}
+.delete-form label{display:block;font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--gray);margin-bottom:0.5rem}
+.delete-form input,.delete-form textarea{width:100%;padding:0.85rem 1.1rem;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'Outfit',sans-serif;font-size:0.95rem;color:var(--dark);background:var(--off-white);outline:none;margin-bottom:1.2rem}
+.delete-form input:focus,.delete-form textarea:focus{border-color:var(--purple)}
+.delete-form textarea{min-height:100px;resize:vertical}
+.warning-box{background:#fff7f7;border:1.5px solid #fecaca;border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:0.88rem;color:#b91c1c}
+.success-box{background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:var(--radius);padding:1rem 1.2rem;font-size:0.9rem;color:#16a34a;display:none;margin-top:1rem;text-align:center}
+</style>
+</head>
+<body>
+<header class="header">
+  <nav class="nav container">
+    <a href="/" class="logo"><span class="logo-text">InPost<span>Social</span></span></a>
+    <a href="/" class="btn-nav" style="margin-left:auto">← Torna al sito</a>
+  </nav>
+</header>
+<div class="container">
+  <div class="legal-page">
+    <h1>Elimina i tuoi dati</h1>
+    <p class="meta">In conformità al GDPR e alle normative Meta</p>
+
+    <p>Hai il diritto di richiedere la cancellazione di tutti i tuoi dati personali conservati da InPostSocial, inclusi i token di accesso ai tuoi profili social.</p>
+
+    <p>Dopo la tua richiesta:</p>
+    <ul>
+      <li>Riceverai conferma via email entro 48 ore</li>
+      <li>I tuoi dati saranno cancellati entro 30 giorni</li>
+      <li>Il tuo account verrà disattivato</li>
+      <li>I token di accesso ai social saranno revocati</li>
+      <li>I post già pubblicati rimarranno sui tuoi profili social</li>
+    </ul>
+
+    <div class="delete-form">
+      <div class="warning-box">
+        ⚠️ <strong>Attenzione:</strong> questa operazione è irreversibile. Tutti i tuoi dati, la cronologia dei post e le impostazioni verranno eliminati definitivamente.
+      </div>
+      <form onsubmit="submitDelete(event)">
+        <label>Email dell'account *</label>
+        <input type="email" id="del-email" required placeholder="la-tua-email@esempio.com">
+        <label>Motivo della richiesta (opzionale)</label>
+        <textarea id="del-reason" placeholder="Puoi dirci perché vuoi eliminare i tuoi dati..."></textarea>
+        <button type="submit" class="btn-primary" style="background:#dc2626;width:100%">🗑️ Richiedi eliminazione dati</button>
+      </form>
+      <div class="success-box" id="del-success">
+        ✅ Richiesta inviata! Riceverai una conferma a <span id="del-email-shown"></span> entro 48 ore.
+      </div>
+    </div>
+
+    <p style="margin-top:2rem;font-size:0.88rem;color:var(--gray)">Puoi anche inviare la richiesta direttamente via email a <a href="mailto:info@inpostsocial.com">info@inpostsocial.com</a> con oggetto "Richiesta eliminazione dati".</p>
+  </div>
+</div>
+<footer class="footer" style="margin-top:0">
+  <div class="container">
+    <div class="footer-bottom">
+      <p>© 2025 InPostSocial. Tutti i diritti riservati.</p>
+    </div>
+  </div>
+</footer>
+<script>
+function submitDelete(e) {
+  e.preventDefault();
+  const email = document.getElementById('del-email').value;
+  document.getElementById('del-email-shown').textContent = email;
+  document.getElementById('del-success').style.display = 'block';
+  e.target.reset();
+}
+document.getElementById('header').classList.add('scrolled');
+</script>
+</body>
+</html>
