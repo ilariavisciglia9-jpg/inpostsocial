@@ -21,6 +21,13 @@ app.use(cors({
 app.use('/webhook/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
+const path = require('path');
+app.use(express.static(path.join(__dirname)));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/webhook')) return next();
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'InPostSocial Backend' });
 });
