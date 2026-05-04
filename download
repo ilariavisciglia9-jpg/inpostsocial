@@ -1,0 +1,43 @@
+# InPostSocial — Backend API
+
+AI Social Media Manager — Node.js/Express Backend
+
+## Stack
+- **Node.js + Express** — Server API
+- **Anthropic Claude** — Generazione strategia e post
+- **Meta Graph API** — Pubblicazione su Instagram e Facebook
+- **Stripe** — Gestione abbonamenti
+- **Supabase** — Database utenti e post
+
+## Setup locale
+
+```bash
+npm install
+cp .env.example .env
+# Compila .env con le tue chiavi
+node server.js
+```
+
+## Deploy su Railway
+
+1. Collega questa repo GitHub a Railway
+2. Aggiungi le variabili dalla sezione Variables
+3. Railway fa il deploy automatico ad ogni push
+
+## Endpoint principali
+
+| Metodo | URL | Descrizione |
+|--------|-----|-------------|
+| GET | / | Health check |
+| POST | /api/generate | Genera strategia + post AI |
+| GET | /auth/meta | Login Meta OAuth |
+| GET | /auth/callback | Callback OAuth Meta |
+| POST | /api/publish | Pubblica post su social |
+| POST | /api/checkout | Crea sessione pagamento Stripe |
+| POST | /webhook/stripe | Webhook eventi Stripe |
+| POST | /api/user/register | Registra nuovo utente |
+| GET | /api/user/:id | Dati utente |
+
+## Database
+
+Esegui `schema.sql` su Supabase SQL Editor per creare le tabelle.
