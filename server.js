@@ -11,8 +11,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || ''
+);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'placeholder');
 
 app.use(cors({
   origin: [process.env.FRONTEND_URL, 'http://localhost:3000'],
