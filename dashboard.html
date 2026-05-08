@@ -291,11 +291,11 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
           <div style="font-size:0.8rem;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0">⚡ AI Media</div>
           <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500">
             <input type="checkbox" id="gen-images" style="width:16px;height:16px;accent-color:var(--purple)">
-            🖼️ Immagini AI (DALL-E 3) <span style="font-size:0.72rem;background:var(--purple);color:white;padding:0.15rem 0.5rem;border-radius:100px;font-weight:700">PRO</span>
+            🖼️ Genera immagini AI (DALL-E 3)
           </label>
           <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500">
             <input type="checkbox" id="gen-video" style="width:16px;height:16px;accent-color:var(--purple)">
-            🎬 Video Reel (Kling AI) <span style="font-size:0.72rem;background:var(--purple);color:white;padding:0.15rem 0.5rem;border-radius:100px;font-weight:700">PRO</span>
+            🎬 Genera video Reel (Kling AI)
           </label>
         </div>
         <button class="btn-gen" id="btn-gen" onclick="doGenerate()">✨ Genera strategia e post AI</button>
@@ -564,8 +564,8 @@ async function doGenerate() {
 
   const genImages = document.getElementById('gen-images')?.checked || false;
   const genVideo = document.getElementById('gen-video')?.checked || false;
-  if (genImages && userPlan === 'free') return toast('Immagini AI disponibili dal piano Pro 🚀', 'error');
-  if (genVideo && userPlan === 'free') return toast('Video AI disponibili dal piano Pro 🚀', 'error');
+
+
   let lmsg = genImages && genVideo ? '✨ Generando post, immagini e video... (1-2 min)' : genImages ? '🖼️ Generando immagini con DALL-E 3...' : genVideo ? '🎬 Generando video con Kling AI...' : "L'AI sta generando la tua strategia...";
   showLoading(lmsg);
 
