@@ -80,7 +80,7 @@ Rispondi SOLO con JSON valido:
 
 app.get('/auth/meta', (req, res) => {
   const { userId } = req.query;
-  const scope = 'instagram_basic,instagram_business_content_publish,pages_manage_posts,pages_show_list,pages_read_engagement';
+const scope = 'instagram_basic,pages_show_list,pages_read_engagement,public_profile,email';
   const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
   const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${process.env.META_APP_ID}&redirect_uri=${encodeURIComponent(process.env.FRONTEND_URL + '/auth/callback')}&scope=${scope}&state=${state}&response_type=code`;
   res.redirect(url);
