@@ -48,8 +48,15 @@ Rispondi SOLO con JSON valido:
 
     const response = await anthropic.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 2500, messages: [{ role: 'user', content: prompt }] });
     const raw = response.content.map(b => b.text || '').join('');
-    const data = JSON.parse(raw.replace(/```json|```/g, '').trim());
-
+let data;
+try {
+  const clean = raw.replace(/```json|```/g, '').trim();
+  const jsonMatch = clean.match(/\{[\s\S]*\}/);
+  data = JSON.parse(jsonMatch ? jsonMatch[0] : clean);
+} catch(parseErr) {
+  console.error('JSON parse error, raw:', raw.substring(0, 200));
+  return res.status(500).json({ error: 'Errore nel parsing della risposta AI', details: parseErr.message });
+}
     // Genera immagini DALL-E 3
     if (generateImages && process.env.OPENAI_API_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
