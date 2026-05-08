@@ -138,10 +138,6 @@ app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt, brand, userId } = req.body;
     if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'OpenAI non configurato' });
-    if (userId) {
-      const { data: u } = await supabase.from('users').select('plan').eq('id', userId).single();
-      if (u?.plan === 'free') return res.status(403).json({ error: 'Immagini AI disponibili dal piano Pro', upgrade: true });
-    }
     const url = await generateImage(prompt, brand || 'Brand');
     res.json({ success: true, url });
   } catch (e) { res.status(500).json({ error: 'Errore immagine', details: e.message }); }
@@ -151,10 +147,6 @@ app.post('/api/generate-carousel', async (req, res) => {
   try {
     const { prompts, brand, userId } = req.body;
     if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'OpenAI non configurato' });
-    if (userId) {
-      const { data: u } = await supabase.from('users').select('plan').eq('id', userId).single();
-      if (u?.plan === 'free') return res.status(403).json({ error: 'Carosello AI disponibile dal piano Pro', upgrade: true });
-    }
     const images = [];
     for (const p of (prompts || []).slice(0, 5)) images.push(await generateImage(p, brand));
     res.json({ success: true, images });
@@ -194,10 +186,6 @@ app.post('/api/generate-video', async (req, res) => {
   try {
     const { prompt, imageUrl, userId } = req.body;
     if (!process.env.KLING_ACCESS_KEY) return res.status(400).json({ error: 'Kling non configurato' });
-    if (userId) {
-      const { data: u } = await supabase.from('users').select('plan').eq('id', userId).single();
-      if (u?.plan === 'free') return res.status(403).json({ error: 'Video AI disponibili dal piano Pro', upgrade: true });
-    }
     const result = await generateKlingVideo(prompt, imageUrl);
     res.json({ success: true, task_id: result.task_id, status: 'processing' });
   } catch (e) { res.status(500).json({ error: 'Errore video', details: e.message }); }
