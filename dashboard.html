@@ -287,6 +287,17 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
           <div class="fg"><label>Tono di voce</label><select id="g-tone"><option>Professionale</option><option>Amichevole</option><option>Creativo</option><option>Divertente</option><option>Premium</option><option>Ispirazionale</option></select></div>
           <div class="fg"><label>Pubblica su</label><select id="g-social"><option>Instagram</option><option>Facebook</option><option>Instagram + Facebook</option><option>LinkedIn</option><option>Tutti i social</option></select></div>
         </div>
+        <div style="background:var(--lavender);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0">⚡ AI Media</div>
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500">
+            <input type="checkbox" id="gen-images" style="width:16px;height:16px;accent-color:var(--purple)">
+            🖼️ Immagini AI (DALL-E 3) <span style="font-size:0.72rem;background:var(--purple);color:white;padding:0.15rem 0.5rem;border-radius:100px;font-weight:700">PRO</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500">
+            <input type="checkbox" id="gen-video" style="width:16px;height:16px;accent-color:var(--purple)">
+            🎬 Video Reel (Kling AI) <span style="font-size:0.72rem;background:var(--purple);color:white;padding:0.15rem 0.5rem;border-radius:100px;font-weight:700">PRO</span>
+          </label>
+        </div>
         <button class="btn-gen" id="btn-gen" onclick="doGenerate()">✨ Genera strategia e post AI</button>
       </div>
       <div id="gen-result" style="display:none">
@@ -551,6 +562,13 @@ async function doGenerate() {
   showLoading('L\'AI sta generando la tua strategia...');
   document.getElementById('btn-gen').disabled = true;
 
+  const genImages = document.getElementById('gen-images')?.checked || false;
+  const genVideo = document.getElementById('gen-video')?.checked || false;
+  if (genImages && userPlan === 'free') return toast('Immagini AI disponibili dal piano Pro 🚀', 'error');
+  if (genVideo && userPlan === 'free') return toast('Video AI disponibili dal piano Pro 🚀', 'error');
+  let lmsg = genImages && genVideo ? '✨ Generando post, immagini e video... (1-2 min)' : genImages ? '🖼️ Generando immagini con DALL-E 3...' : genVideo ? '🎬 Generando video con Kling AI...' : "L'AI sta generando la tua strategia...";
+  showLoading(lmsg);
+
   try {
     const resp = await fetch('/api/generate', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -559,7 +577,9 @@ async function doGenerate() {
         sector: document.getElementById('g-sector').value,
         tone: document.getElementById('g-tone').value,
         socials: document.getElementById('g-social').value,
-        userId: user.id
+        userId: user.id,
+        generateImages: genImages,
+        generateVideo: genVideo
       })
     });
     const result = await resp.json();
@@ -571,7 +591,7 @@ async function doGenerate() {
     document.getElementById('gen-result').style.display = 'block';
     document.getElementById('gen-result').scrollIntoView({ behavior:'smooth', block:'nearest' });
     updateStats();
-    toast('Strategia e post generati! ✨', 'success');
+    toast(genImages ? 'Post e immagini pronti! 🖼️✨' : genVideo ? 'Post e video pronti! 🎬✨' : 'Strategia e post generati! ✨', 'success');
     document.getElementById('os-post').classList.add('done');
   } catch(e) { toast('Errore: ' + e.message, 'error'); }
 
