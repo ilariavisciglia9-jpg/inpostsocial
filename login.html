@@ -8,82 +8,71 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --purple:#7C5CFC;--purple-light:#9B7DFD;--purple-dark:#5B3EDB;
-  --lavender:#E8E4FF;--white:#FFFFFF;--off-white:#F8F7FF;
-  --dark:#1A1730;--dark2:#2D2850;--gray:#6B6B8A;--border:rgba(124,92,252,0.12);
-}
-body{font-family:'Outfit',sans-serif;background:var(--off-white);min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
-
+:root{--purple:#7C5CFC;--purple-dark:#5B3EDB;--lavender:#E8E4FF;--off-white:#F8F7FF;--dark:#1A1730;--gray:#6B6B8A;--border:rgba(124,92,252,0.12)}
+body{font-family:'Outfit',sans-serif;background:var(--off-white);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .bg{position:fixed;inset:0;z-index:0}
 .blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:0.4}
 .blob-1{width:500px;height:500px;background:radial-gradient(circle,#C4B5FD,#E8E4FF);top:-150px;right:-100px;animation:float 8s ease-in-out infinite}
 .blob-2{width:400px;height:400px;background:radial-gradient(circle,#FFB5C8,#FFE4EE);bottom:-100px;left:-100px;animation:float 10s ease-in-out infinite reverse}
 @keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,-20px)}}
-
-.card{position:relative;z-index:1;background:white;border-radius:28px;padding:3rem 2.5rem;width:100%;max-width:440px;box-shadow:0 24px 80px rgba(124,92,252,0.15);border:1px solid var(--border)}
-
-.logo{text-align:center;margin-bottom:2rem}
+.card{position:relative;z-index:1;background:white;border-radius:28px;padding:3rem 2.5rem;width:100%;max-width:440px;box-shadow:0 24px 80px rgba(124,92,252,0.15);border:1px solid var(--border);margin:2rem}
+.logo{text-align:center;margin-bottom:0.5rem}
 .logo a{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--dark);text-decoration:none}
 .logo a span{color:var(--purple)}
-
+.logo-sub{text-align:center;font-size:0.85rem;color:var(--gray);margin-bottom:2rem}
 .tabs{display:flex;background:var(--off-white);border-radius:100px;padding:4px;margin-bottom:2rem}
 .tab{flex:1;padding:0.65rem;text-align:center;border-radius:100px;font-size:0.88rem;font-weight:600;cursor:pointer;transition:all 0.25s;border:none;background:none;font-family:'Outfit',sans-serif;color:var(--gray)}
 .tab.active{background:white;color:var(--purple);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
-
 .form-group{margin-bottom:1.2rem}
 label{display:block;font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray);margin-bottom:0.5rem}
 input{width:100%;padding:0.85rem 1.1rem;border:1.5px solid var(--border);border-radius:12px;font-family:'Outfit',sans-serif;font-size:0.95rem;color:var(--dark);background:var(--off-white);outline:none;transition:all 0.2s}
 input:focus{border-color:var(--purple);background:white;box-shadow:0 0 0 3px rgba(124,92,252,0.08)}
-
 .btn-primary{width:100%;padding:1rem;background:var(--purple);color:white;border:none;border-radius:100px;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.25s;margin-top:0.5rem}
 .btn-primary:hover{background:var(--purple-dark);transform:translateY(-2px);box-shadow:0 8px 24px rgba(124,92,252,0.4)}
-.btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none}
-
+.btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none;box-shadow:none}
 .divider{display:flex;align-items:center;gap:1rem;margin:1.5rem 0;color:var(--gray);font-size:0.82rem}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
-
 .btn-google{width:100%;padding:0.85rem;background:white;color:var(--dark);border:1.5px solid var(--border);border-radius:100px;font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.75rem}
-.btn-google:hover{border-color:rgba(124,92,252,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.btn-google:hover{border-color:rgba(124,92,252,0.3);box-shadow:0 4px 12px rgba(0,0,0,0.08);transform:translateY(-1px)}
 .btn-google svg{width:20px;height:20px;flex-shrink:0}
-
 .msg{padding:0.85rem 1rem;border-radius:10px;font-size:0.88rem;font-weight:500;margin-top:1rem;display:none;text-align:center}
 .msg.error{background:#fff1f2;color:#e11d48;border:1px solid #fecdd3}
 .msg.success{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
-
+.forgot{text-align:right;margin-top:-0.5rem;margin-bottom:1rem}
+.forgot a{font-size:0.8rem;color:var(--purple);text-decoration:none;font-weight:500}
 .back{text-align:center;margin-top:1.5rem;font-size:0.85rem;color:var(--gray)}
 .back a{color:var(--purple);font-weight:600;text-decoration:none}
-
-.panel{display:none}
-.panel.active{display:block}
+.panel{display:none}.panel.active{display:block}
+.plan-banner{background:linear-gradient(135deg,var(--purple),#9B7DFD);color:white;border-radius:14px;padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:0.88rem;font-weight:500;display:none}
 </style>
 </head>
 <body>
 <div class="bg"><div class="blob blob-1"></div><div class="blob blob-2"></div></div>
-
 <div class="card">
   <div class="logo"><a href="/">InPost<span>Social</span></a></div>
-
+  <div class="logo-sub" id="logo-sub">Il tuo social media manager virtuale</div>
+  <div class="plan-banner" id="plan-banner"></div>
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('login')">Accedi</button>
-    <button class="tab" onclick="switchTab('register')">Registrati</button>
+    <button class="tab active" id="tab-login" onclick="switchTab('login')">Accedi</button>
+    <button class="tab" id="tab-register" onclick="switchTab('register')">Registrati</button>
   </div>
 
   <!-- LOGIN -->
   <div class="panel active" id="panel-login">
     <div class="form-group">
       <label>Email</label>
-      <input type="email" id="login-email" placeholder="tuaemail@esempio.com">
+      <input type="email" id="login-email" placeholder="tuaemail@esempio.com" autocomplete="email">
     </div>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••">
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
     </div>
+    <div class="forgot"><a href="#" onclick="handleForgot(event)">Password dimenticata?</a></div>
     <button class="btn-primary" onclick="handleLogin()" id="btn-login">Accedi →</button>
     <div class="divider">oppure</div>
     <button class="btn-google" onclick="handleGoogle()">
       <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Continua con Google
+      Accedi con Google
     </button>
     <div class="msg" id="login-msg"></div>
   </div>
@@ -91,18 +80,18 @@ input:focus{border-color:var(--purple);background:white;box-shadow:0 0 0 3px rgb
   <!-- REGISTER -->
   <div class="panel" id="panel-register">
     <div class="form-group">
-      <label>Nome</label>
-      <input type="text" id="reg-name" placeholder="Mario Rossi">
+      <label>Nome completo</label>
+      <input type="text" id="reg-name" placeholder="Mario Rossi" autocomplete="name">
     </div>
     <div class="form-group">
       <label>Email</label>
-      <input type="email" id="reg-email" placeholder="tuaemail@esempio.com">
+      <input type="email" id="reg-email" placeholder="tuaemail@esempio.com" autocomplete="email">
     </div>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="reg-password" placeholder="Minimo 8 caratteri">
+      <input type="password" id="reg-password" placeholder="Minimo 8 caratteri" autocomplete="new-password">
     </div>
-    <button class="btn-primary" onclick="handleRegister()" id="btn-register">Crea account →</button>
+    <button class="btn-primary" onclick="handleRegister()" id="btn-register">Crea account gratuito →</button>
     <div class="divider">oppure</div>
     <button class="btn-google" onclick="handleGoogle()">
       <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
@@ -116,18 +105,34 @@ input:focus{border-color:var(--purple);background:white;box-shadow:0 0 0 3px rgb
 
 <script>
 const SUPABASE_URL = 'https://evkbftrxljkjvygckpso.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_3mjM-43BVtgmJE-4Ix6ryw_TQl9XyG3'; // Sostituisci con la tua anon key
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY = 'sb_publishable_3mjM-43BVtgmJE-4Ix6ryw_TQl9XyG3';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const urlParams = new URLSearchParams(window.location.search);
+const urlPlan = urlParams.get('plan');
 
-// Controlla se già loggato
-supabase.auth.getSession().then(({ data: { session } }) => {
-  if (session) window.location.href = '/dashboard.html';
+// Se già loggato redirect
+sb.auth.getSession().then(async ({ data: { session } }) => {
+  if (!session) return;
+  if (urlPlan) await goToCheckout(urlPlan, session.user);
+  else window.location.href = '/dashboard.html';
 });
 
+// Se arriva da piano specifico mostra banner e apri register
+if (urlPlan === 'pro' || urlPlan === 'business') {
+  const banner = document.getElementById('plan-banner');
+  banner.style.display = 'block';
+  banner.textContent = urlPlan === 'pro'
+    ? '🚀 Stai attivando il Piano Pro — €35/mese'
+    : '💎 Stai attivando il Piano Business — €200/anno';
+  switchTab('register');
+  document.getElementById('btn-register').textContent = 'Continua al pagamento →';
+}
+
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
-  document.getElementById('panel-login').classList.toggle('active', tab==='login');
-  document.getElementById('panel-register').classList.toggle('active', tab==='register');
+  document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+  document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
 }
 
 function showMsg(id, msg, type) {
@@ -141,9 +146,14 @@ async function handleLogin() {
   if (!email || !password) return showMsg('login-msg', 'Compila tutti i campi', 'error');
   const btn = document.getElementById('btn-login');
   btn.disabled = true; btn.textContent = 'Accesso in corso...';
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) { showMsg('login-msg', error.message, 'error'); btn.disabled = false; btn.textContent = 'Accedi →'; }
-  else window.location.href = '/dashboard.html';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    showMsg('login-msg', 'Email o password non corretti. Riprova.', 'error');
+    btn.disabled = false; btn.textContent = 'Accedi →';
+  } else {
+    if (urlPlan) await goToCheckout(urlPlan, data.user);
+    else window.location.href = '/dashboard.html';
+  }
 }
 
 async function handleRegister() {
@@ -154,21 +164,70 @@ async function handleRegister() {
   if (password.length < 8) return showMsg('reg-msg', 'Password minimo 8 caratteri', 'error');
   const btn = document.getElementById('btn-register');
   btn.disabled = true; btn.textContent = 'Creazione account...';
-  const { error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
-  if (error) { showMsg('reg-msg', error.message, 'error'); btn.disabled = false; btn.textContent = 'Crea account →'; }
-  else showMsg('reg-msg', '✅ Controlla la tua email per confermare l\'account!', 'success');
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { name }, emailRedirectTo: window.location.origin + '/dashboard.html' }
+  });
+  if (error) {
+    showMsg('reg-msg', error.message, 'error');
+    btn.disabled = false; btn.textContent = urlPlan ? 'Continua al pagamento →' : 'Crea account gratuito →';
+    return;
+  }
+  // Crea record utente nel DB
+  try {
+    await fetch('/api/user/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, password })
+    });
+  } catch(e) {}
+
+  if (data.session) {
+    // Email non richiede conferma, già loggato
+    if (urlPlan) await goToCheckout(urlPlan, data.user);
+    else window.location.href = '/dashboard.html';
+  } else {
+    // Email di conferma inviata
+    showMsg('reg-msg', '✅ Account creato! Controlla la tua email per confermare, poi accedi.', 'success');
+    btn.disabled = false; btn.textContent = urlPlan ? 'Continua al pagamento →' : 'Crea account gratuito →';
+  }
 }
 
 async function handleGoogle() {
-  await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/dashboard.html' } });
+  const redirectTo = urlPlan
+    ? window.location.origin + '/dashboard.html?plan=' + urlPlan
+    : window.location.origin + '/dashboard.html';
+  await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
 }
 
-// Enter key
+async function handleForgot(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) return showMsg('login-msg', 'Inserisci prima la tua email nel campo sopra', 'error');
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/login.html'
+  });
+  if (error) showMsg('login-msg', error.message, 'error');
+  else showMsg('login-msg', '✅ Email inviata! Controlla la tua casella di posta.', 'success');
+}
+
+async function goToCheckout(plan, user) {
+  try {
+    const resp = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan, userId: user.id, email: user.email })
+    });
+    const { url } = await resp.json();
+    if (url) window.location.href = url;
+    else window.location.href = '/dashboard.html';
+  } catch(e) { window.location.href = '/dashboard.html'; }
+}
+
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    if (document.getElementById('panel-login').classList.contains('active')) handleLogin();
-    else handleRegister();
-  }
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('panel-login').classList.contains('active')) handleLogin();
+  else handleRegister();
 });
 </script>
 </body>
