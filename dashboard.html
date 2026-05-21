@@ -325,13 +325,13 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
         <div class="social-card" id="card-ig">
           <div class="social-card-icon">📸</div>
           <h4>Instagram Business</h4>
-          <p>Pubblica post, reel e caroselli automaticamente</p>
+          <p>Pubblica post, reel e caroselli. Il collegamento avviene tramite il tuo account Facebook — è la procedura standard richiesta da Meta.</p>
           <button class="btn-connect btn-ig" id="btn-ig">Collega Instagram</button>
         </div>
         <div class="social-card" id="card-fb">
           <div class="social-card-icon">📘</div>
           <h4>Facebook Page</h4>
-          <p>Pubblica contenuti sulla tua pagina Facebook aziendale</p>
+          <p>Pubblica contenuti sulla tua pagina Facebook aziendale. Si collega insieme a Instagram con un click.</p>
           <button class="btn-connect btn-fb" id="btn-fb">Collega Facebook</button>
         </div>
         <div class="social-card" id="card-tt">
@@ -438,8 +438,11 @@ async function init() {
 
   var params = new URLSearchParams(window.location.search);
   if (params.get('payment') === 'success') toast('Piano attivato con successo! 🎉');
+  if (params.get('connected') === 'instagram') toast('Instagram collegato con successo! 📸✅');
+  if (params.get('connected') === 'facebook') toast('Facebook collegato! Nessun account Instagram Business trovato. Assicurati di avere un profilo Instagram Business collegato alla tua Pagina Facebook.', 'error');
   if (params.get('connected') === 'true') toast('Social collegato! ✅');
   if (params.get('error') === 'auth_denied') toast('Collegamento annullato', 'error');
+  if (params.get('error') === 'auth_failed') toast('Errore nel collegamento. Riprova.', 'error');
   if (params.get('plan')) doCheckout(params.get('plan'));
 
   bindEvents();
@@ -564,14 +567,18 @@ function updatePlanUI() {
 // ─── SOCIAL ───────────────────────────────────────────────────────────────────
 async function loadSocialConnections() {
   socialCount = 0;
-  var res = await sb.from('social_connections').select('platform').eq('user_id', user.id);
-  if (!res.data) return;
+  var res = await sb.from('social_connections').select('platform,ig_account_id,page_name').eq('user_id', user.id);
+  if (res.error) { console.error('Errore social_connections:', res.error); return; }
+  if (!res.data || !res.data.length) { console.log('Nessuna connessione trovata'); return; }
+  console.log('Connessioni trovate:', res.data);
   res.data.forEach(function(c) {
     socialCount++;
-    if (c.platform === 'instagram') markConnected('card-ig', 'btn-ig', '✅ Instagram collegato');
+    if (c.platform === 'instagram') {
+      markConnected('card-ig', 'btn-ig', '✅ Instagram collegato' + (c.page_name ? ' (' + c.page_name + ')' : ''));
+      document.getElementById('os-social').classList.add('done');
+    }
     if (c.platform === 'facebook') markConnected('card-fb', 'btn-fb', '✅ Facebook collegato');
     if (c.platform === 'tiktok') markConnected('card-tt', 'btn-tt', '✅ TikTok collegato');
-    document.getElementById('os-social').classList.add('done');
   });
   document.getElementById('s4').textContent = socialCount;
 }
@@ -583,9 +590,8 @@ function markConnected(cardId, btnId, label) {
   card.classList.add('connected');
   btn.className = 'btn-connect btn-connected';
   btn.textContent = label;
-  btn.replaceWith(btn.cloneNode(true)); // rimuove tutti i listener
-  document.getElementById(btnId).className = 'btn-connect btn-connected';
-  document.getElementById(btnId).textContent = label;
+  btn.disabled = true;
+  btn.style.opacity = '1';
 }
 
 function connectMeta() {
@@ -819,4 +825,3 @@ init();
 </script>
 </body>
 </html>
-
