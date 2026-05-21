@@ -451,6 +451,39 @@ async function loadUser() {
     if (data.sector) document.getElementById('s-sector').value = data.sector;
     updatePlanUI();
   }
+
+  // Carica social connections
+  await loadSocialConnections();
+}
+
+async function loadSocialConnections() {
+  const { data: conns } = await sb.from('social_connections').select('platform').eq('user_id', user.id);
+  if (!conns) return;
+  const platforms = conns.map(c => c.platform);
+  let count = 0;
+
+  if (platforms.includes('instagram')) {
+    count++;
+    const card = document.getElementById('card-ig');
+    if (card) {
+      card.classList.add('connected');
+      card.querySelector('.btn-connect').className = 'btn-connect btn-connected';
+      card.querySelector('.btn-connect').textContent = '✅ Instagram collegato';
+      card.querySelector('.btn-connect').onclick = null;
+    }
+    document.getElementById('os-social').classList.add('done');
+  }
+  if (platforms.includes('facebook')) {
+    count++;
+    const card = document.getElementById('card-fb');
+    if (card) {
+      card.classList.add('connected');
+      card.querySelector('.btn-connect').className = 'btn-connect btn-connected';
+      card.querySelector('.btn-connect').textContent = '✅ Facebook collegato';
+      card.querySelector('.btn-connect').onclick = null;
+    }
+  }
+  document.getElementById('s4').textContent = count;
 }
 
 function updatePlanUI() {
@@ -510,22 +543,44 @@ function postCard(post, idx) {
   const st = post.status || 'draft';
   const stLabel = {draft:'⏳ Bozza', approved:'✅ Approvato', published:'🔵 Pubblicato'}[st] || st;
   const stClass = {draft:'s-draft', approved:'s-approved', published:'s-published'}[st] || '';
-  return `<div class="post-item" id="pi-${idx}">
+
+  // Media: immagine singola, carosello o video
+  let mediaHtml = '';
+  if (post.type === 'carousel' && post.carousel_images && post.carousel_images.length) {
+    mediaHtml = `<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:0.75rem;padding-bottom:4px">
+      ${post.carousel_images.map(url => `<img src="${url}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display='none'">`).join('')}
+    </div>`;
+  } else if (post.image_url) {
+    mediaHtml = `<img src="${post.image_url}" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-bottom:0.75rem" onerror="this.style.display='none'">`;
+  }
+
+  // Video reel
+  let videoHtml = '';
+  if (post.type === 'reel') {
+    if (post.video_status === 'processing') {
+      videoHtml = `<div style="background:#f3f4f6;border-radius:8px;padding:0.6rem 0.9rem;font-size:0.8rem;color:#6B6B8A;margin-bottom:0.75rem">🎬 Video in elaborazione... (pronto in 1-2 min)</div>`;
+    } else if (post.video_url) {
+      videoHtml = `<video src="${post.video_url}" controls style="width:100%;border-radius:10px;margin-bottom:0.75rem;max-height:260px"></video>`;
+    }
+  }
+
+  return \`<div class="post-item" id="pi-\${idx}">
     <div class="post-header">
-      <div class="post-social">${socialEmoji[post.social]||'📱'} ${post.social}</div>
-      <span class="post-day">📅 ${post.day||''} ${post.scheduled_time||''}</span>
-      <span class="status ${stClass}">${stLabel}</span>
+      <div class="post-social">\${socialEmoji[post.social]||'📱'} \${post.social} \${post.type==='carousel'?'🎠':post.type==='reel'?'🎬':''}</div>
+      <span class="post-day">📅 \${post.day||''} \${post.scheduled_time||''}</span>
+      <span class="status \${stClass}">\${stLabel}</span>
     </div>
     <div class="post-body">
-      <div class="post-text">${(post.text||'').replace(/\n/g,'<br>')}</div>
-      <div class="hashtags">${(post.hashtags||[]).map(h=>`<span class="hashtag">#${h.replace('#','')}</span>`).join('')}</div>
+      \${mediaHtml}\${videoHtml}
+      <div class="post-text">\${(post.text||'').replace(/\n/g,'<br>')}</div>
+      <div class="hashtags">\${(post.hashtags||[]).map(h=>\`<span class="hashtag">#\${h.replace('#','')}</span>\`).join('')}</div>
     </div>
     <div class="post-actions">
-      <button class="pBtn pBtn-approve pBtn" onclick="approvePost(${idx})"${st==='approved'?' disabled style="opacity:0.5"':''}>✓ Approva</button>
+      <button class="pBtn pBtn-approve pBtn" onclick="approvePost(\${idx})"\${st==='approved'?' disabled style="opacity:0.5"':''}>✓ Approva</button>
       <button class="pBtn pBtn-edit pBtn" onclick="toast('Editor disponibile nel piano Pro 🚀','error')">✏️ Modifica</button>
-      <button class="pBtn pBtn-delete pBtn" onclick="deletePost(${idx})">🗑️</button>
+      <button class="pBtn pBtn-delete pBtn" onclick="deletePost(\${idx})">🗑️</button>
     </div>
-  </div>`;
+  </div>\`;
 }
 
 function renderHomePosts() {
