@@ -1,4 +1,5 @@
-express');
+require('dotenv').config();
+const express = require('express');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -21,7 +22,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/webhook')) return next();
-  res.sendFile(path.join(__dirname, 'index.html'));
+  // Serve il file HTML corretto in base al path
+  const html = req.path.includes('dashboard') ? 'dashboard.html'
+             : req.path.includes('login') ? 'login.html'
+             : 'index.html';
+  res.sendFile(path.join(__dirname, html));
 });
 
 app.get('/healthz', (req, res) => res.json({ status: 'ok', version: '2.0.0' }));
@@ -204,40 +209,108 @@ app.get('/api/video-status/:taskId', async (req, res) => {
 // ===== META OAUTH =====
 app.get('/auth/meta', (req, res) => {
   const { userId } = req.query;
-  const scope = 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,pages_manage_posts';
+  if (!userId) return res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=no_user`);
+  const scope = [
+    'instagram_basic',
+    'instagram_content_publish',
+    'instagram_manage_comments',
+    'instagram_manage_insights',
+    'pages_show_list',
+    'pages_read_engagement',
+    'pages_manage_posts'
+  ].join(',');
   const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
-  const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${process.env.META_APP_ID}&redirect_uri=${encodeURIComponent(process.env.FRONTEND_URL + '/auth/callback')}&scope=${scope}&state=${state}&response_type=code`;
+  const redirectUri = encodeURIComponent(process.env.FRONTEND_URL + '/auth/callback');
+  const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${process.env.META_APP_ID}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}&response_type=code`;
+  console.log('🔗 Meta OAuth start for user:', userId);
   res.redirect(url);
 });
 
 app.get('/auth/callback', async (req, res) => {
+  const DASH = process.env.FRONTEND_URL + '/dashboard.html';
   try {
     const { code, state, error } = req.query;
-    if (error) return res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=auth_denied`);
+    if (error || !code) {
+      console.error('OAuth denied:', error);
+      return res.redirect(DASH + '?error=auth_denied');
+    }
+
     const { userId } = JSON.parse(Buffer.from(state, 'base64').toString());
+    if (!userId) return res.redirect(DASH + '?error=no_user');
+
+    // Step 1: short-lived token
     const t1 = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
-      params: { client_id: process.env.META_APP_ID, client_secret: process.env.META_APP_SECRET, redirect_uri: process.env.FRONTEND_URL + '/auth/callback', code }
+      params: {
+        client_id: process.env.META_APP_ID,
+        client_secret: process.env.META_APP_SECRET,
+        redirect_uri: process.env.FRONTEND_URL + '/auth/callback',
+        code
+      }
     });
+    const shortToken = t1.data.access_token;
+
+    // Step 2: long-lived token (60 giorni)
     const t2 = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
-      params: { grant_type: 'fb_exchange_token', client_id: process.env.META_APP_ID, client_secret: process.env.META_APP_SECRET, fb_exchange_token: t1.data.access_token }
+      params: {
+        grant_type: 'fb_exchange_token',
+        client_id: process.env.META_APP_ID,
+        client_secret: process.env.META_APP_SECRET,
+        fb_exchange_token: shortToken
+      }
     });
     const longToken = t2.data.access_token;
-    const pages = (await axios.get('https://graph.facebook.com/v19.0/me/accounts', { params: { access_token: longToken } })).data.data;
-    if (userId) {
-      await supabase.from('social_connections').upsert({ user_id: userId, platform: 'facebook', access_token: longToken, pages, connected_at: new Date().toISOString() });
-      for (const page of pages) {
-        try {
-          const ig = await axios.get(`https://graph.facebook.com/v19.0/${page.id}`, { params: { fields: 'instagram_business_account', access_token: page.access_token } });
-          if (ig.data.instagram_business_account) {
-            await supabase.from('social_connections').upsert({ user_id: userId, platform: 'instagram', ig_account_id: ig.data.instagram_business_account.id, page_id: page.id, page_access_token: page.access_token, connected_at: new Date().toISOString() });
-          }
-        } catch (e) { console.log('No Instagram for page:', page.name); }
+    console.log('✅ Long-lived token ottenuto per user:', userId);
+
+    // Step 3: pagine Facebook
+    const pagesRes = await axios.get('https://graph.facebook.com/v19.0/me/accounts', {
+      params: { access_token: longToken, fields: 'id,name,access_token,instagram_business_account' }
+    });
+    const pages = pagesRes.data.data || [];
+    console.log('📄 Pagine trovate:', pages.length);
+
+    // Cancella connessioni vecchie per questo utente e ri-inserisce
+    await supabase.from('social_connections').delete().eq('user_id', userId).in('platform', ['facebook', 'instagram']);
+
+    // Salva connessione Facebook
+    await supabase.from('social_connections').insert({
+      user_id: userId,
+      platform: 'facebook',
+      access_token: longToken,
+      pages: pages,
+      connected_at: new Date().toISOString()
+    });
+
+    // Step 4: cerca account Instagram Business collegati alle pagine
+    let igConnected = false;
+    for (const page of pages) {
+      try {
+        const igRes = await axios.get(`https://graph.facebook.com/v19.0/${page.id}`, {
+          params: { fields: 'instagram_business_account', access_token: page.access_token }
+        });
+        const igAccount = igRes.data.instagram_business_account;
+        if (igAccount && igAccount.id) {
+          await supabase.from('social_connections').insert({
+            user_id: userId,
+            platform: 'instagram',
+            ig_account_id: igAccount.id,
+            page_id: page.id,
+            page_name: page.name,
+            page_access_token: page.access_token,
+            connected_at: new Date().toISOString()
+          });
+          igConnected = true;
+          console.log('📸 Instagram collegato:', igAccount.id, 'via pagina:', page.name);
+        }
+      } catch (igErr) {
+        console.log('⚠️ Nessun Instagram per pagina:', page.name, igErr.message);
       }
     }
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?connected=true`);
+
+    const msg = igConnected ? 'connected=instagram' : 'connected=facebook';
+    res.redirect(DASH + '?' + msg);
   } catch (e) {
-    console.error('OAuth error:', e.message);
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=auth_failed`);
+    console.error('❌ OAuth error:', e.response?.data || e.message);
+    res.redirect(DASH + '?error=auth_failed');
   }
 });
 
