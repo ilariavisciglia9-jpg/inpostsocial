@@ -7,40 +7,36 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Outfit',sans-serif}
 :root{
   --purple:#7C5CFC;--purple-light:#9B7DFD;--purple-dark:#5B3EDB;
-  --lavender:#E8E4FF;--white:#fff;--off-white:#F8F7FF;
+  --lavender:#E8E4FF;--off-white:#F8F7FF;
   --dark:#1A1730;--dark2:#2D2850;--gray:#6B6B8A;--gray-light:#A0A0B8;
   --border:rgba(124,92,252,0.12);--shadow:0 4px 24px rgba(124,92,252,0.10);
-  --shadow-lg:0 12px 48px rgba(124,92,252,0.18);
-  --sidebar:255px;--green:#22c55e;--gold:#f5c842;--red:#ef4444;
+  --sidebar:255px;--gold:#f5c842;
 }
-*{font-family:'Outfit',sans-serif}
 body{background:var(--off-white);color:var(--dark);display:flex;min-height:100vh}
-h1,h2,h3{font-family:'Playfair Display',serif}
+h1,h2,h3,h4,h5{font-family:'Playfair Display',serif}
 a{text-decoration:none;color:inherit}
-button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:none}
+button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-serif}
 
 /* SIDEBAR */
 .sidebar{width:var(--sidebar);background:var(--dark);min-height:100vh;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:50;transition:transform 0.3s}
 .sidebar-logo{padding:1.8rem 1.5rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.07)}
 .sidebar-logo-text{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:white}
 .sidebar-logo-text span{color:var(--purple-light)}
-.plan-badge{display:inline-flex;align-items:center;gap:0.4rem;margin-top:0.5rem;padding:0.25rem 0.75rem;border-radius:100px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em}
+.plan-badge{display:inline-flex;align-items:center;margin-top:0.5rem;padding:0.25rem 0.75rem;border-radius:100px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em}
 .badge-free{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5)}
 .badge-pro{background:rgba(124,92,252,0.25);color:#C4B5FD}
 .badge-business{background:rgba(245,200,66,0.15);color:var(--gold)}
-
 .nav-section{padding:1.2rem 0.75rem}
 .nav-label{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:rgba(255,255,255,0.25);padding:0 0.75rem;margin-bottom:0.5rem}
 .nav-item{display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.75rem;border-radius:10px;font-size:0.85rem;font-weight:500;color:rgba(255,255,255,0.45);transition:all 0.2s;width:100%;text-align:left;margin-bottom:2px}
 .nav-item:hover{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.85)}
 .nav-item.active{background:rgba(124,92,252,0.2);color:white}
 .nav-icon{font-size:1rem;width:18px;text-align:center;flex-shrink:0}
-
 .sidebar-bottom{margin-top:auto;padding:1.2rem 0.75rem;border-top:1px solid rgba(255,255,255,0.07)}
-.user-box{display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.5rem;border-radius:10px}
+.user-box{display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.5rem}
 .user-av{width:34px;height:34px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:0.82rem;font-weight:700;color:white;flex-shrink:0}
 .user-name{font-size:0.82rem;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 .user-email{font-size:0.7rem;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
@@ -51,18 +47,15 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
 .main{margin-left:var(--sidebar);flex:1;min-height:100vh}
 .topbar{padding:1.2rem 2rem;border-bottom:1px solid var(--border);background:white;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;gap:1rem}
 .topbar h1{font-size:1.25rem;font-weight:700;white-space:nowrap}
-.topbar-right{display:flex;align-items:center;gap:0.75rem}
 .btn-upgrade{background:linear-gradient(135deg,var(--purple),var(--purple-light));color:white;padding:0.5rem 1.1rem;border-radius:100px;font-size:0.8rem;font-weight:700;transition:all 0.2s;white-space:nowrap}
 .btn-upgrade:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,92,252,0.4)}
-
 .content{padding:1.75rem}
 
 /* PAGES */
-.page{display:none;animation:fadeIn 0.3s ease}
+.page{display:none}
 .page.active{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-/* WELCOME CARD */
+/* WELCOME */
 .welcome-card{background:linear-gradient(135deg,var(--dark),#3D2B6B);border-radius:20px;padding:2rem 2.5rem;margin-bottom:1.75rem;position:relative;overflow:hidden}
 .welcome-card::after{content:'';position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(124,92,252,0.15);top:-100px;right:-50px;pointer-events:none}
 .welcome-card h2{color:white;font-size:1.4rem;margin-bottom:0.4rem;position:relative}
@@ -84,9 +77,7 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
 /* SECTION */
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
 .section-title{font-size:1rem;font-weight:700;font-family:'Playfair Display',serif}
-
-/* BUTTONS */
-.btn-sm{padding:0.5rem 1rem;border-radius:100px;font-size:0.8rem;font-weight:600;transition:all 0.2s}
+.btn-sm{padding:0.5rem 1rem;border-radius:100px;font-size:0.8rem;font-weight:600;transition:all 0.2s;border:none;cursor:pointer}
 .btn-purple{background:var(--purple);color:white}
 .btn-purple:hover{background:var(--purple-dark)}
 .btn-outline{background:transparent;color:var(--purple);border:1.5px solid var(--lavender)}
@@ -94,8 +85,7 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
 
 /* POSTS */
 .posts-list{display:flex;flex-direction:column;gap:0.75rem}
-.post-item{background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden;transition:all 0.2s}
-.post-item:hover{box-shadow:var(--shadow)}
+.post-item{background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden}
 .post-header{display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;border-bottom:1px solid var(--border);background:var(--off-white)}
 .post-social{display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;font-weight:700}
 .post-day{font-size:0.74rem;color:var(--gray-light)}
@@ -108,13 +98,18 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
 .hashtags{display:flex;flex-wrap:wrap;gap:0.35rem}
 .hashtag{font-size:0.7rem;padding:0.18rem 0.55rem;background:var(--lavender);color:var(--purple);border-radius:100px;font-weight:600}
 .post-actions{padding:0.7rem 1.1rem;border-top:1px solid var(--border);display:flex;gap:0.5rem}
-.pbtn{flex:1;padding:0.5rem;border-radius:8px;font-size:0.76rem;font-weight:600;transition:all 0.2s;text-align:center;border:none}
+.pBtn{flex:1;padding:0.5rem;border-radius:8px;font-size:0.76rem;font-weight:600;transition:all 0.2s;text-align:center;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .pBtn-approve{background:#dcfce7;color:#16a34a}
-.pBtn-approve:hover{background:#16a34a;color:white}
+.pBtn-approve:hover,.pBtn-approve:active{background:#16a34a;color:white}
+.pBtn-approve:disabled{opacity:0.4;cursor:not-allowed}
 .pBtn-edit{background:var(--off-white);color:var(--gray);border:1px solid var(--border)}
-.pBtn-edit:hover{color:var(--dark)}
 .pBtn-delete{background:#fff1f2;color:#e11d48}
-.pBtn-delete:hover{background:#e11d48;color:white}
+.pBtn-delete:hover,.pBtn-delete:active{background:#e11d48;color:white}
+.post-img{width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-bottom:0.75rem;display:block}
+.carousel-strip{display:flex;gap:6px;overflow-x:auto;margin-bottom:0.75rem;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.carousel-strip img{width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0}
+.video-processing{background:#f3f4f6;border-radius:8px;padding:0.6rem 0.9rem;font-size:0.8rem;color:#6B6B8A;margin-bottom:0.75rem}
+.post-video{width:100%;border-radius:10px;margin-bottom:0.75rem;max-height:260px}
 
 /* FORM */
 .card-box{background:white;border-radius:18px;border:1px solid var(--border);padding:1.75rem;margin-bottom:1.5rem}
@@ -129,7 +124,7 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
 .btn-gen:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(124,92,252,0.4)}
 .btn-gen:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none}
 
-/* STRATEGY BOX */
+/* STRATEGY */
 .strategy-box{background:linear-gradient(135deg,var(--lavender),#EDE9FF);border-radius:14px;padding:1.4rem;margin-bottom:1.25rem;border:1px solid rgba(124,92,252,0.15)}
 .strategy-box h4{font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--purple);margin-bottom:0.6rem}
 .strategy-box p{font-size:0.88rem;color:var(--dark2);line-height:1.7}
@@ -138,28 +133,26 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
 .s-block h5{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--purple);margin-bottom:0.5rem}
 .s-block p,.s-block li{font-size:0.83rem;color:var(--dark2);line-height:1.6}
 .s-block ul{list-style:none}
-.s-block li{padding:0.2rem 0;padding-left:1rem;position:relative}
+.s-block li{padding:0.2rem 0 0.2rem 1rem;position:relative}
 .s-block li::before{content:'→';position:absolute;left:0;color:var(--purple);font-size:0.75rem}
 
-/* SOCIAL CARDS */
+/* SOCIAL */
 .social-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .social-card{background:white;border-radius:16px;border:1.5px solid var(--border);padding:1.4rem;text-align:center;transition:all 0.2s}
-.social-card:hover{box-shadow:var(--shadow)}
 .social-card.connected{border-color:#22c55e;background:#f0fdf4}
 .social-card-icon{font-size:2.2rem;margin-bottom:0.6rem}
 .social-card h4{font-size:0.9rem;font-weight:700;margin-bottom:0.35rem}
 .social-card p{font-size:0.8rem;color:var(--gray);margin-bottom:1rem;line-height:1.5}
-.btn-connect{width:100%;padding:0.6rem;border-radius:100px;font-size:0.8rem;font-weight:700;border:none;transition:all 0.2s;cursor:pointer}
+.btn-connect{width:100%;padding:0.6rem;border-radius:100px;font-size:0.8rem;font-weight:700;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .btn-ig{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:white}
 .btn-fb{background:#1877f2;color:white}
+.btn-tt{background:#010101;color:white}
 .btn-li{background:#0a66c2;color:white;opacity:0.5;cursor:not-allowed}
-.btn-tt{background:black;color:white;opacity:0.5;cursor:not-allowed}
 .btn-connected{background:#dcfce7;color:#16a34a;cursor:default}
 
-/* PLAN CARDS */
+/* PIANI */
 .plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem}
-.plan-card{background:white;border-radius:18px;border:1.5px solid var(--border);padding:1.75rem;position:relative;transition:all 0.2s}
-.plan-card:hover{box-shadow:var(--shadow)}
+.plan-card{background:white;border-radius:18px;border:1.5px solid var(--border);padding:1.75rem;position:relative}
 .plan-card.active-plan{border-color:var(--purple);border-width:2px}
 .current-label{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--purple);color:white;font-size:0.68rem;font-weight:700;padding:0.22rem 0.75rem;border-radius:100px;white-space:nowrap}
 .plan-name{font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray);margin-bottom:0.75rem}
@@ -167,34 +160,30 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
 .plan-price small{font-size:0.9rem;font-weight:400;color:var(--gray)}
 .plan-feats{list-style:none;margin-bottom:1.5rem;display:flex;flex-direction:column;gap:0.5rem}
 .plan-feats li{font-size:0.82rem;color:var(--dark2);display:flex;gap:0.5rem;line-height:1.4}
-.btn-plan{width:100%;padding:0.75rem;border-radius:100px;font-size:0.85rem;font-weight:700;border:none;cursor:pointer;transition:all 0.2s}
+.btn-plan{width:100%;padding:0.75rem;border-radius:100px;font-size:0.85rem;font-weight:700;border:none;cursor:pointer}
 .btn-plan-primary{background:var(--purple);color:white}
-.btn-plan-primary:hover{background:var(--purple-dark)}
-.btn-plan-ghost{background:transparent;color:var(--gray);border:1.5px solid var(--border)}
 .btn-plan-current{background:var(--lavender);color:var(--purple);cursor:default}
 
-/* EMPTY */
+/* MISC */
 .empty{text-align:center;padding:3rem 2rem;color:var(--gray)}
 .empty .icon{font-size:2.5rem;margin-bottom:0.75rem}
 .empty h3{font-size:1rem;color:var(--dark);margin-bottom:0.4rem;font-family:'Playfair Display',serif}
 .empty p{font-size:0.85rem;margin-bottom:1.25rem}
-
-/* LOADING */
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.92);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem}
 .loading-overlay.show{display:flex}
 .spinner{width:44px;height:44px;border:3px solid var(--lavender);border-top-color:var(--purple);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{color:var(--gray);font-size:0.88rem}
-
-/* TOAST */
-.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:0.75rem 1.1rem;border-radius:10px;font-size:0.84rem;font-weight:500;z-index:1000;transform:translateY(80px);opacity:0;transition:all 0.3s;max-width:320px}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:0.75rem 1.1rem;border-radius:10px;font-size:0.84rem;font-weight:500;z-index:1000;transform:translateY(80px);opacity:0;transition:all 0.3s;max-width:320px;pointer-events:none}
 .toast.show{transform:translateY(0);opacity:1}
 .toast-success{background:var(--dark);color:white}
 .toast-error{background:#e11d48;color:white}
-
-/* HAMBURGER */
 .hamburger{display:none;position:fixed;top:1rem;left:1rem;z-index:100;background:var(--purple);border:none;border-radius:10px;padding:0.55rem;cursor:pointer;flex-direction:column;gap:4px}
 .hamburger span{display:block;width:20px;height:2px;background:white;border-radius:2px}
+.media-box{background:var(--lavender);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center}
+.media-label{font-size:0.8rem;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0}
+.media-opt{display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500}
+.media-opt input{width:16px;height:16px;accent-color:var(--purple)}
 
 @media(max-width:900px){
   .sidebar{transform:translateX(-100%)}
@@ -202,8 +191,8 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
   .main{margin-left:0}
   .hamburger{display:flex}
   .stats-grid{grid-template-columns:1fr 1fr}
-  .grid-2,.social-grid,.plan-grid{grid-template-columns:1fr}
-  .strategy-grid{grid-template-columns:1fr}
+  .grid-2,.social-grid,.plan-grid,.strategy-grid{grid-template-columns:1fr}
+  .s-block[style]{grid-column:span 1 !important}
 }
 </style>
 </head>
@@ -211,7 +200,6 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
 
 <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
 
-<!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-text">InPost<span>Social</span></div>
@@ -219,15 +207,15 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
   </div>
   <div class="nav-section">
     <div class="nav-label">Principale</div>
-    <button class="nav-item active" onclick="goTo('home')"><span class="nav-icon">🏠</span>Dashboard</button>
-    <button class="nav-item" onclick="goTo('genera')"><span class="nav-icon">✨</span>Genera Post</button>
-    <button class="nav-item" onclick="goTo('posts')"><span class="nav-icon">📋</span>I miei post</button>
-    <button class="nav-item" onclick="goTo('social')"><span class="nav-icon">🔗</span>Social collegati</button>
+    <button class="nav-item active" data-page="home"><span class="nav-icon">🏠</span>Dashboard</button>
+    <button class="nav-item" data-page="genera"><span class="nav-icon">✨</span>Genera Post</button>
+    <button class="nav-item" data-page="posts"><span class="nav-icon">📋</span>I miei post</button>
+    <button class="nav-item" data-page="social"><span class="nav-icon">🔗</span>Social collegati</button>
   </div>
   <div class="nav-section">
     <div class="nav-label">Account</div>
-    <button class="nav-item" onclick="goTo('piano')"><span class="nav-icon">💎</span>Piano e fatturazione</button>
-    <button class="nav-item" onclick="goTo('impostazioni')"><span class="nav-icon">⚙️</span>Impostazioni</button>
+    <button class="nav-item" data-page="piano"><span class="nav-icon">💎</span>Piano e fatturazione</button>
+    <button class="nav-item" data-page="impostazioni"><span class="nav-icon">⚙️</span>Impostazioni</button>
   </div>
   <div class="sidebar-bottom">
     <div class="user-box">
@@ -237,26 +225,22 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
         <div class="user-email" id="uemail"></div>
       </div>
     </div>
-    <button class="btn-logout" onclick="doLogout()">Esci dall'account</button>
+    <button class="btn-logout" id="btn-logout">Esci dall'account</button>
   </div>
 </aside>
 
-<!-- MAIN -->
 <main class="main">
   <div class="topbar">
     <h1 id="page-title">Dashboard</h1>
-    <div class="topbar-right">
-      <button class="btn-upgrade" id="btn-upgrade" onclick="goTo('piano')">⚡ Passa a Pro</button>
-    </div>
+    <button class="btn-upgrade" id="btn-upgrade">⚡ Passa a Pro</button>
   </div>
-
   <div class="content">
 
     <!-- HOME -->
     <div class="page active" id="page-home">
       <div class="welcome-card">
         <h2 id="welcome-msg">Bentornato! 👋</h2>
-        <p>Il tuo social media manager AI è pronto. Ecco cosa sta succedendo.</p>
+        <p>Il tuo social media manager AI è pronto.</p>
         <div class="onboarding-steps">
           <div class="o-step done"><span class="dot"></span>Account creato</div>
           <div class="o-step" id="os-business"><span class="dot"></span>Inserisci il tuo business</div>
@@ -270,7 +254,10 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
         <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Da approvare</div><div class="stat-val" id="s3">0</div><div class="stat-sub">in attesa</div></div>
         <div class="stat-card"><div class="stat-icon">🔗</div><div class="stat-label">Social collegati</div><div class="stat-val" id="s4">0</div><div class="stat-sub">profili attivi</div></div>
       </div>
-      <div class="section-header"><div class="section-title">Post recenti da approvare</div><button class="btn-sm btn-purple" onclick="goTo('genera')">+ Genera nuovi</button></div>
+      <div class="section-header">
+        <div class="section-title">Post recenti da approvare</div>
+        <button class="btn-sm btn-purple" data-page="genera">+ Genera nuovi</button>
+      </div>
       <div id="home-posts"></div>
     </div>
 
@@ -280,74 +267,91 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
         <h3>✨ Genera strategia e post AI</h3>
         <div class="grid-2">
           <div class="fg"><label>Nome del brand *</label><input id="g-brand" placeholder="es. Pizzeria Da Mario" type="text"></div>
-          <div class="fg"><label>Settore</label><select id="g-sector"><option>Ristorazione & Food</option><option>Moda & Lifestyle</option><option>Bellezza & Benessere</option><option>Professionisti & Servizi</option><option>E-commerce</option><option>Fitness & Sport</option><option>Turismo & Hospitality</option><option>Tecnologia</option><option>Altro</option></select></div>
+          <div class="fg"><label>Settore</label>
+            <select id="g-sector">
+              <option>Ristorazione &amp; Food</option><option>Moda &amp; Lifestyle</option>
+              <option>Bellezza &amp; Benessere</option><option>Professionisti &amp; Servizi</option>
+              <option>E-commerce</option><option>Fitness &amp; Sport</option>
+              <option>Turismo &amp; Hospitality</option><option>Tecnologia</option><option>Altro</option>
+            </select>
+          </div>
         </div>
         <div class="fg"><label>Descrivi il tuo business *</label><textarea id="g-desc" placeholder="Cosa fai, quali servizi offri, chi sono i tuoi clienti ideali..."></textarea></div>
         <div class="grid-2">
-          <div class="fg"><label>Tono di voce</label><select id="g-tone"><option>Professionale</option><option>Amichevole</option><option>Creativo</option><option>Divertente</option><option>Premium</option><option>Ispirazionale</option></select></div>
-          <div class="fg"><label>Pubblica su</label><select id="g-social"><option>Instagram</option><option>Facebook</option><option>Instagram + Facebook</option><option>LinkedIn</option><option>Tutti i social</option></select></div>
+          <div class="fg"><label>Tono di voce</label>
+            <select id="g-tone">
+              <option>Professionale</option><option>Amichevole</option><option>Creativo</option>
+              <option>Divertente</option><option>Premium</option><option>Ispirazionale</option>
+            </select>
+          </div>
+          <div class="fg"><label>Pubblica su</label>
+            <select id="g-social">
+              <option>Instagram</option><option>Facebook</option><option>Instagram + Facebook</option>
+              <option>TikTok</option><option>Tutti i social</option>
+            </select>
+          </div>
         </div>
-        <div style="background:var(--lavender);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">
-          <div style="font-size:0.8rem;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0">⚡ AI Media</div>
-          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500">
-            <input type="checkbox" id="gen-images" style="width:16px;height:16px;accent-color:var(--purple)">
-            🖼️ Genera immagini AI (DALL-E 3)
-          </label>
-          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500">
-            <input type="checkbox" id="gen-video" style="width:16px;height:16px;accent-color:var(--purple)">
-            🎬 Genera video Reel (Kling AI)
-          </label>
+        <div class="media-box">
+          <div class="media-label">⚡ AI Media</div>
+          <label class="media-opt"><input type="checkbox" id="gen-images"> 🖼️ Immagini AI (DALL-E 3)</label>
+          <label class="media-opt"><input type="checkbox" id="gen-video"> 🎬 Video Reel (Kling AI)</label>
         </div>
-        <button class="btn-gen" id="btn-gen" onclick="doGenerate()">✨ Genera strategia e post AI</button>
+        <button class="btn-gen" id="btn-gen">✨ Genera strategia e post AI</button>
       </div>
       <div id="gen-result" style="display:none">
         <div class="section-header"><div class="section-title">📊 La tua strategia</div></div>
         <div id="strategy-output"></div>
-        <div class="section-header" style="margin-top:1.5rem"><div class="section-title">📝 Post generati</div><button class="btn-sm btn-outline" onclick="doGenerate()">↻ Rigenera</button></div>
+        <div class="section-header" style="margin-top:1.5rem">
+          <div class="section-title">📝 Post generati</div>
+          <button class="btn-sm btn-outline" id="btn-rigenera">↻ Rigenera</button>
+        </div>
         <div id="gen-posts" class="posts-list"></div>
       </div>
     </div>
 
     <!-- POSTS -->
     <div class="page" id="page-posts">
-      <div class="section-header"><div class="section-title">Tutti i tuoi post</div><button class="btn-sm btn-purple" onclick="goTo('genera')">+ Genera nuovi</button></div>
+      <div class="section-header">
+        <div class="section-title">Tutti i tuoi post</div>
+        <button class="btn-sm btn-purple" data-page="genera">+ Genera nuovi</button>
+      </div>
       <div id="all-posts"></div>
     </div>
 
     <!-- SOCIAL -->
     <div class="page" id="page-social">
-      <p style="color:var(--gray);margin-bottom:1.5rem;font-size:0.88rem">Collega i tuoi profili per abilitare la pubblicazione automatica dei post AI.</p>
+      <p style="color:var(--gray);margin-bottom:1.5rem;font-size:0.88rem">Collega i tuoi profili per abilitare la pubblicazione automatica.</p>
       <div class="social-grid">
         <div class="social-card" id="card-ig">
           <div class="social-card-icon">📸</div>
           <h4>Instagram Business</h4>
-          <p>Pubblica post, reel e storie automaticamente sul tuo profilo</p>
-          <button class="btn-connect btn-ig" onclick="connectMeta()">Collega Instagram</button>
+          <p>Pubblica post, reel e caroselli automaticamente</p>
+          <button class="btn-connect btn-ig" id="btn-ig">Collega Instagram</button>
         </div>
         <div class="social-card" id="card-fb">
           <div class="social-card-icon">📘</div>
           <h4>Facebook Page</h4>
           <p>Pubblica contenuti sulla tua pagina Facebook aziendale</p>
-          <button class="btn-connect btn-fb" onclick="connectMeta()">Collega Facebook</button>
+          <button class="btn-connect btn-fb" id="btn-fb">Collega Facebook</button>
+        </div>
+        <div class="social-card" id="card-tt">
+          <div class="social-card-icon">🎵</div>
+          <h4>TikTok</h4>
+          <p>Pubblica video e contenuti brevi sul tuo profilo</p>
+          <button class="btn-connect btn-tt" id="btn-tt">Collega TikTok</button>
         </div>
         <div class="social-card">
           <div class="social-card-icon">💼</div>
           <h4>LinkedIn</h4>
-          <p>Pubblica aggiornamenti professionali sul tuo profilo</p>
-          <button class="btn-connect btn-li">Prossimamente</button>
-        </div>
-        <div class="social-card">
-          <div class="social-card-icon">🎵</div>
-          <h4>TikTok</h4>
-          <p>Pubblica video e contenuti brevi sul tuo profilo</p>
-          <button class="btn-connect btn-tt">Prossimamente</button>
+          <p>Pubblica aggiornamenti professionali</p>
+          <button class="btn-connect btn-li" disabled>Prossimamente</button>
         </div>
       </div>
     </div>
 
     <!-- PIANO -->
     <div class="page" id="page-piano">
-      <p style="color:var(--gray);margin-bottom:1.5rem;font-size:0.88rem">Scegli il piano più adatto alle tue esigenze. Nessun contratto, cancellazione quando vuoi.</p>
+      <p style="color:var(--gray);margin-bottom:1.5rem;font-size:0.88rem">Scegli il piano più adatto alle tue esigenze.</p>
       <div class="plan-grid">
         <div class="plan-card" id="pc-free">
           <div class="plan-name">Gratuito</div>
@@ -355,8 +359,7 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
           <ul class="plan-feats">
             <li>✅ 2 post a settimana</li><li>✅ 1 profilo social</li>
             <li>✅ Strategia AI base</li><li>✅ Caption + hashtag</li>
-            <li>✅ Approvazione manuale</li><li>❌ Pubblicazione automatica</li>
-            <li>❌ Analytics avanzate</li><li>❌ Immagini AI</li>
+            <li>❌ Pubblicazione automatica</li><li>❌ Immagini AI</li>
           </ul>
           <button class="btn-plan btn-plan-current" id="pb-free">Piano attuale</button>
         </div>
@@ -365,22 +368,20 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
           <div class="plan-price">€35 <small>/mese</small></div>
           <ul class="plan-feats">
             <li>✅ Post illimitati</li><li>✅ Fino a 4 profili social</li>
-            <li>✅ Pubblicazione automatica</li><li>✅ Calendario editoriale</li>
-            <li>✅ Analytics e report</li><li>✅ Immagini AI generate</li>
-            <li>✅ Instagram + Facebook + LinkedIn</li><li>✅ Supporto prioritario</li>
+            <li>✅ Pubblicazione automatica</li><li>✅ Immagini AI generate</li>
+            <li>✅ Instagram + Facebook + TikTok</li><li>✅ Supporto prioritario</li>
           </ul>
-          <button class="btn-plan btn-plan-primary" id="pb-pro" onclick="doCheckout('pro')">Passa a Pro →</button>
+          <button class="btn-plan btn-plan-primary" id="pb-pro">Passa a Pro →</button>
         </div>
         <div class="plan-card" id="pc-business">
           <div class="plan-name">Business</div>
           <div class="plan-price">€200 <small>/anno</small></div>
           <ul class="plan-feats">
             <li>✅ Tutto il piano Pro</li><li>✅ Fino a 10 profili social</li>
-            <li>✅ Multi-brand dashboard</li><li>✅ TikTok incluso</li>
-            <li>✅ Account manager dedicato</li><li>✅ Report mensile avanzato</li>
-            <li>✅ Onboarding personalizzato</li><li>✅ 2 mesi gratis vs mensile</li>
+            <li>✅ Multi-brand dashboard</li><li>✅ Account manager dedicato</li>
+            <li>✅ Report mensile avanzato</li><li>✅ 2 mesi gratis vs mensile</li>
           </ul>
-          <button class="btn-plan btn-plan-primary" id="pb-business" onclick="doCheckout('business')">Passa a Business →</button>
+          <button class="btn-plan btn-plan-primary" id="pb-business">Passa a Business →</button>
         </div>
       </div>
     </div>
@@ -394,140 +395,219 @@ button{cursor:pointer;font-family:'Outfit',sans-serif;border:none;background:non
           <div class="fg"><label>Email</label><input id="s-email" type="email" disabled style="opacity:0.6"></div>
         </div>
         <div class="fg"><label>Nome del brand principale</label><input id="s-brand" type="text" placeholder="es. La mia azienda"></div>
-        <div class="fg"><label>Settore</label><select id="s-sector"><option>Ristorazione & Food</option><option>Moda & Lifestyle</option><option>Bellezza & Benessere</option><option>Professionisti & Servizi</option><option>E-commerce</option><option>Fitness & Sport</option><option>Altro</option></select></div>
-        <button class="btn-gen" style="max-width:200px;margin-top:0.5rem" onclick="saveSettings()">Salva modifiche</button>
+        <div class="fg"><label>Settore</label>
+          <select id="s-sector">
+            <option>Ristorazione &amp; Food</option><option>Moda &amp; Lifestyle</option>
+            <option>Bellezza &amp; Benessere</option><option>Professionisti &amp; Servizi</option>
+            <option>E-commerce</option><option>Fitness &amp; Sport</option><option>Altro</option>
+          </select>
+        </div>
+        <button class="btn-gen" style="max-width:200px;margin-top:0.5rem" id="btn-save-settings">Salva modifiche</button>
       </div>
     </div>
 
-  </div><!-- end content -->
+  </div>
 </main>
 
-<div class="loading-overlay" id="loading"><div class="spinner"></div><div class="loading-text" id="loading-text">Caricamento...</div></div>
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Caricamento...</div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
-const SUPABASE_URL = 'https://evkbftrxljkjvygckpso.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_3mjM-43BVtgmJE-4Ix6ryw_TQl9XyG3';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+'use strict';
 
-const STRIPE_PRICE_PRO = 'price_1TUiLxHICMzRuhpDY8Od5cYr';
-const STRIPE_PRICE_BUSINESS = 'price_1TUiMaHICMzRuhpDQsfEm5xv';
+var SUPABASE_URL = 'https://evkbftrxljkjvygckpso.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_3mjM-43BVtgmJE-4Ix6ryw_TQl9XyG3';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let user = null;
-let userPlan = 'free';
-let posts = [];
-const socialEmoji = {Instagram:'📸',Facebook:'📘',TikTok:'🎵',LinkedIn:'💼','Instagram Stories':'📱','Instagram + Facebook':'📸'};
+var user = null;
+var userPlan = 'free';
+var posts = [];
+var socialCount = 0;
 
-// ===== INIT =====
+var SOCIAL_EMOJI = {Instagram:'📸',Facebook:'📘',TikTok:'🎵',LinkedIn:'💼','Instagram + Facebook':'📸','Tutti i social':'🌐'};
+var PAGE_TITLES = {home:'Dashboard',genera:'Genera Post',posts:'I miei post',social:'Social collegati',piano:'Piano e fatturazione',impostazioni:'Impostazioni'};
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
+  var session = (await sb.auth.getSession()).data.session;
   if (!session) { window.location.href = '/login.html'; return; }
   user = session.user;
 
-  // Controlla se arriva da pagamento
-  const p = new URLSearchParams(window.location.search);
-  if (p.get('payment') === 'success') toast('Piano attivato con successo! 🎉', 'success');
-  if (p.get('connected') === 'true') toast('Social collegato! ✅', 'success');
-  if (p.get('plan')) await doCheckout(p.get('plan'));
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('payment') === 'success') toast('Piano attivato con successo! 🎉');
+  if (params.get('connected') === 'true') toast('Social collegato! ✅');
+  if (params.get('error') === 'auth_denied') toast('Collegamento annullato', 'error');
+  if (params.get('plan')) doCheckout(params.get('plan'));
 
+  bindEvents();
   await loadUser();
   await loadPosts();
+  await loadSocialConnections();
 }
 
+// ─── EVENT DELEGATION ────────────────────────────────────────────────────────
+function bindEvents() {
+  // Nav items (sidebar)
+  document.querySelectorAll('.nav-item[data-page]').forEach(function(btn) {
+    btn.addEventListener('click', function() { goTo(btn.getAttribute('data-page')); });
+  });
+
+  // Buttons with data-page (inline content area)
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-page]');
+    if (btn && !btn.classList.contains('nav-item')) goTo(btn.getAttribute('data-page'));
+  });
+
+  // Post actions (delegated — works even after innerHTML rebuild)
+  document.addEventListener('click', function(e) {
+    var approve = e.target.closest('.pBtn-approve');
+    var del = e.target.closest('.pBtn-delete');
+    var edit = e.target.closest('.pBtn-edit');
+    if (approve && !approve.disabled) {
+      var idx = parseInt(approve.closest('.post-item').getAttribute('data-idx'));
+      approvePost(idx);
+    }
+    if (del) {
+      var idx = parseInt(del.closest('.post-item').getAttribute('data-idx'));
+      deletePost(idx);
+    }
+    if (edit) toast('Editor disponibile nel piano Pro 🚀', 'error');
+  });
+
+  // Hamburger
+  document.getElementById('hamburger').addEventListener('click', function() {
+    document.getElementById('sidebar').classList.toggle('open');
+  });
+
+  // Logout
+  document.getElementById('btn-logout').addEventListener('click', function() {
+    sb.auth.signOut().then(function() { window.location.href = '/'; });
+  });
+
+  // Upgrade
+  document.getElementById('btn-upgrade').addEventListener('click', function() { goTo('piano'); });
+
+  // Generate
+  document.getElementById('btn-gen').addEventListener('click', doGenerate);
+  document.getElementById('btn-rigenera').addEventListener('click', doGenerate);
+
+  // Save settings
+  document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+
+  // Piani
+  document.getElementById('pb-pro').addEventListener('click', function() { doCheckout('pro'); });
+  document.getElementById('pb-business').addEventListener('click', function() { doCheckout('business'); });
+
+  // Social connect
+  document.getElementById('btn-ig').addEventListener('click', function() { connectMeta(); });
+  document.getElementById('btn-fb').addEventListener('click', function() { connectMeta(); });
+  document.getElementById('btn-tt').addEventListener('click', function() { connectTikTok(); });
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function goTo(name) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var page = document.getElementById('page-' + name);
+  if (!page) return;
+  page.classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[name] || name;
+  var navBtn = document.querySelector('.nav-item[data-page="' + name + '"]');
+  if (navBtn) navBtn.classList.add('active');
+  document.getElementById('sidebar').classList.remove('open');
+  if (name === 'posts') renderAllPosts();
+}
+
+// ─── USER ─────────────────────────────────────────────────────────────────────
 async function loadUser() {
-  const meta = user.user_metadata;
-  const name = meta?.name || meta?.full_name || user.email.split('@')[0];
+  var meta = user.user_metadata || {};
+  var name = meta.name || meta.full_name || user.email.split('@')[0];
   document.getElementById('uav').textContent = name[0].toUpperCase();
   document.getElementById('uname').textContent = name;
   document.getElementById('uemail').textContent = user.email;
   document.getElementById('s-name').value = name;
   document.getElementById('s-email').value = user.email;
-  document.getElementById('welcome-msg').textContent = `Ciao, ${name}! 👋`;
+  document.getElementById('welcome-msg').textContent = 'Ciao, ' + name + '! 👋';
 
-  const { data } = await sb.from('users').select('plan,brand,sector').eq('id', user.id).single();
-  if (data) {
-    userPlan = data.plan || 'free';
-    if (data.brand) { document.getElementById('s-brand').value = data.brand; document.getElementById('os-business').classList.add('done'); }
-    if (data.sector) document.getElementById('s-sector').value = data.sector;
+  var res = await sb.from('users').select('plan,brand,sector').eq('id', user.id).single();
+  if (res.data) {
+    userPlan = res.data.plan || 'free';
+    if (res.data.brand) { document.getElementById('s-brand').value = res.data.brand; document.getElementById('os-business').classList.add('done'); }
+    if (res.data.sector) document.getElementById('s-sector').value = res.data.sector;
     updatePlanUI();
   }
-
-  // Carica social connections
-  await loadSocialConnections();
-}
-
-async function loadSocialConnections() {
-  const { data: conns } = await sb.from('social_connections').select('platform').eq('user_id', user.id);
-  if (!conns) return;
-  const platforms = conns.map(c => c.platform);
-  let count = 0;
-
-  if (platforms.includes('instagram')) {
-    count++;
-    const card = document.getElementById('card-ig');
-    if (card) {
-      card.classList.add('connected');
-      card.querySelector('.btn-connect').className = 'btn-connect btn-connected';
-      card.querySelector('.btn-connect').textContent = '✅ Instagram collegato';
-      card.querySelector('.btn-connect').onclick = null;
-    }
-    document.getElementById('os-social').classList.add('done');
-  }
-  if (platforms.includes('facebook')) {
-    count++;
-    const card = document.getElementById('card-fb');
-    if (card) {
-      card.classList.add('connected');
-      card.querySelector('.btn-connect').className = 'btn-connect btn-connected';
-      card.querySelector('.btn-connect').textContent = '✅ Facebook collegato';
-      card.querySelector('.btn-connect').onclick = null;
-    }
-  }
-  document.getElementById('s4').textContent = count;
 }
 
 function updatePlanUI() {
-  const badge = document.getElementById('plan-badge');
-  const upBtn = document.getElementById('btn-upgrade');
-  if (userPlan === 'free') {
-    badge.textContent = 'Piano Gratuito'; badge.className = 'plan-badge badge-free';
-    document.getElementById('pc-free').classList.add('active-plan');
-    document.getElementById('pc-free').innerHTML = '<div class="current-label">Piano attuale</div>' + document.getElementById('pc-free').innerHTML;
-    document.getElementById('pb-free').className = 'btn-plan btn-plan-current';
-    document.getElementById('pb-free').textContent = '✓ Piano attuale';
-  } else if (userPlan === 'pro') {
+  var badge = document.getElementById('plan-badge');
+  var upBtn = document.getElementById('btn-upgrade');
+  if (userPlan === 'pro') {
     badge.textContent = '⚡ Piano Pro'; badge.className = 'plan-badge badge-pro';
-    upBtn.textContent = '⚡ Piano Pro'; upBtn.style.background = '#7C5CFC';
-    document.getElementById('pc-pro').classList.add('active-plan');
+    upBtn.textContent = '⚡ Piano Pro';
     document.getElementById('pb-pro').className = 'btn-plan btn-plan-current';
     document.getElementById('pb-pro').textContent = '✓ Piano attuale';
-    document.getElementById('pb-free').className = 'btn-plan btn-plan-ghost';
   } else if (userPlan === 'business') {
     badge.textContent = '💎 Business'; badge.className = 'plan-badge badge-business';
     upBtn.style.display = 'none';
-    document.getElementById('pc-business').classList.add('active-plan');
     document.getElementById('pb-business').className = 'btn-plan btn-plan-current';
     document.getElementById('pb-business').textContent = '✓ Piano attuale';
+  } else {
+    badge.textContent = 'Piano Gratuito'; badge.className = 'plan-badge badge-free';
+    document.getElementById('pb-free').className = 'btn-plan btn-plan-current';
+    document.getElementById('pb-free').textContent = '✓ Piano attuale';
   }
 }
 
-// ===== NAVIGATION =====
-const titles = {home:'Dashboard',genera:'Genera Post',posts:'I miei post',social:'Social collegati',piano:'Piano e fatturazione',impostazioni:'Impostazioni'};
-function goTo(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  document.getElementById('page-title').textContent = titles[name] || name;
-  document.querySelectorAll('.nav-item').forEach(n => { if (n.getAttribute('onclick')?.includes(`'${name}'`)) n.classList.add('active'); });
-  document.getElementById('sidebar').classList.remove('open');
-  if (name === 'posts') renderAllPosts();
+// ─── SOCIAL ───────────────────────────────────────────────────────────────────
+async function loadSocialConnections() {
+  socialCount = 0;
+  var res = await sb.from('social_connections').select('platform').eq('user_id', user.id);
+  if (!res.data) return;
+  res.data.forEach(function(c) {
+    socialCount++;
+    if (c.platform === 'instagram') markConnected('card-ig', 'btn-ig', '✅ Instagram collegato');
+    if (c.platform === 'facebook') markConnected('card-fb', 'btn-fb', '✅ Facebook collegato');
+    if (c.platform === 'tiktok') markConnected('card-tt', 'btn-tt', '✅ TikTok collegato');
+    document.getElementById('os-social').classList.add('done');
+  });
+  document.getElementById('s4').textContent = socialCount;
 }
 
-// ===== POSTS =====
+function markConnected(cardId, btnId, label) {
+  var card = document.getElementById(cardId);
+  var btn = document.getElementById(btnId);
+  if (!card || !btn) return;
+  card.classList.add('connected');
+  btn.className = 'btn-connect btn-connected';
+  btn.textContent = label;
+  btn.replaceWith(btn.cloneNode(true)); // rimuove tutti i listener
+  document.getElementById(btnId).className = 'btn-connect btn-connected';
+  document.getElementById(btnId).textContent = label;
+}
+
+function connectMeta() {
+  if (!user) return;
+  showLoading('Reindirizzamento a Facebook...');
+  window.location.href = '/auth/meta?userId=' + user.id;
+}
+
+function connectTikTok() {
+  toast('L\'integrazione TikTok richiede app approvata da TikTok for Developers. Contatta il supporto.', 'error');
+}
+
+// ─── POSTS ────────────────────────────────────────────────────────────────────
 async function loadPosts() {
-  const { data } = await sb.from('strategies').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-  if (!data || !data.length) return;
-  posts = data.flatMap(s => (s.posts || []).map(p => ({ ...p, brand: s.brand, _id: Math.random().toString(36).slice(2) })));
+  var res = await sb.from('strategies').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
+  if (!res.data || !res.data.length) return;
+  posts = [];
+  res.data.forEach(function(s) {
+    (s.posts || []).forEach(function(p) {
+      posts.push(Object.assign({}, p, {brand: s.brand, _sid: s.id}));
+    });
+  });
   updateStats();
   renderHomePosts();
   document.getElementById('os-post').classList.add('done');
@@ -535,100 +615,117 @@ async function loadPosts() {
 
 function updateStats() {
   document.getElementById('s1').textContent = posts.length;
-  document.getElementById('s2').textContent = posts.filter(p => p.status === 'approved').length;
-  document.getElementById('s3').textContent = posts.filter(p => !p.status || p.status === 'draft').length;
+  document.getElementById('s2').textContent = posts.filter(function(p){return p.status==='approved';}).length;
+  document.getElementById('s3').textContent = posts.filter(function(p){return !p.status||p.status==='draft';}).length;
+  document.getElementById('s4').textContent = socialCount;
 }
 
-function postCard(post, idx) {
-  const st = post.status || 'draft';
-  const stLabel = {draft:'⏳ Bozza', approved:'✅ Approvato', published:'🔵 Pubblicato'}[st] || st;
-  const stClass = {draft:'s-draft', approved:'s-approved', published:'s-published'}[st] || '';
+function buildPostCard(post, idx) {
+  var st = post.status || 'draft';
+  var stLabel = {draft:'⏳ Bozza',approved:'✅ Approvato',published:'🔵 Pubblicato'}[st] || st;
+  var stClass = {draft:'s-draft',approved:'s-approved',published:'s-published'}[st] || '';
+  var typeIcon = post.type === 'carousel' ? ' 🎠' : post.type === 'reel' ? ' 🎬' : '';
+  var emoji = SOCIAL_EMOJI[post.social] || '📱';
 
-  // Media: immagine singola, carosello o video
-  let mediaHtml = '';
+  var mediaHtml = '';
   if (post.type === 'carousel' && post.carousel_images && post.carousel_images.length) {
-    mediaHtml = `<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:0.75rem;padding-bottom:4px">
-      ${post.carousel_images.map(url => `<img src="${url}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display='none'">`).join('')}
-    </div>`;
+    var imgs = post.carousel_images.map(function(u) {
+      return '<img src="' + u + '" style="width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display=\'none\'">';
+    }).join('');
+    mediaHtml = '<div class="carousel-strip">' + imgs + '</div>';
   } else if (post.image_url) {
-    mediaHtml = `<img src="${post.image_url}" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-bottom:0.75rem" onerror="this.style.display='none'">`;
+    mediaHtml = '<img src="' + post.image_url + '" class="post-img" onerror="this.style.display=\'none\'">';
   }
 
-  // Video reel
-  let videoHtml = '';
+  var videoHtml = '';
   if (post.type === 'reel') {
     if (post.video_status === 'processing') {
-      videoHtml = `<div style="background:#f3f4f6;border-radius:8px;padding:0.6rem 0.9rem;font-size:0.8rem;color:#6B6B8A;margin-bottom:0.75rem">🎬 Video in elaborazione... (pronto in 1-2 min)</div>`;
+      videoHtml = '<div class="video-processing">🎬 Video in elaborazione... (pronto in 1-2 min)</div>';
     } else if (post.video_url) {
-      videoHtml = `<video src="${post.video_url}" controls style="width:100%;border-radius:10px;margin-bottom:0.75rem;max-height:260px"></video>`;
+      videoHtml = '<video src="' + post.video_url + '" controls class="post-video"></video>';
     }
   }
 
-  return \`<div class="post-item" id="pi-\${idx}">
-    <div class="post-header">
-      <div class="post-social">\${socialEmoji[post.social]||'📱'} \${post.social} \${post.type==='carousel'?'🎠':post.type==='reel'?'🎬':''}</div>
-      <span class="post-day">📅 \${post.day||''} \${post.scheduled_time||''}</span>
-      <span class="status \${stClass}">\${stLabel}</span>
-    </div>
-    <div class="post-body">
-      \${mediaHtml}\${videoHtml}
-      <div class="post-text">\${(post.text||'').replace(/\n/g,'<br>')}</div>
-      <div class="hashtags">\${(post.hashtags||[]).map(h=>\`<span class="hashtag">#\${h.replace('#','')}</span>\`).join('')}</div>
-    </div>
-    <div class="post-actions">
-      <button class="pBtn pBtn-approve pBtn" onclick="approvePost(\${idx})"\${st==='approved'?' disabled style="opacity:0.5"':''}>✓ Approva</button>
-      <button class="pBtn pBtn-edit pBtn" onclick="toast('Editor disponibile nel piano Pro 🚀','error')">✏️ Modifica</button>
-      <button class="pBtn pBtn-delete pBtn" onclick="deletePost(\${idx})">🗑️</button>
-    </div>
-  </div>\`;
+  var tagsHtml = (post.hashtags || []).map(function(h) {
+    return '<span class="hashtag">#' + h.replace('#','') + '</span>';
+  }).join('');
+
+  var approveDisabled = st === 'approved' ? ' disabled' : '';
+  var postText = (post.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+
+  return '<div class="post-item" data-idx="' + idx + '">' +
+    '<div class="post-header">' +
+      '<div class="post-social">' + emoji + ' ' + (post.social || '') + typeIcon + '</div>' +
+      '<span class="post-day">📅 ' + (post.day || '') + ' ' + (post.scheduled_time || '') + '</span>' +
+      '<span class="status ' + stClass + '">' + stLabel + '</span>' +
+    '</div>' +
+    '<div class="post-body">' +
+      mediaHtml + videoHtml +
+      '<div class="post-text">' + postText + '</div>' +
+      '<div class="hashtags">' + tagsHtml + '</div>' +
+    '</div>' +
+    '<div class="post-actions">' +
+      '<button class="pBtn pBtn-approve"' + approveDisabled + '>✓ Approva</button>' +
+      '<button class="pBtn pBtn-edit">✏️ Modifica</button>' +
+      '<button class="pBtn pBtn-delete">🗑️</button>' +
+    '</div>' +
+  '</div>';
 }
 
 function renderHomePosts() {
-  const pending = posts.filter(p => !p.status || p.status === 'draft').slice(0, 3);
-  const el = document.getElementById('home-posts');
-  if (!pending.length) { el.innerHTML = `<div class="empty"><div class="icon">✨</div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia AI per iniziare</p><button class="btn-sm btn-purple" onclick="goTo('genera')">Genera post gratis</button></div>`; return; }
-  el.innerHTML = `<div class="posts-list">${pending.map((p,i)=>postCard(p,i)).join('')}</div>`;
+  var pending = posts.filter(function(p){return !p.status||p.status==='draft';}).slice(0,3);
+  var el = document.getElementById('home-posts');
+  if (!pending.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">✨</div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia AI per iniziare</p><button class="btn-sm btn-purple" data-page="genera">Genera post gratis</button></div>';
+    return;
+  }
+  el.innerHTML = '<div class="posts-list">' + pending.map(function(p,i){return buildPostCard(p,i);}).join('') + '</div>';
 }
 
 function renderAllPosts() {
-  const el = document.getElementById('all-posts');
-  if (!posts.length) { el.innerHTML = `<div class="empty"><div class="icon">📋</div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia per vedere i post qui</p><button class="btn-sm btn-purple" onclick="goTo('genera')">Genera post</button></div>`; return; }
-  el.innerHTML = `<div class="posts-list">${posts.map((p,i)=>postCard(p,i)).join('')}</div>`;
+  var el = document.getElementById('all-posts');
+  if (!posts.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">📋</div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia per vedere i post qui</p><button class="btn-sm btn-purple" data-page="genera">Genera post</button></div>';
+    return;
+  }
+  el.innerHTML = '<div class="posts-list">' + posts.map(function(p,i){return buildPostCard(p,i);}).join('') + '</div>';
 }
 
-function approvePost(i) {
-  posts[i].status = 'approved';
+function approvePost(idx) {
+  if (!posts[idx]) return;
+  posts[idx].status = 'approved';
   renderHomePosts(); renderAllPosts(); updateStats();
-  toast('Post approvato! ✅', 'success');
-}
-function deletePost(i) {
-  posts.splice(i, 1);
-  renderHomePosts(); renderAllPosts(); updateStats();
-  toast('Post eliminato', 'success');
+  toast('Post approvato! ✅');
 }
 
-// ===== GENERATE =====
+function deletePost(idx) {
+  if (!posts[idx]) return;
+  posts.splice(idx, 1);
+  renderHomePosts(); renderAllPosts(); updateStats();
+  toast('Post eliminato');
+}
+
+// ─── GENERATE ─────────────────────────────────────────────────────────────────
 async function doGenerate() {
-  const brand = document.getElementById('g-brand').value.trim();
-  const desc = document.getElementById('g-desc').value.trim();
+  var brand = document.getElementById('g-brand').value.trim();
+  var desc = document.getElementById('g-desc').value.trim();
   if (!brand || !desc) return toast('Inserisci brand e descrizione', 'error');
-  if (userPlan === 'free' && posts.length >= 10) return toast('Limite raggiunto. Passa a Pro per post illimitati! 🚀', 'error');
+  if (userPlan === 'free' && posts.length >= 10) return toast('Limite raggiunto. Passa a Pro! 🚀', 'error');
 
-  showLoading('L\'AI sta generando la tua strategia...');
+  var genImages = document.getElementById('gen-images').checked;
+  var genVideo = document.getElementById('gen-video').checked;
+  var lmsg = genImages && genVideo ? '✨ Generando post, immagini e video... (1-2 min)' :
+             genImages ? '🖼️ Generando immagini con DALL-E 3...' :
+             genVideo ? '🎬 Generando video con Kling AI...' : 'L\'AI sta generando la tua strategia...';
+  showLoading(lmsg);
   document.getElementById('btn-gen').disabled = true;
 
-  const genImages = document.getElementById('gen-images')?.checked || false;
-  const genVideo = document.getElementById('gen-video')?.checked || false;
-
-
-  let lmsg = genImages && genVideo ? '✨ Generando post, immagini e video... (1-2 min)' : genImages ? '🖼️ Generando immagini con DALL-E 3...' : genVideo ? '🎬 Generando video con Kling AI...' : "L'AI sta generando la tua strategia...";
-  showLoading(lmsg);
-
   try {
-    const resp = await fetch('/api/generate', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
+    var resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        brand, description: desc,
+        brand: brand, description: desc,
         sector: document.getElementById('g-sector').value,
         tone: document.getElementById('g-tone').value,
         socials: document.getElementById('g-social').value,
@@ -637,97 +734,89 @@ async function doGenerate() {
         generateVideo: genVideo
       })
     });
-    const result = await resp.json();
+    var result = await resp.json();
     if (!result.success) throw new Error(result.error || 'Errore API');
-    const { strategy, posts: newPosts } = result.data;
-    posts = [...posts, ...newPosts.map(p => ({ ...p, brand }))];
-    renderStrategy(strategy, brand);
-    document.getElementById('gen-posts').innerHTML = newPosts.map((p,i) => postCard(p, posts.length - newPosts.length + i)).join('');
-    document.getElementById('gen-result').style.display = 'block';
-    document.getElementById('gen-result').scrollIntoView({ behavior:'smooth', block:'nearest' });
-    updateStats();
-    toast(genImages ? 'Post e immagini pronti! 🖼️✨' : genVideo ? 'Post e video pronti! 🎬✨' : 'Strategia e post generati! ✨', 'success');
-    document.getElementById('os-post').classList.add('done');
-  } catch(e) { toast('Errore: ' + e.message, 'error'); }
 
+    var strategy = result.data.strategy;
+    var newPosts = result.data.posts;
+    var startIdx = posts.length;
+    newPosts.forEach(function(p) { posts.push(Object.assign({}, p, {brand: brand})); });
+
+    renderStrategy(strategy, brand);
+    document.getElementById('gen-posts').innerHTML = newPosts.map(function(p,i){return buildPostCard(p, startIdx+i);}).join('');
+    document.getElementById('gen-result').style.display = 'block';
+    document.getElementById('gen-result').scrollIntoView({behavior:'smooth', block:'nearest'});
+    updateStats();
+    document.getElementById('os-post').classList.add('done');
+    toast(genImages ? 'Post e immagini pronti! 🖼️✨' : genVideo ? 'Post e video pronti! 🎬✨' : 'Strategia e post generati! ✨');
+  } catch(e) {
+    toast('Errore: ' + e.message, 'error');
+  }
   hideLoading();
   document.getElementById('btn-gen').disabled = false;
 }
 
 function renderStrategy(s, brand) {
-  document.getElementById('strategy-output').innerHTML = `
-    <div class="strategy-box">
-      <h4>🎯 Strategia per ${brand}</h4>
-      <p>${s.summary}</p>
-      <div class="strategy-grid">
-        <div class="s-block"><h5>👥 Target</h5><p>${s.target}</p></div>
-        <div class="s-block"><h5>⏰ Orari migliori</h5><p>${s.best_times}</p></div>
-        <div class="s-block" style="grid-column:span 2"><h5>📌 Content Pillars</h5><ul>${(s.content_pillars||[]).map(p=>`<li>${p}</li>`).join('')}</ul></div>
-      </div>
-    </div>`;
+  var pillars = (s.content_pillars || []).map(function(p){return '<li>'+p+'</li>';}).join('');
+  document.getElementById('strategy-output').innerHTML =
+    '<div class="strategy-box">' +
+      '<h4>🎯 Strategia per ' + brand + '</h4>' +
+      '<p>' + s.summary + '</p>' +
+      '<div class="strategy-grid">' +
+        '<div class="s-block"><h5>👥 Target</h5><p>' + s.target + '</p></div>' +
+        '<div class="s-block"><h5>⏰ Orari migliori</h5><p>' + s.best_times + '</p></div>' +
+        '<div class="s-block" style="grid-column:span 2"><h5>📌 Content Pillars</h5><ul>' + pillars + '</ul></div>' +
+      '</div>' +
+    '</div>';
 }
 
-// ===== SOCIAL =====
-function connectMeta() {
-  if (!user) return;
-  window.location.href = `/auth/meta?userId=${user.id}`;
-}
-
-// ===== CHECKOUT =====
+// ─── CHECKOUT ─────────────────────────────────────────────────────────────────
 async function doCheckout(plan) {
   showLoading('Reindirizzamento al pagamento...');
   try {
-    const resp = await fetch('/api/checkout', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ plan, userId: user.id, email: user.email })
+    var resp = await fetch('/api/checkout', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({plan: plan, userId: user.id, email: user.email})
     });
-    const { url, error } = await resp.json();
-    if (error) throw new Error(error);
-    window.location.href = url;
+    var result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    window.location.href = result.url;
   } catch(e) {
-    toast('Errore nel checkout: ' + e.message, 'error');
+    toast('Errore checkout: ' + e.message, 'error');
     hideLoading();
   }
 }
 
-// ===== SETTINGS =====
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
 async function saveSettings() {
-  const name = document.getElementById('s-name').value.trim();
-  const brand = document.getElementById('s-brand').value.trim();
-  const sector = document.getElementById('s-sector').value;
-  await sb.from('users').upsert({ id: user.id, email: user.email, name, brand, sector, plan: userPlan });
-  await sb.auth.updateUser({ data: { name } });
+  var name = document.getElementById('s-name').value.trim();
+  var brand = document.getElementById('s-brand').value.trim();
+  var sector = document.getElementById('s-sector').value;
+  await sb.from('users').upsert({id: user.id, email: user.email, name: name, brand: brand, sector: sector, plan: userPlan});
+  await sb.auth.updateUser({data: {name: name}});
   document.getElementById('uname').textContent = name;
   document.getElementById('uav').textContent = name[0].toUpperCase();
-  document.getElementById('welcome-msg').textContent = `Ciao, ${name}! 👋`;
+  document.getElementById('welcome-msg').textContent = 'Ciao, ' + name + '! 👋';
   if (brand) document.getElementById('os-business').classList.add('done');
-  toast('Impostazioni salvate ✅', 'success');
+  toast('Impostazioni salvate ✅');
 }
 
-// ===== AUTH =====
-async function doLogout() {
-  await sb.auth.signOut();
-  window.location.href = '/';
-}
-
-// ===== UI HELPERS =====
+// ─── UI ───────────────────────────────────────────────────────────────────────
 function showLoading(txt) {
   document.getElementById('loading').classList.add('show');
   document.getElementById('loading-text').textContent = txt || 'Caricamento...';
 }
 function hideLoading() { document.getElementById('loading').classList.remove('show'); }
 
-function toast(msg, type = 'success') {
-  const t = document.getElementById('toast');
+function toast(msg, type) {
+  var t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = `toast toast-${type} show`;
-  setTimeout(() => t.classList.remove('show'), 3500);
+  t.className = 'toast toast-' + (type || 'success') + ' show';
+  setTimeout(function(){ t.classList.remove('show'); }, 3500);
 }
-
-// Hamburger
-document.getElementById('hamburger').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
 
 init();
 </script>
 </body>
 </html>
+
