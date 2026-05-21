@@ -1,5 +1,4 @@
-require('dotenv').config();
-const express = require('express');
+express');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
