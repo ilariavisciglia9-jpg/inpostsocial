@@ -205,7 +205,7 @@ app.get('/api/video-status/:taskId', async (req, res) => {
 // ===== META OAUTH =====
 app.get('/auth/meta', (req, res) => {
   const { userId } = req.query;
-  const scope = 'instagram_basic,pages_show_list,pages_read_engagement,pages_manage_posts';
+  const scope = 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,pages_manage_posts';
   const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
   const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${process.env.META_APP_ID}&redirect_uri=${encodeURIComponent(process.env.FRONTEND_URL + '/auth/callback')}&scope=${scope}&state=${state}&response_type=code`;
   res.redirect(url);
@@ -297,13 +297,61 @@ app.get('/api/user/:id', async (req, res) => {
   } catch (e) { res.status(404).json({ error: 'Utente non trovato' }); }
 });
 
+// ===== PUBBLICA SU INSTAGRAM =====
+async function publishToInstagram(igAccountId, pageAccessToken, post) {
+  const caption = post.text + '\n\n' + (post.hashtags || []).map(h => '#' + h).join(' ');
+  if (!post.image_url) throw new Error('Nessuna immagine per il post');
+
+  // Step 1: crea container media
+  const containerRes = await axios.post(
+    `https://graph.facebook.com/v19.0/${igAccountId}/media`,
+    { image_url: post.image_url, caption, access_token: pageAccessToken }
+  );
+  const creationId = containerRes.data.id;
+
+  // Step 2: pubblica il container
+  const publishRes = await axios.post(
+    `https://graph.facebook.com/v19.0/${igAccountId}/media_publish`,
+    { creation_id: creationId, access_token: pageAccessToken }
+  );
+  return publishRes.data.id;
+}
+
+app.post('/api/publish', async (req, res) => {
+  try {
+    const { postId, userId } = req.body;
+    const { data: post, error: postErr } = await supabase.from('posts').select('*').eq('id', postId).single();
+    if (postErr || !post) return res.status(404).json({ error: 'Post non trovato' });
+    const { data: conn, error: connErr } = await supabase.from('social_connections')
+      .select('*').eq('user_id', userId).eq('platform', 'instagram').single();
+    if (connErr || !conn) return res.status(400).json({ error: 'Account Instagram non collegato' });
+    const mediaId = await publishToInstagram(conn.ig_account_id, conn.page_access_token, post);
+    await supabase.from('posts').update({ status: 'published', published_at: new Date().toISOString(), ig_media_id: mediaId }).eq('id', postId);
+    res.json({ success: true, ig_media_id: mediaId });
+  } catch (e) {
+    console.error('Publish error:', e.message);
+    res.status(500).json({ error: 'Errore pubblicazione', details: e.message });
+  }
+});
+
 // ===== SCHEDULER =====
 cron.schedule('*/15 * * * *', async () => {
   try {
     const { data: posts } = await supabase.from('posts').select('*').eq('status', 'approved').lte('scheduled_at', new Date().toISOString());
     for (const post of posts || []) {
       await supabase.from('posts').update({ status: 'publishing' }).eq('id', post.id);
-      console.log('📤 Publishing post:', post.id);
+      try {
+        const { data: conn } = await supabase.from('social_connections')
+          .select('*').eq('user_id', post.user_id).eq('platform', 'instagram').single();
+        if (conn) {
+          const mediaId = await publishToInstagram(conn.ig_account_id, conn.page_access_token, post);
+          await supabase.from('posts').update({ status: 'published', published_at: new Date().toISOString(), ig_media_id: mediaId }).eq('id', post.id);
+          console.log('✅ Published post:', post.id, '→ IG media:', mediaId);
+        }
+      } catch (pubErr) {
+        console.error('❌ Publish failed for post', post.id, ':', pubErr.message);
+        await supabase.from('posts').update({ status: 'failed', error: pubErr.message }).eq('id', post.id);
+      }
     }
   } catch (e) { console.error('Scheduler error:', e); }
 });
