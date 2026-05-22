@@ -350,6 +350,17 @@ app.post('/webhook/stripe', async (req, res) => {
   } catch (e) { res.status(400).json({ error: 'Webhook error' }); }
 });
 
+// ===== DEBUG SOCIAL =====
+app.get('/api/social/status', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId mancante' });
+    const { data, error } = await supabase.from('social_connections').select('*').eq('user_id', userId);
+    if (error) return res.status(500).json({ error: error.message, details: error });
+    res.json({ count: data.length, connections: data });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== USER =====
 app.post('/api/user/register', async (req, res) => {
   try {
