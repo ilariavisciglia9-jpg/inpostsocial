@@ -567,20 +567,30 @@ function updatePlanUI() {
 // ─── SOCIAL ───────────────────────────────────────────────────────────────────
 async function loadSocialConnections() {
   socialCount = 0;
-  var res = await sb.from('social_connections').select('platform,ig_account_id,page_name').eq('user_id', user.id);
-  if (res.error) { console.error('Errore social_connections:', res.error); return; }
-  if (!res.data || !res.data.length) { console.log('Nessuna connessione trovata'); return; }
-  console.log('Connessioni trovate:', res.data);
-  res.data.forEach(function(c) {
-    socialCount++;
-    if (c.platform === 'instagram') {
-      markConnected('card-ig', 'btn-ig', '✅ Instagram collegato' + (c.page_name ? ' (' + c.page_name + ')' : ''));
-      document.getElementById('os-social').classList.add('done');
+  try {
+    // Usa il backend (service key) invece di Supabase anonimo, bypassa RLS
+    var resp = await fetch('/api/social/status?userId=' + user.id);
+    var result = await resp.json();
+    console.log('Social status:', result);
+    if (!result.connections || !result.connections.length) {
+      console.log('Nessuna connessione trovata per userId:', user.id);
+      document.getElementById('s4').textContent = '0';
+      return;
     }
-    if (c.platform === 'facebook') markConnected('card-fb', 'btn-fb', '✅ Facebook collegato');
-    if (c.platform === 'tiktok') markConnected('card-tt', 'btn-tt', '✅ TikTok collegato');
-  });
-  document.getElementById('s4').textContent = socialCount;
+    result.connections.forEach(function(c) {
+      socialCount++;
+      if (c.platform === 'instagram') {
+        markConnected('card-ig', 'btn-ig', '✅ Instagram collegato' + (c.page_name ? ' (' + c.page_name + ')' : ''));
+        document.getElementById('os-social').classList.add('done');
+      }
+      if (c.platform === 'facebook') markConnected('card-fb', 'btn-fb', '✅ Facebook collegato');
+      if (c.platform === 'tiktok') markConnected('card-tt', 'btn-tt', '✅ TikTok collegato');
+    });
+    document.getElementById('s4').textContent = socialCount;
+    if (socialCount > 0) document.getElementById('os-social').classList.add('done');
+  } catch(e) {
+    console.error('Errore loadSocialConnections:', e);
+  }
 }
 
 function markConnected(cardId, btnId, label) {
