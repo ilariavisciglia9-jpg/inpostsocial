@@ -95,15 +95,18 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
       }
     }
 
-    // Genera video Kling
-    if (doVideo && process.env.KLING_ACCESS_KEY) {
+    // Genera video Kling (uno alla volta con delay per evitare 429)
+    const doVideo2 = doVideo || generateVideo === true || generateVideo === 'true';
+    if (doVideo2 && process.env.KLING_ACCESS_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
         if (post.type === 'reel' && post.video_prompt) {
           try {
+            await new Promise(r => setTimeout(r, 2000)); // 2s delay tra richieste
             const v = await generateKlingVideo(post.video_prompt, post.image_url);
             data.posts[i].video_task_id = v.task_id;
             data.posts[i].video_status = 'processing';
+            console.log('🎬 Video task creato:', v.task_id);
           } catch (e) { console.error('Video error post', i, ':', e.message); }
         }
       }
@@ -336,12 +339,16 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 // ===== USER PROFILE =====
+const OWNER_EMAIL = process.env.OWNER_EMAIL || 'info@inpostsocial.com';
+
 app.get('/api/user/profile', async (req, res) => {
   try {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId mancante' });
     const { data, error } = await supabase.from('users').select('plan,brand,sector,name,email').eq('id', userId).single();
     if (error || !data) return res.json({ plan: 'free', brand: '', sector: '', name: '', email: '' });
+    // Owner ha sempre piano business gratis
+    if (data.email === OWNER_EMAIL) data.plan = 'business';
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -421,10 +428,75 @@ app.get('/api/user/:id', async (req, res) => {
   } catch (e) { res.status(404).json({ error: 'Utente non trovato' }); }
 });
 
+// ===== SALVA POST NEL DB =====
+app.post('/api/posts/save', async (req, res) => {
+  try {
+    const { userId, posts, brand, strategy } = req.body;
+    if (!userId || !posts) return res.status(400).json({ error: 'Dati mancanti' });
+    // Salva ogni post nella tabella posts
+    const toInsert = posts.map(p => ({
+      user_id: userId,
+      brand: brand || '',
+      social: p.social,
+      type: p.type || 'image',
+      text: p.text,
+      hashtags: p.hashtags || [],
+      image_url: p.image_url || null,
+      carousel_images: p.carousel_images || null,
+      video_task_id: p.video_task_id || null,
+      video_url: p.video_url || null,
+      video_status: p.video_status || null,
+      day: p.day || null,
+      scheduled_time: p.scheduled_time || null,
+      status: 'draft',
+      created_at: new Date().toISOString()
+    }));
+    const { data, error } = await supabase.from('posts').insert(toInsert).select();
+    if (error) throw error;
+    res.json({ success: true, posts: data });
+  } catch(e) {
+    console.error('Save posts error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/posts', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId mancante' });
+    const { data, error } = await supabase.from('posts').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ posts: data || [] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/posts/approve', async (req, res) => {
+  try {
+    const { postId, userId } = req.body;
+    const { error } = await supabase.from('posts').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', postId).eq('user_id', userId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/posts/delete', async (req, res) => {
+  try {
+    const { postId, userId } = req.body;
+    const { error } = await supabase.from('posts').delete().eq('id', postId).eq('user_id', userId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== PUBBLICA SU INSTAGRAM =====
 async function publishToInstagram(igAccountId, pageAccessToken, post) {
   const caption = post.text + '\n\n' + (post.hashtags || []).map(h => '#' + h).join(' ');
   if (!post.image_url) throw new Error('Nessuna immagine per il post');
+
+  // Se immagine è base64 non possiamo passarla direttamente a Instagram - serve URL pubblico
+  if (post.image_url && post.image_url.startsWith('data:')) {
+    throw new Error('Immagine base64 non supportata per pubblicazione diretta. Usa URL pubblico.');
+  }
 
   // Step 1: crea container media
   const containerRes = await axios.post(
