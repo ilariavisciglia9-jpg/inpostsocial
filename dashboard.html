@@ -19,8 +19,6 @@ body{background:var(--off-white);color:var(--dark);display:flex;min-height:100vh
 h1,h2,h3,h4,h5{font-family:'Playfair Display',serif}
 a{text-decoration:none;color:inherit}
 button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-serif}
-
-/* SIDEBAR */
 .sidebar{width:var(--sidebar);background:var(--dark);min-height:100vh;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:50;transition:transform 0.3s}
 .sidebar-logo{padding:1.8rem 1.5rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.07)}
 .sidebar-logo-text{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:white}
@@ -42,20 +40,14 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .user-email{font-size:0.7rem;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 .btn-logout{width:100%;padding:0.55rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.4);font-size:0.78rem;margin-top:0.75rem;transition:all 0.2s}
 .btn-logout:hover{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.25);color:#fca5a5}
-
-/* MAIN */
 .main{margin-left:var(--sidebar);flex:1;min-height:100vh}
 .topbar{padding:1.2rem 2rem;border-bottom:1px solid var(--border);background:white;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;gap:1rem}
 .topbar h1{font-size:1.25rem;font-weight:700;white-space:nowrap}
 .btn-upgrade{background:linear-gradient(135deg,var(--purple),var(--purple-light));color:white;padding:0.5rem 1.1rem;border-radius:100px;font-size:0.8rem;font-weight:700;transition:all 0.2s;white-space:nowrap}
 .btn-upgrade:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,92,252,0.4)}
 .content{padding:1.75rem}
-
-/* PAGES */
 .page{display:none}
 .page.active{display:block}
-
-/* WELCOME */
 .welcome-card{background:linear-gradient(135deg,var(--dark),#3D2B6B);border-radius:20px;padding:2rem 2.5rem;margin-bottom:1.75rem;position:relative;overflow:hidden}
 .welcome-card::after{content:'';position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(124,92,252,0.15);top:-100px;right:-50px;pointer-events:none}
 .welcome-card h2{color:white;font-size:1.4rem;margin-bottom:0.4rem;position:relative}
@@ -65,16 +57,12 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .o-step.done{background:rgba(34,197,94,0.15);color:#86efac}
 .o-step .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);flex-shrink:0}
 .o-step.done .dot{background:#22c55e}
-
-/* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.75rem}
 .stat-card{background:white;border-radius:16px;padding:1.4rem;border:1px solid var(--border)}
 .stat-icon{font-size:1.4rem;margin-bottom:0.5rem}
 .stat-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray);margin-bottom:0.4rem}
 .stat-val{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--dark);line-height:1}
 .stat-sub{font-size:0.72rem;color:var(--gray-light);margin-top:0.2rem}
-
-/* SECTION */
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
 .section-title{font-size:1rem;font-weight:700;font-family:'Playfair Display',serif}
 .btn-sm{padding:0.5rem 1rem;border-radius:100px;font-size:0.8rem;font-weight:600;transition:all 0.2s;border:none;cursor:pointer}
@@ -82,8 +70,6 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .btn-purple:hover{background:var(--purple-dark)}
 .btn-outline{background:transparent;color:var(--purple);border:1.5px solid var(--lavender)}
 .btn-outline:hover{background:var(--lavender)}
-
-/* POSTS */
 .posts-list{display:flex;flex-direction:column;gap:0.75rem}
 .post-item{background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden}
 .post-header{display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;border-bottom:1px solid var(--border);background:var(--off-white)}
@@ -110,8 +96,6 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .carousel-strip img{width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0}
 .video-processing{background:#f3f4f6;border-radius:8px;padding:0.6rem 0.9rem;font-size:0.8rem;color:#6B6B8A;margin-bottom:0.75rem}
 .post-video{width:100%;border-radius:10px;margin-bottom:0.75rem;max-height:260px}
-
-/* FORM */
 .card-box{background:white;border-radius:18px;border:1px solid var(--border);padding:1.75rem;margin-bottom:1.5rem}
 .card-box h3{font-size:1rem;margin-bottom:1.25rem}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
@@ -123,8 +107,6 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .btn-gen{width:100%;padding:0.9rem;background:linear-gradient(135deg,var(--purple),var(--purple-light));color:white;border:none;border-radius:100px;font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all 0.25s}
 .btn-gen:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(124,92,252,0.4)}
 .btn-gen:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none}
-
-/* STRATEGY */
 .strategy-box{background:linear-gradient(135deg,var(--lavender),#EDE9FF);border-radius:14px;padding:1.4rem;margin-bottom:1.25rem;border:1px solid rgba(124,92,252,0.15)}
 .strategy-box h4{font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--purple);margin-bottom:0.6rem}
 .strategy-box p{font-size:0.88rem;color:var(--dark2);line-height:1.7}
@@ -135,8 +117,6 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .s-block ul{list-style:none}
 .s-block li{padding:0.2rem 0 0.2rem 1rem;position:relative}
 .s-block li::before{content:'→';position:absolute;left:0;color:var(--purple);font-size:0.75rem}
-
-/* SOCIAL */
 .social-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .social-card{background:white;border-radius:16px;border:1.5px solid var(--border);padding:1.4rem;text-align:center;transition:all 0.2s}
 .social-card.connected{border-color:#22c55e;background:#f0fdf4}
@@ -149,8 +129,6 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .btn-tt{background:#010101;color:white}
 .btn-li{background:#0a66c2;color:white;opacity:0.5;cursor:not-allowed}
 .btn-connected{background:#dcfce7;color:#16a34a;cursor:default}
-
-/* PIANI */
 .plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem}
 .plan-card{background:white;border-radius:18px;border:1.5px solid var(--border);padding:1.75rem;position:relative}
 .plan-card.active-plan{border-color:var(--purple);border-width:2px}
@@ -163,8 +141,6 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .btn-plan{width:100%;padding:0.75rem;border-radius:100px;font-size:0.85rem;font-weight:700;border:none;cursor:pointer}
 .btn-plan-primary{background:var(--purple);color:white}
 .btn-plan-current{background:var(--lavender);color:var(--purple);cursor:default}
-
-/* MISC */
 .empty{text-align:center;padding:3rem 2rem;color:var(--gray)}
 .empty .icon{font-size:2.5rem;margin-bottom:0.75rem}
 .empty h3{font-size:1rem;color:var(--dark);margin-bottom:0.4rem;font-family:'Playfair Display',serif}
@@ -184,7 +160,6 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .media-label{font-size:0.8rem;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0}
 .media-opt{display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500}
 .media-opt input{width:16px;height:16px;accent-color:var(--purple)}
-
 @media(max-width:900px){
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
@@ -319,12 +294,12 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
       <div id="all-posts"></div>
     </div>
 
-    <!-- APPROVATI -->
+    <!-- POST APPROVATI -->
     <div class="page" id="page-approvati">
       <div class="section-header">
-        <div class="section-title">✅ Post approvati</div>
+        <div class="section-title">✅ Post approvati — pronti alla pubblicazione</div>
       </div>
-      <p style="color:var(--gray);font-size:0.85rem;margin-bottom:1rem">Questi post sono stati approvati e verranno pubblicati automaticamente all'orario schedulato.</p>
+      <p style="color:var(--gray);font-size:0.85rem;margin-bottom:1.25rem">Questi post sono stati approvati e verranno pubblicati automaticamente all'orario schedulato sul tuo profilo social.</p>
       <div id="approved-posts"></div>
     </div>
 
@@ -440,7 +415,6 @@ var socialCount = 0;
 var SOCIAL_EMOJI = {Instagram:'📸',Facebook:'📘',TikTok:'🎵',LinkedIn:'💼','Instagram + Facebook':'📸','Tutti i social':'🌐'};
 var PAGE_TITLES = {home:'Dashboard',genera:'Genera Post',posts:'I miei post',approvati:'Post approvati',social:'Social collegati',piano:'Piano e fatturazione',impostazioni:'Impostazioni'};
 
-// ─── INIT ────────────────────────────────────────────────────────────────────
 async function init() {
   var session = (await sb.auth.getSession()).data.session;
   if (!session) { window.location.href = '/login.html'; return; }
@@ -461,20 +435,14 @@ async function init() {
   await loadSocialConnections();
 }
 
-// ─── EVENT DELEGATION ────────────────────────────────────────────────────────
 function bindEvents() {
-  // Nav items (sidebar)
   document.querySelectorAll('.nav-item[data-page]').forEach(function(btn) {
     btn.addEventListener('click', function() { goTo(btn.getAttribute('data-page')); });
   });
-
-  // Buttons with data-page (inline content area)
   document.addEventListener('click', function(e) {
     var btn = e.target.closest('[data-page]');
     if (btn && !btn.classList.contains('nav-item')) goTo(btn.getAttribute('data-page'));
   });
-
-  // Post actions (delegated — works even after innerHTML rebuild)
   document.addEventListener('click', function(e) {
     var approve = e.target.closest('.pBtn-approve');
     var del = e.target.closest('.pBtn-delete');
@@ -489,38 +457,23 @@ function bindEvents() {
     }
     if (edit) toast('Editor disponibile nel piano Pro 🚀', 'error');
   });
-
-  // Hamburger
   document.getElementById('hamburger').addEventListener('click', function() {
     document.getElementById('sidebar').classList.toggle('open');
   });
-
-  // Logout
   document.getElementById('btn-logout').addEventListener('click', function() {
     sb.auth.signOut().then(function() { window.location.href = '/'; });
   });
-
-  // Upgrade
   document.getElementById('btn-upgrade').addEventListener('click', function() { goTo('piano'); });
-
-  // Generate
   document.getElementById('btn-gen').addEventListener('click', doGenerate);
   document.getElementById('btn-rigenera').addEventListener('click', doGenerate);
-
-  // Save settings
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
-
-  // Piani
   document.getElementById('pb-pro').addEventListener('click', function() { doCheckout('pro'); });
   document.getElementById('pb-business').addEventListener('click', function() { doCheckout('business'); });
-
-  // Social connect
   document.getElementById('btn-ig').addEventListener('click', function() { connectMeta(); });
   document.getElementById('btn-fb').addEventListener('click', function() { connectMeta(); });
   document.getElementById('btn-tt').addEventListener('click', function() { connectTikTok(); });
 }
 
-// ─── NAVIGATION ──────────────────────────────────────────────────────────────
 function goTo(name) {
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
@@ -535,7 +488,6 @@ function goTo(name) {
   if (name === 'approvati') renderApprovedPosts();
 }
 
-// ─── USER ─────────────────────────────────────────────────────────────────────
 async function loadUser() {
   var meta = user.user_metadata || {};
   var name = meta.name || meta.full_name || user.email.split('@')[0];
@@ -545,13 +497,13 @@ async function loadUser() {
   document.getElementById('s-name').value = name;
   document.getElementById('s-email').value = user.email;
   document.getElementById('welcome-msg').textContent = 'Ciao, ' + name + '! 👋';
-
-  // Usa backend (service key) invece di Supabase anonimo per evitare 400
   try {
     var resp = await fetch('/api/user/profile?userId=' + user.id);
     var data = await resp.json();
     if (data && !data.error) {
       userPlan = data.plan || 'free';
+      // Owner ha sempre piano business gratis
+      if (user.email === 'info@inpostsocial.com') userPlan = 'business';
       if (data.brand) { document.getElementById('s-brand').value = data.brand; document.getElementById('os-business').classList.add('done'); }
       if (data.sector) document.getElementById('s-sector').value = data.sector;
       if (data.name) {
@@ -568,8 +520,6 @@ async function loadUser() {
 function updatePlanUI() {
   var badge = document.getElementById('plan-badge');
   var upBtn = document.getElementById('btn-upgrade');
-  // Owner ha sempre piano business gratis
-  if (user && user.email === 'info@inpostsocial.com') userPlan = 'business';
   if (userPlan === 'pro') {
     badge.textContent = '⚡ Piano Pro'; badge.className = 'plan-badge badge-pro';
     upBtn.textContent = '⚡ Piano Pro';
@@ -587,16 +537,13 @@ function updatePlanUI() {
   }
 }
 
-// ─── SOCIAL ───────────────────────────────────────────────────────────────────
 async function loadSocialConnections() {
   socialCount = 0;
   try {
-    // Usa il backend (service key) invece di Supabase anonimo, bypassa RLS
     var resp = await fetch('/api/social/status?userId=' + user.id);
     var result = await resp.json();
     console.log('Social status:', result);
     if (!result.connections || !result.connections.length) {
-      console.log('Nessuna connessione trovata per userId:', user.id);
       document.getElementById('s4').textContent = '0';
       return;
     }
@@ -611,9 +558,7 @@ async function loadSocialConnections() {
     });
     document.getElementById('s4').textContent = socialCount;
     if (socialCount > 0) document.getElementById('os-social').classList.add('done');
-  } catch(e) {
-    console.error('Errore loadSocialConnections:', e);
-  }
+  } catch(e) { console.error('Errore loadSocialConnections:', e); }
 }
 
 function markConnected(cardId, btnId, label) {
@@ -637,7 +582,6 @@ function connectTikTok() {
   toast('L\'integrazione TikTok richiede app approvata da TikTok for Developers. Contatta il supporto.', 'error');
 }
 
-// ─── POSTS ────────────────────────────────────────────────────────────────────
 async function loadPosts() {
   var res = await sb.from('strategies').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
   if (!res.data || !res.data.length) return;
@@ -665,7 +609,6 @@ function buildPostCard(post, idx) {
   var stClass = {draft:'s-draft',approved:'s-approved',published:'s-published'}[st] || '';
   var typeIcon = post.type === 'carousel' ? ' 🎠' : post.type === 'reel' ? ' 🎬' : '';
   var emoji = SOCIAL_EMOJI[post.social] || '📱';
-
   var mediaHtml = '';
   if (post.type === 'carousel' && post.carousel_images && post.carousel_images.length) {
     var imgs = post.carousel_images.map(function(u) {
@@ -675,7 +618,6 @@ function buildPostCard(post, idx) {
   } else if (post.image_url) {
     mediaHtml = '<img src="' + post.image_url + '" class="post-img" onerror="this.style.display=\'none\'">';
   }
-
   var videoHtml = '';
   if (post.type === 'reel') {
     if (post.video_status === 'processing') {
@@ -684,22 +626,18 @@ function buildPostCard(post, idx) {
       videoHtml = '<video src="' + post.video_url + '" controls class="post-video"></video>';
     }
   }
-
   var tagsHtml = (post.hashtags || []).map(function(h) {
     return '<span class="hashtag">#' + h.replace('#','') + '</span>';
   }).join('');
-
   var approveDisabled = st === 'approved' ? ' disabled' : '';
   var postText = (post.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-
   return '<div class="post-item" data-idx="' + idx + '">' +
     '<div class="post-header">' +
       '<div class="post-social">' + emoji + ' ' + (post.social || '') + typeIcon + '</div>' +
       '<span class="post-day">📅 ' + (post.day || '') + ' ' + (post.scheduled_time || '') + '</span>' +
       '<span class="status ' + stClass + '">' + stLabel + '</span>' +
     '</div>' +
-    '<div class="post-body">' +
-      mediaHtml + videoHtml +
+    '<div class="post-body">' + mediaHtml + videoHtml +
       '<div class="post-text">' + postText + '</div>' +
       '<div class="hashtags">' + tagsHtml + '</div>' +
     '</div>' +
@@ -733,25 +671,24 @@ function renderAllPosts() {
 function renderApprovedPosts() {
   var el = document.getElementById('approved-posts');
   if (!el) return;
-  var approved = posts.filter(function(p) { return p.status === 'approved'; });
+  var approved = posts.filter(function(p){ return p.status === 'approved'; });
   if (!approved.length) {
-    el.innerHTML = '<div class="empty"><div class="icon">✅</div><h3>Nessun post approvato</h3><p>Approva i post dalla sezione "I miei post" per vederli qui</p><button class="btn-sm btn-purple" data-page="posts">Vai ai post</button></div>';
+    el.innerHTML = '<div class="empty"><div class="icon">✅</div><h3>Nessun post approvato</h3><p>Approva i post dalla sezione "I miei post" per vederli qui pronti alla pubblicazione automatica</p><button class="btn-sm btn-purple" data-page="posts">Vai ai post</button></div>';
     return;
   }
   var html = '<div class="posts-list">';
-  approved.forEach(function(p, i) {
+  approved.forEach(function(p) {
     var emoji = SOCIAL_EMOJI[p.social] || '📱';
     var typeIcon = p.type === 'carousel' ? ' 🎠' : p.type === 'reel' ? ' 🎬' : '';
     var mediaHtml = '';
     if (p.type === 'carousel' && p.carousel_images && p.carousel_images.length) {
-      var imgs = p.carousel_images.map(function(u) { return '<img src="' + u + '" style="width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display='none'">'; }).join('');
+      var imgs = p.carousel_images.map(function(u) { return '<img src="' + u + '" style="width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display=\'none\'">'; }).join('');
       mediaHtml = '<div class="carousel-strip">' + imgs + '</div>';
     } else if (p.image_url) {
-      mediaHtml = '<img src="' + p.image_url + '" class="post-img" onerror="this.style.display='none'">';
+      mediaHtml = '<img src="' + p.image_url + '" class="post-img" onerror="this.style.display=\'none\'">';
     }
-    var postText = (p.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/
-/g,'<br>');
-    var tagsHtml = (p.hashtags || []).map(function(h) { return '<span class="hashtag">#' + h.replace('#','') + '</span>'; }).join('');
+    var postText = (p.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    var tagsHtml = (p.hashtags || []).map(function(h){ return '<span class="hashtag">#' + h.replace('#','') + '</span>'; }).join('');
     html += '<div class="post-item" style="border-color:#22c55e">' +
       '<div class="post-header" style="background:#f0fdf4">' +
         '<div class="post-social">' + emoji + ' ' + (p.social||'') + typeIcon + '</div>' +
@@ -763,7 +700,7 @@ function renderApprovedPosts() {
         '<div class="hashtags">' + tagsHtml + '</div>' +
       '</div>' +
       '<div class="post-actions" style="background:#f0fdf4;justify-content:center">' +
-        '<div style="font-size:0.8rem;color:#16a34a;font-weight:600;text-align:center;padding:0.3rem">🚀 Pubblicazione automatica schedulata</div>' +
+        '<div style="font-size:0.8rem;color:#16a34a;font-weight:600;text-align:center;padding:0.3rem;width:100%">🚀 Pubblicazione automatica schedulata</div>' +
       '</div>' +
     '</div>';
   });
@@ -781,17 +718,15 @@ function approvePost(idx) {
 function deletePost(idx) {
   if (!posts[idx]) return;
   posts.splice(idx, 1);
-  renderHomePosts(); renderAllPosts(); updateStats();
+  renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
   toast('Post eliminato');
 }
 
-// ─── GENERATE ─────────────────────────────────────────────────────────────────
 async function doGenerate() {
   var brand = document.getElementById('g-brand').value.trim();
   var desc = document.getElementById('g-desc').value.trim();
   if (!brand || !desc) return toast('Inserisci brand e descrizione', 'error');
   if (userPlan === 'free' && posts.length >= 10) return toast('Limite raggiunto. Passa a Pro! 🚀', 'error');
-
   var genImages = document.getElementById('gen-images').checked;
   var genVideo = document.getElementById('gen-video').checked;
   var lmsg = genImages && genVideo ? '✨ Generando post, immagini e video... (1-2 min)' :
@@ -799,7 +734,6 @@ async function doGenerate() {
              genVideo ? '🎬 Generando video con Kling AI...' : 'L\'AI sta generando la tua strategia...';
   showLoading(lmsg);
   document.getElementById('btn-gen').disabled = true;
-
   try {
     var resp = await fetch('/api/generate', {
       method: 'POST',
@@ -816,12 +750,10 @@ async function doGenerate() {
     });
     var result = await resp.json();
     if (!result.success) throw new Error(result.error || 'Errore API');
-
     var strategy = result.data.strategy;
     var newPosts = result.data.posts;
     var startIdx = posts.length;
     newPosts.forEach(function(p) { posts.push(Object.assign({}, p, {brand: brand})); });
-
     renderStrategy(strategy, brand);
     document.getElementById('gen-posts').innerHTML = newPosts.map(function(p,i){return buildPostCard(p, startIdx+i);}).join('');
     document.getElementById('gen-result').style.display = 'block';
@@ -850,7 +782,6 @@ function renderStrategy(s, brand) {
     '</div>';
 }
 
-// ─── CHECKOUT ─────────────────────────────────────────────────────────────────
 async function doCheckout(plan) {
   showLoading('Reindirizzamento al pagamento...');
   try {
@@ -867,7 +798,6 @@ async function doCheckout(plan) {
   }
 }
 
-// ─── SETTINGS ─────────────────────────────────────────────────────────────────
 async function saveSettings() {
   var name = document.getElementById('s-name').value.trim();
   var brand = document.getElementById('s-brand').value.trim();
@@ -885,7 +815,6 @@ async function saveSettings() {
   toast('Impostazioni salvate ✅');
 }
 
-// ─── UI ───────────────────────────────────────────────────────────────────────
 function showLoading(txt) {
   document.getElementById('loading').classList.add('show');
   document.getElementById('loading-text').textContent = txt || 'Caricamento...';
