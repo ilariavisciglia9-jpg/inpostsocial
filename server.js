@@ -138,7 +138,7 @@ async function generateImage(prompt, brand) {
         prompt: safePrompt,
         n: 1,
         size: '1024x1024',
-        quality: 'standard'
+        quality: 'medium'
       },
       { 
         headers: { 
