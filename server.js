@@ -74,7 +74,11 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
     }
 
     // Genera immagini DALL-E 3
-    if (generateImages && process.env.OPENAI_API_KEY) {
+    console.log('🖼️ generateImages:', generateImages, typeof generateImages, '| OPENAI_KEY:', !!process.env.OPENAI_API_KEY);
+    console.log('🎬 generateVideo:', generateVideo, typeof generateVideo, '| KLING_KEY:', !!process.env.KLING_ACCESS_KEY);
+    const doImages = generateImages === true || generateImages === 'true';
+    const doVideo = generateVideo === true || generateVideo === 'true';
+    if (doImages && process.env.OPENAI_API_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
         try {
@@ -93,7 +97,7 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
     }
 
     // Genera video Kling
-    if (generateVideo && process.env.KLING_ACCESS_KEY) {
+    if (doVideo && process.env.KLING_ACCESS_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
         if (post.type === 'reel' && post.video_prompt) {
