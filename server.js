@@ -74,11 +74,7 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
     }
 
     // Genera immagini DALL-E 3
-    console.log('🖼️ generateImages:', generateImages, typeof generateImages, '| OPENAI_KEY:', !!process.env.OPENAI_API_KEY);
-    console.log('🎬 generateVideo:', generateVideo, typeof generateVideo, '| KLING_KEY:', !!process.env.KLING_ACCESS_KEY);
-    const doImages = generateImages === true || generateImages === 'true';
-    const doVideo = generateVideo === true || generateVideo === 'true';
-    if (doImages && process.env.OPENAI_API_KEY) {
+    if (generateImages && process.env.OPENAI_API_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
         try {
@@ -97,7 +93,7 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
     }
 
     // Genera video Kling
-    if (doVideo && process.env.KLING_ACCESS_KEY) {
+    if (generateVideo && process.env.KLING_ACCESS_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
         if (post.type === 'reel' && post.video_prompt) {
@@ -352,6 +348,29 @@ app.post('/webhook/stripe', async (req, res) => {
     }
     res.json({ received: true });
   } catch (e) { res.status(400).json({ error: 'Webhook error' }); }
+});
+
+// ===== USER PROFILE =====
+app.post('/api/user/save', async (req, res) => {
+  try {
+    const { userId, name, brand, sector } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId mancante' });
+    await supabase.from('users').upsert({ id: userId, name, brand, sector, updated_at: new Date().toISOString() });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/user/profile', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId mancante' });
+    const { data, error } = await supabase.from('users').select('plan,brand,sector,name,email').eq('id', userId).single();
+    if (error || !data) {
+      // Utente non ancora in tabella users, ritorna defaults
+      return res.json({ plan: 'free', brand: '', sector: '', name: '', email: '' });
+    }
+    res.json(data);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== DEBUG SOCIAL =====
