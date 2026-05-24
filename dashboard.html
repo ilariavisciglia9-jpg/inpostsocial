@@ -210,6 +210,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
     <button class="nav-item active" data-page="home"><span class="nav-icon">🏠</span>Dashboard</button>
     <button class="nav-item" data-page="genera"><span class="nav-icon">✨</span>Genera Post</button>
     <button class="nav-item" data-page="posts"><span class="nav-icon">📋</span>I miei post</button>
+    <button class="nav-item" data-page="approvati"><span class="nav-icon">✅</span>Post approvati</button>
     <button class="nav-item" data-page="social"><span class="nav-icon">🔗</span>Social collegati</button>
   </div>
   <div class="nav-section">
@@ -316,6 +317,15 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
         <button class="btn-sm btn-purple" data-page="genera">+ Genera nuovi</button>
       </div>
       <div id="all-posts"></div>
+    </div>
+
+    <!-- APPROVATI -->
+    <div class="page" id="page-approvati">
+      <div class="section-header">
+        <div class="section-title">✅ Post approvati — pronti alla pubblicazione</div>
+      </div>
+      <p style="color:var(--gray);font-size:0.85rem;margin-bottom:1rem">Questi post sono stati approvati e verranno pubblicati automaticamente all'orario schedulato.</p>
+      <div id="approved-posts"></div>
     </div>
 
     <!-- SOCIAL -->
@@ -428,7 +438,7 @@ var posts = [];
 var socialCount = 0;
 
 var SOCIAL_EMOJI = {Instagram:'📸',Facebook:'📘',TikTok:'🎵',LinkedIn:'💼','Instagram + Facebook':'📸','Tutti i social':'🌐'};
-var PAGE_TITLES = {home:'Dashboard',genera:'Genera Post',posts:'I miei post',social:'Social collegati',piano:'Piano e fatturazione',impostazioni:'Impostazioni'};
+var PAGE_TITLES = {home:'Dashboard',genera:'Genera Post',posts:'I miei post',approvati:'Post approvati',social:'Social collegati',piano:'Piano e fatturazione',impostazioni:'Impostazioni'};
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 async function init() {
@@ -522,6 +532,7 @@ function goTo(name) {
   if (navBtn) navBtn.classList.add('active');
   document.getElementById('sidebar').classList.remove('open');
   if (name === 'posts') renderAllPosts();
+  if (name === 'approvati') renderApprovedPosts();
 }
 
 // ─── USER ─────────────────────────────────────────────────────────────────────
@@ -554,9 +565,13 @@ async function loadUser() {
   } catch(e) { console.log('Profile load error:', e); }
 }
 
+var OWNER_EMAIL = 'info@inpostsocial.com';
+
 function updatePlanUI() {
   var badge = document.getElementById('plan-badge');
   var upBtn = document.getElementById('btn-upgrade');
+  // Owner ha sempre business
+  if (user && user.email === OWNER_EMAIL) userPlan = 'business';
   if (userPlan === 'pro') {
     badge.textContent = '⚡ Piano Pro'; badge.className = 'plan-badge badge-pro';
     upBtn.textContent = '⚡ Piano Pro';
@@ -626,10 +641,23 @@ function connectTikTok() {
 
 // ─── POSTS ────────────────────────────────────────────────────────────────────
 async function loadPosts() {
-  var res = await sb.from('strategies').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
-  if (!res.data || !res.data.length) return;
+  try {
+    // Prima carica dal DB (posts salvati)
+    var res = await fetch('/api/posts?userId=' + user.id);
+    var result = await res.json();
+    if (result.posts && result.posts.length) {
+      posts = result.posts;
+      updateStats();
+      renderHomePosts();
+      document.getElementById('os-post').classList.add('done');
+      return;
+    }
+  } catch(e) { console.log('DB posts load error:', e); }
+  // Fallback: carica da strategies (vecchio sistema)
+  var res2 = await sb.from('strategies').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
+  if (!res2.data || !res2.data.length) return;
   posts = [];
-  res.data.forEach(function(s) {
+  res2.data.forEach(function(s) {
     (s.posts || []).forEach(function(p) {
       posts.push(Object.assign({}, p, {brand: s.brand, _sid: s.id}));
     });
@@ -717,17 +745,80 @@ function renderAllPosts() {
   el.innerHTML = '<div class="posts-list">' + posts.map(function(p,i){return buildPostCard(p,i);}).join('') + '</div>';
 }
 
-function approvePost(idx) {
-  if (!posts[idx]) return;
-  posts[idx].status = 'approved';
-  renderHomePosts(); renderAllPosts(); updateStats();
-  toast('Post approvato! ✅');
+function renderApprovedPosts() {
+  var el = document.getElementById('approved-posts');
+  if (!el) return;
+  var approved = posts.filter(function(p){ return p.status === 'approved'; });
+  if (!approved.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">✅</div><h3>Nessun post approvato</h3><p>Approva i post dalla sezione "I miei post" per vederli qui pronti alla pubblicazione</p><button class="btn-sm btn-purple" data-page="posts">Vai ai post</button></div>';
+    return;
+  }
+  el.innerHTML = '<div class="posts-list">' + approved.map(function(p,i){
+    return buildApprovedCard(p, i);
+  }).join('') + '</div>';
 }
 
-function deletePost(idx) {
+function buildApprovedCard(post, idx) {
+  var emoji = SOCIAL_EMOJI[post.social] || '📱';
+  var typeIcon = post.type === 'carousel' ? ' 🎠' : post.type === 'reel' ? ' 🎬' : '';
+  var mediaHtml = '';
+  if (post.image_url && !post.image_url.startsWith('data:')) {
+    mediaHtml = '<img src="' + post.image_url + '" class="post-img" onerror="this.style.display='none'">';
+  } else if (post.image_url && post.image_url.startsWith('data:')) {
+    mediaHtml = '<img src="' + post.image_url + '" class="post-img">';
+  }
+  var scheduleInfo = post.day && post.scheduled_time ? '📅 ' + post.day + ' ' + post.scheduled_time : '📅 Da schedulare';
+  var postText = (post.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/
+/g,'<br>');
+  var tagsHtml = (post.hashtags || []).map(function(h){ return '<span class="hashtag">#' + h.replace('#','') + '</span>'; }).join('');
+  return '<div class="post-item" style="border-color:#22c55e" data-idx="' + idx + '">' +
+    '<div class="post-header" style="background:#f0fdf4">' +
+      '<div class="post-social">' + emoji + ' ' + (post.social||'') + typeIcon + '</div>' +
+      '<span class="post-day">' + scheduleInfo + '</span>' +
+      '<span class="status s-approved">✅ Approvato</span>' +
+    '</div>' +
+    '<div class="post-body">' + mediaHtml +
+      '<div class="post-text">' + postText + '</div>' +
+      '<div class="hashtags">' + tagsHtml + '</div>' +
+    '</div>' +
+    '<div class="post-actions" style="background:#f0fdf4">' +
+      '<div style="font-size:0.8rem;color:#16a34a;font-weight:600;text-align:center;width:100%;padding:0.3rem">🚀 Pubblicazione automatica schedulata</div>' +
+    '</div>' +
+  '</div>';
+}
+
+async function approvePost(idx) {
   if (!posts[idx]) return;
+  var post = posts[idx];
+  post.status = 'approved';
+  // Se il post ha un ID nel DB, aggiorna
+  if (post.id) {
+    try {
+      await fetch('/api/posts/approve', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ postId: post.id, userId: user.id })
+      });
+    } catch(e) { console.log('Approve DB error:', e); }
+  }
+  renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
+  toast('Post approvato! ✅ Verrà pubblicato automaticamente all'orario schedulato.');
+}
+
+async function deletePost(idx) {
+  if (!posts[idx]) return;
+  var post = posts[idx];
+  if (post.id) {
+    try {
+      await fetch('/api/posts/delete', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ postId: post.id, userId: user.id })
+      });
+    } catch(e) { console.log('Delete DB error:', e); }
+  }
   posts.splice(idx, 1);
-  renderHomePosts(); renderAllPosts(); updateStats();
+  renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
   toast('Post eliminato');
 }
 
@@ -772,6 +863,22 @@ async function doGenerate() {
     document.getElementById('gen-posts').innerHTML = newPosts.map(function(p,i){return buildPostCard(p, startIdx+i);}).join('');
     document.getElementById('gen-result').style.display = 'block';
     document.getElementById('gen-result').scrollIntoView({behavior:'smooth', block:'nearest'});
+    // Salva post nel DB
+    try {
+      var saveRes = await fetch('/api/posts/save', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ userId: user.id, posts: newPosts, brand: brand })
+      });
+      var saved = await saveRes.json();
+      if (saved.posts) {
+        // Aggiorna gli indici con gli ID del DB
+        saved.posts.forEach(function(sp, i) {
+          if (posts[startIdx + i]) posts[startIdx + i].id = sp.id;
+        });
+      }
+    } catch(e) { console.log('Save posts error:', e); }
+
     updateStats();
     document.getElementById('os-post').classList.add('done');
     toast(genImages ? 'Post e immagini pronti! 🖼️✨' : genVideo ? 'Post e video pronti! 🎬✨' : 'Strategia e post generati! ✨');
