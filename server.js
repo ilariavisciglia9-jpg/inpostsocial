@@ -74,7 +74,10 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
     }
 
     // Genera immagini DALL-E 3
-    if (generateImages && process.env.OPENAI_API_KEY) {
+    const doImages = generateImages === true || generateImages === 'true';
+    const doVideo = generateVideo === true || generateVideo === 'true';
+    console.log('🖼️ generateImages:', generateImages, '→ doImages:', doImages, '| KEY:', !!process.env.OPENAI_API_KEY);
+    if (doImages && process.env.OPENAI_API_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
         try {
@@ -93,7 +96,7 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
     }
 
     // Genera video Kling
-    if (generateVideo && process.env.KLING_ACCESS_KEY) {
+    if (doVideo && process.env.KLING_ACCESS_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
         if (post.type === 'reel' && post.video_prompt) {
@@ -124,18 +127,32 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
 
 // ===== DALL-E 3 =====
 async function generateImage(prompt, brand) {
-  const r = await axios.post(
-    'https://api.openai.com/v1/images/generations',
-    {
-      model: 'dall-e-3',
-      prompt: `Professional social media image for "${brand}": ${prompt}. High quality, photorealistic, modern aesthetic. No text overlay.`,
-      n: 1,
-      size: '1024x1024',
-      quality: 'standard'
-    },
-    { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' } }
-  );
-  return r.data.data[0].url;
+  // Tronca il prompt a max 900 caratteri per evitare errori OpenAI
+  const safePrompt = `Social media image for "${brand}": ${prompt}`.substring(0, 900);
+  console.log('🎨 DALL-E prompt length:', safePrompt.length);
+  try {
+    const r = await axios.post(
+      'https://api.openai.com/v1/images/generations',
+      {
+        model: 'dall-e-3',
+        prompt: safePrompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard'
+      },
+      { 
+        headers: { 
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 
+          'Content-Type': 'application/json' 
+        },
+        timeout: 60000
+      }
+    );
+    return r.data.data[0].url;
+  } catch(e) {
+    console.error('❌ DALL-E error:', e.response?.data || e.message);
+    throw e;
+  }
 }
 
 app.post('/api/generate-image', async (req, res) => {
@@ -314,6 +331,26 @@ app.get('/auth/callback', async (req, res) => {
   }
 });
 
+// ===== USER PROFILE =====
+app.get('/api/user/profile', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId mancante' });
+    const { data, error } = await supabase.from('users').select('plan,brand,sector,name,email').eq('id', userId).single();
+    if (error || !data) return res.json({ plan: 'free', brand: '', sector: '', name: '', email: '' });
+    res.json(data);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/user/save', async (req, res) => {
+  try {
+    const { userId, name, brand, sector } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId mancante' });
+    await supabase.from('users').upsert({ id: userId, name, brand, sector });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== STRIPE =====
 app.post('/api/checkout', async (req, res) => {
   try {
@@ -348,29 +385,6 @@ app.post('/webhook/stripe', async (req, res) => {
     }
     res.json({ received: true });
   } catch (e) { res.status(400).json({ error: 'Webhook error' }); }
-});
-
-// ===== USER PROFILE =====
-app.post('/api/user/save', async (req, res) => {
-  try {
-    const { userId, name, brand, sector } = req.body;
-    if (!userId) return res.status(400).json({ error: 'userId mancante' });
-    await supabase.from('users').upsert({ id: userId, name, brand, sector, updated_at: new Date().toISOString() });
-    res.json({ success: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/user/profile', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ error: 'userId mancante' });
-    const { data, error } = await supabase.from('users').select('plan,brand,sector,name,email').eq('id', userId).single();
-    if (error || !data) {
-      // Utente non ancora in tabella users, ritorna defaults
-      return res.json({ plan: 'free', brand: '', sector: '', name: '', email: '' });
-    }
-    res.json(data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== DEBUG SOCIAL =====
