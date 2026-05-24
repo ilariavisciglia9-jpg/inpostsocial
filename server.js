@@ -101,10 +101,24 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
         const post = data.posts[i];
         if (post.type === 'reel' && post.video_prompt) {
           try {
-            await new Promise(r => setTimeout(r, 2000));
-            const v = await generateKlingVideo(post.video_prompt, post.image_url);
-            data.posts[i].video_task_id = v.task_id;
-            data.posts[i].video_status = 'processing';
+            await new Promise(r => setTimeout(r, 5000)); // 5s delay
+            let v = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                v = await generateKlingVideo(post.video_prompt, post.image_url);
+                break;
+              } catch (retryErr) {
+                if (retryErr.response?.status === 429 && attempt < 2) {
+                  console.log('Kling 429, retry in 10s...');
+                  await new Promise(r => setTimeout(r, 10000));
+                } else throw retryErr;
+              }
+            }
+            if (v) {
+              data.posts[i].video_task_id = v.task_id;
+              data.posts[i].video_status = 'processing';
+              console.log('🎬 Video task creato:', v.task_id);
+            }
           } catch (e) { console.error('Video error post', i, ':', e.message); }
         }
       }
