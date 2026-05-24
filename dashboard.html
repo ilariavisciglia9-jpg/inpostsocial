@@ -535,13 +535,23 @@ async function loadUser() {
   document.getElementById('s-email').value = user.email;
   document.getElementById('welcome-msg').textContent = 'Ciao, ' + name + '! 👋';
 
-  var res = await sb.from('users').select('plan,brand,sector').eq('id', user.id).single();
-  if (res.data) {
-    userPlan = res.data.plan || 'free';
-    if (res.data.brand) { document.getElementById('s-brand').value = res.data.brand; document.getElementById('os-business').classList.add('done'); }
-    if (res.data.sector) document.getElementById('s-sector').value = res.data.sector;
-    updatePlanUI();
-  }
+  // Usa backend (service key) invece di Supabase anonimo per evitare 400
+  try {
+    var resp = await fetch('/api/user/profile?userId=' + user.id);
+    var data = await resp.json();
+    if (data && !data.error) {
+      userPlan = data.plan || 'free';
+      if (data.brand) { document.getElementById('s-brand').value = data.brand; document.getElementById('os-business').classList.add('done'); }
+      if (data.sector) document.getElementById('s-sector').value = data.sector;
+      if (data.name) {
+        document.getElementById('s-name').value = data.name;
+        document.getElementById('uname').textContent = data.name;
+        document.getElementById('uav').textContent = data.name[0].toUpperCase();
+        document.getElementById('welcome-msg').textContent = 'Ciao, ' + data.name + '! 👋';
+      }
+      updatePlanUI();
+    }
+  } catch(e) { console.log('Profile load error:', e); }
 }
 
 function updatePlanUI() {
@@ -808,7 +818,11 @@ async function saveSettings() {
   var name = document.getElementById('s-name').value.trim();
   var brand = document.getElementById('s-brand').value.trim();
   var sector = document.getElementById('s-sector').value;
-  await sb.from('users').upsert({id: user.id, email: user.email, name: name, brand: brand, sector: sector, plan: userPlan});
+  await fetch('/api/user/save', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({userId: user.id, name: name, brand: brand, sector: sector})
+  });
   await sb.auth.updateUser({data: {name: name}});
   document.getElementById('uname').textContent = name;
   document.getElementById('uav').textContent = name[0].toUpperCase();
