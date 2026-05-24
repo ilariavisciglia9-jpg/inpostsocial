@@ -134,10 +134,11 @@ async function generateImage(prompt, brand) {
     const r = await axios.post(
       'https://api.openai.com/v1/images/generations',
       {
-        model: 'dall-e-2',
+        model: 'gpt-image-1',
         prompt: safePrompt,
         n: 1,
-        size: '1024x1024'
+        size: '1024x1024',
+        quality: 'standard'
       },
       { 
         headers: { 
@@ -147,7 +148,11 @@ async function generateImage(prompt, brand) {
         timeout: 60000
       }
     );
-    return r.data.data[0].url;
+    // gpt-image-1 restituisce base64, dall-e restituisce url
+    const img = r.data.data[0];
+    if (img.url) return img.url;
+    if (img.b64_json) return `data:image/png;base64,${img.b64_json}`;
+    return null;
   } catch(e) {
     console.error('❌ DALL-E error:', e.response?.data || e.message);
     throw e;
