@@ -708,9 +708,40 @@ function renderApprovedPosts() {
   el.innerHTML = html;
 }
 
-function approvePost(idx) {
+async function approvePost(idx) {
   if (!posts[idx]) return;
-  posts[idx].status = 'approved';
+  var post = posts[idx];
+  post.status = 'approved';
+
+  // Calcola scheduled_at: oggi + ora del post (es. "11:00")
+  var scheduledAt = new Date().toISOString();
+  if (post.scheduled_time) {
+    var parts = post.scheduled_time.split(':');
+    var d = new Date();
+    d.setHours(parseInt(parts[0]), parseInt(parts[1] || 0), 0, 0);
+    // Se l'orario è già passato oggi, schedula per domani
+    if (d <= new Date()) d.setDate(d.getDate() + 1);
+    scheduledAt = d.toISOString();
+  }
+
+  try {
+    var resp = await fetch('/api/posts/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        userId: user.id,
+        post: Object.assign({}, post, { status: 'approved', scheduled_at: scheduledAt })
+      })
+    });
+    var result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    if (result.id) post.db_id = result.id;
+  } catch(e) {
+    console.error('Errore salvataggio post:', e.message);
+    toast('Errore salvataggio: ' + e.message, 'error');
+    return;
+  }
+
   renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
   toast('Post approvato! ✅ Verrà pubblicato automaticamente.');
 }
