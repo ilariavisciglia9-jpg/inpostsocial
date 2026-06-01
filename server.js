@@ -467,6 +467,46 @@ app.post('/api/posts/save', async (req, res) => {
   }
 });
 
+// ===== ELIMINA POST =====
+app.post('/api/posts/delete', async (req, res) => {
+  try {
+    const { postId, userId } = req.body;
+    if (!postId || !userId) return res.status(400).json({ error: 'postId e userId obbligatori' });
+    const { error } = await supabase.from('posts').delete().eq('id', postId).eq('user_id', userId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Delete post error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== VIDEO STATUS =====
+app.get('/api/video/status', async (req, res) => {
+  try {
+    const { taskId } = req.query;
+    if (!taskId) return res.status(400).json({ error: 'taskId mancante' });
+    const { getKlingVideoStatus } = require('./kling');
+    const result = await getKlingVideoStatus(taskId);
+    res.json(result);
+  } catch (e) {
+    // Fallback: chiama Kling direttamente
+    try {
+      const jwt = require('jsonwebtoken');
+      const token = jwt.sign({ iss: process.env.KLING_ACCESS_KEY, exp: Math.floor(Date.now()/1000)+1800 }, process.env.KLING_SECRET_KEY, { algorithm:'HS256', header:{alg:'HS256',typ:'JWT'} });
+      const r = await require('axios').get('https://api.klingai.com/v1/videos/text2video/' + taskId, { headers: { Authorization: 'Bearer ' + token } });
+      const task = r.data.data;
+      if (task.task_status === 'succeed' && task.task_result?.videos?.[0]?.url) {
+        res.json({ video_url: task.task_result.videos[0].url, status: 'completed' });
+      } else {
+        res.json({ status: task.task_status || 'processing', video_url: null });
+      }
+    } catch(e2) {
+      res.status(500).json({ error: e2.message });
+    }
+  }
+});
+
 // ===== PUBBLICA SU INSTAGRAM =====
 async function publishToInstagram(igAccountId, pageAccessToken, post) {
   const caption = post.text + '\n\n' + (post.hashtags || []).map(h => '#' + h).join(' ');
