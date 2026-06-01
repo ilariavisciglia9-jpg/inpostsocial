@@ -620,10 +620,10 @@ function buildPostCard(post, idx) {
   }
   var videoHtml = '';
   if (post.type === 'reel') {
-    if (post.video_status === 'processing') {
-      videoHtml = '<div class="video-processing">🎬 Video in elaborazione... (pronto in 1-2 min)</div>';
-    } else if (post.video_url) {
+    if (post.video_url) {
       videoHtml = '<video src="' + post.video_url + '" controls class="post-video"></video>';
+    } else if (post.video_task_id) {
+      videoHtml = '<div class="video-processing" data-task="' + post.video_task_id + '" data-idx="' + idx + '">🎬 Video in elaborazione... <button onclick="checkVideo(this)" style="margin-left:8px;background:var(--purple);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;">Aggiorna</button></div>';
     }
   }
   var tagsHtml = (post.hashtags || []).map(function(h) {
@@ -650,13 +650,15 @@ function buildPostCard(post, idx) {
 }
 
 function renderHomePosts() {
-  var pending = posts.filter(function(p){return !p.status||p.status==='draft';}).slice(0,3);
   var el = document.getElementById('home-posts');
-  if (!pending.length) {
+  var pending = [];
+  posts.forEach(function(p, i) { if (!p.status || p.status === 'draft') pending.push({p:p, i:i}); });
+  var shown = pending.slice(0, 3);
+  if (!shown.length) {
     el.innerHTML = '<div class="empty"><div class="icon">✨</div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia AI per iniziare</p><button class="btn-sm btn-purple" data-page="genera">Genera post gratis</button></div>';
     return;
   }
-  el.innerHTML = '<div class="posts-list">' + pending.map(function(p,i){return buildPostCard(p,i);}).join('') + '</div>';
+  el.innerHTML = '<div class="posts-list">' + shown.map(function(x){return buildPostCard(x.p, x.i);}).join('') + '</div>';
 }
 
 function renderAllPosts() {
@@ -746,8 +748,19 @@ async function approvePost(idx) {
   toast('Post approvato! ✅ Verrà pubblicato automaticamente.');
 }
 
-function deletePost(idx) {
+async function deletePost(idx) {
   if (!posts[idx]) return;
+  var post = posts[idx];
+  // Se il post è stato salvato su DB, eliminalo anche lì
+  if (post.db_id) {
+    try {
+      await fetch('/api/posts/delete', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({postId: post.db_id, userId: user.id})
+      });
+    } catch(e) { console.error('Delete DB error:', e); }
+  }
   posts.splice(idx, 1);
   renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
   toast('Post eliminato');
@@ -857,6 +870,33 @@ function toast(msg, type) {
   t.textContent = msg;
   t.className = 'toast toast-' + (type || 'success') + ' show';
   setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+
+async function checkVideo(btn) {
+  var container = btn.parentElement;
+  var taskId = container.getAttribute('data-task');
+  var idx = parseInt(container.getAttribute('data-idx'));
+  if (!taskId) return;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    var resp = await fetch('/api/video/status?taskId=' + taskId);
+    var result = await resp.json();
+    if (result.video_url) {
+      posts[idx].video_url = result.video_url;
+      posts[idx].video_status = 'completed';
+      renderHomePosts(); renderAllPosts();
+      toast('Video pronto! 🎬');
+    } else {
+      btn.textContent = 'Aggiorna';
+      btn.disabled = false;
+      toast('Video ancora in elaborazione...', 'error');
+    }
+  } catch(e) {
+    btn.textContent = 'Aggiorna';
+    btn.disabled = false;
+    toast('Errore verifica video', 'error');
+  }
 }
 
 init();
