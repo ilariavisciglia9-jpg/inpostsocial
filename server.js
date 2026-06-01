@@ -438,6 +438,35 @@ app.get('/api/user/:id', async (req, res) => {
   } catch (e) { res.status(404).json({ error: 'Utente non trovato' }); }
 });
 
+// ===== SALVA POST APPROVATO =====
+app.post('/api/posts/save', async (req, res) => {
+  try {
+    const { userId, post } = req.body;
+    if (!userId || !post) return res.status(400).json({ error: 'userId e post obbligatori' });
+    const { data, error } = await supabase.from('posts').insert({
+      user_id: userId,
+      platform: (post.social || 'instagram').toLowerCase(),
+      text: post.text,
+      hashtags: post.hashtags,
+      image_url: post.image_url || null,
+      carousel_images: post.carousel_images || null,
+      video_url: post.video_url || null,
+      video_task_id: post.video_task_id || null,
+      status: 'approved',
+      scheduled_at: post.scheduled_at,
+      day: post.day || null,
+      type: post.type || 'image',
+      brand: post.brand || null,
+      created_at: new Date().toISOString()
+    }).select('id').single();
+    if (error) throw error;
+    res.json({ success: true, id: data.id });
+  } catch (e) {
+    console.error('Save post error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ===== PUBBLICA SU INSTAGRAM =====
 async function publishToInstagram(igAccountId, pageAccessToken, post) {
   const caption = post.text + '\n\n' + (post.hashtags || []).map(h => '#' + h).join(' ');
