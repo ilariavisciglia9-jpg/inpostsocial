@@ -440,22 +440,32 @@ function bindEvents() {
     btn.addEventListener('click', function() { goTo(btn.getAttribute('data-page')); });
   });
   document.addEventListener('click', function(e) {
-    var btn = e.target.closest('[data-page]');
-    if (btn && !btn.classList.contains('nav-item')) goTo(btn.getAttribute('data-page'));
-  });
-  document.addEventListener('click', function(e) {
+    // navigazione data-page
+    var pageBtn = e.target.closest('[data-page]');
+    if (pageBtn && !pageBtn.classList.contains('nav-item')) {
+      goTo(pageBtn.getAttribute('data-page'));
+      return;
+    }
+    // approva
     var approve = e.target.closest('.pBtn-approve');
-    var del = e.target.closest('.pBtn-delete');
-    var edit = e.target.closest('.pBtn-edit');
     if (approve && !approve.disabled) {
-      var idx = parseInt(approve.closest('.post-item').getAttribute('data-idx'));
+      var postItem = approve.closest('.post-item');
+      var idx = parseInt(postItem.getAttribute('data-idx'));
       approvePost(idx);
+      return;
     }
+    // elimina
+    var del = e.target.closest('.pBtn-delete');
     if (del) {
-      var idx = parseInt(del.closest('.post-item').getAttribute('data-idx'));
+      var postItem = del.closest('.post-item');
+      var idx = parseInt(postItem.getAttribute('data-idx'));
       deletePost(idx);
+      return;
     }
-    if (edit) toast('Editor disponibile nel piano Pro 🚀', 'error');
+    // modifica
+    if (e.target.closest('.pBtn-edit')) {
+      toast('Editor disponibile nel piano Pro 🚀', 'error');
+    }
   });
   document.getElementById('hamburger').addEventListener('click', function() {
     document.getElementById('sidebar').classList.toggle('open');
@@ -583,17 +593,58 @@ function connectTikTok() {
 }
 
 async function loadPosts() {
-  var res = await sb.from('strategies').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
-  if (!res.data || !res.data.length) return;
   posts = [];
-  res.data.forEach(function(s) {
-    (s.posts || []).forEach(function(p) {
-      posts.push(Object.assign({}, p, {brand: s.brand, _sid: s.id}));
-    });
-  });
+  try {
+    // Carica strategie (post generati)
+    var res = await sb.from('strategies').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
+    if (res.data && res.data.length) {
+      res.data.forEach(function(s) {
+        (s.posts || []).forEach(function(p) {
+          posts.push(Object.assign({}, p, {brand: s.brand, _sid: s.id, status: p.status || 'draft'}));
+        });
+      });
+    }
+    // Carica post approvati/eliminati da DB e aggiorna gli status
+    var dbRes = await sb.from('posts').select('*').eq('user_id', user.id);
+    if (dbRes.data && dbRes.data.length) {
+      dbRes.data.forEach(function(dbPost) {
+        // Cerca il post corrispondente nell'array locale per testo
+        var found = false;
+        for (var i = 0; i < posts.length; i++) {
+          if (posts[i].text && dbPost.text && posts[i].text.substring(0,50) === dbPost.text.substring(0,50)) {
+            posts[i].status = dbPost.status;
+            posts[i].db_id = dbPost.id;
+            posts[i].scheduled_at = dbPost.scheduled_at;
+            found = true;
+            break;
+          }
+        }
+        // Se non trovato tra le strategie, aggiungilo direttamente (es. post salvati standalone)
+        if (!found && dbPost.status !== 'deleted') {
+          posts.push({
+            text: dbPost.text,
+            hashtags: dbPost.hashtags || [],
+            image_url: dbPost.image_url,
+            carousel_images: dbPost.carousel_images,
+            video_url: dbPost.video_url,
+            video_task_id: dbPost.video_task_id,
+            social: dbPost.platform,
+            type: dbPost.type || 'image',
+            day: dbPost.day,
+            scheduled_time: dbPost.scheduled_at,
+            brand: dbPost.brand,
+            status: dbPost.status,
+            db_id: dbPost.id
+          });
+        }
+      });
+    }
+  } catch(e) {
+    console.error('loadPosts error:', e);
+  }
   updateStats();
   renderHomePosts();
-  document.getElementById('os-post').classList.add('done');
+  if (posts.length) document.getElementById('os-post').classList.add('done');
 }
 
 function updateStats() {
@@ -713,18 +764,20 @@ function renderApprovedPosts() {
 async function approvePost(idx) {
   if (!posts[idx]) return;
   var post = posts[idx];
-  post.status = 'approved';
 
-  // Calcola scheduled_at: oggi + ora del post (es. "11:00")
+  // Calcola scheduled_at
   var scheduledAt = new Date().toISOString();
   if (post.scheduled_time) {
-    var parts = post.scheduled_time.split(':');
+    var parts = (post.scheduled_time + '').split(':');
     var d = new Date();
-    d.setHours(parseInt(parts[0]), parseInt(parts[1] || 0), 0, 0);
-    // Se l'orario è già passato oggi, schedula per domani
+    d.setHours(parseInt(parts[0]) || 10, parseInt(parts[1]) || 0, 0, 0);
     if (d <= new Date()) d.setDate(d.getDate() + 1);
     scheduledAt = d.toISOString();
   }
+
+  // Disabilita il bottone subito per evitare doppio click
+  var btn = document.querySelector('.post-item[data-idx="' + idx + '"] .pBtn-approve');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
 
   try {
     var resp = await fetch('/api/posts/save', {
@@ -732,35 +785,51 @@ async function approvePost(idx) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         userId: user.id,
-        post: Object.assign({}, post, { status: 'approved', scheduled_at: scheduledAt })
+        post: {
+          text: post.text,
+          hashtags: post.hashtags,
+          image_url: post.image_url || null,
+          carousel_images: post.carousel_images || null,
+          video_url: post.video_url || null,
+          video_task_id: post.video_task_id || null,
+          social: post.social,
+          type: post.type || 'image',
+          day: post.day || null,
+          brand: post.brand || null,
+          status: 'approved',
+          scheduled_at: scheduledAt
+        }
       })
     });
     var result = await resp.json();
     if (result.error) throw new Error(result.error);
-    if (result.id) post.db_id = result.id;
+    posts[idx].status = 'approved';
+    posts[idx].db_id = result.id;
+    posts[idx].scheduled_at = scheduledAt;
+    renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
+    toast('Post approvato! ✅ Verrà pubblicato automaticamente.');
   } catch(e) {
-    console.error('Errore salvataggio post:', e.message);
-    toast('Errore salvataggio: ' + e.message, 'error');
-    return;
+    console.error('Errore approvazione:', e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Approva'; }
+    toast('Errore: ' + e.message, 'error');
   }
-
-  renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
-  toast('Post approvato! ✅ Verrà pubblicato automaticamente.');
 }
 
 async function deletePost(idx) {
   if (!posts[idx]) return;
   var post = posts[idx];
-  // Se il post è stato salvato su DB, eliminalo anche lì
+
+  // Se salvato su DB, elimina anche lì
   if (post.db_id) {
     try {
       await fetch('/api/posts/delete', {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({postId: post.db_id, userId: user.id})
       });
-    } catch(e) { console.error('Delete DB error:', e); }
+    } catch(e) { console.error('Delete DB error:', e.message); }
   }
+
   posts.splice(idx, 1);
   renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
   toast('Post eliminato');
