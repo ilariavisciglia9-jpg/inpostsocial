@@ -531,7 +531,3 @@ app.listen(PORT, () => {
   console.log(`💳 Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅' : '❌'}`);
   console.log(`📘 Meta: ${process.env.META_APP_ID ? '✅' : '❌'}`);
 });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`InPostSocial backend attivo sulla porta ${PORT}`));
