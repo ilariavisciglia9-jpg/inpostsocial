@@ -109,6 +109,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const urlParams = new URLSearchParams(window.location.search);
 const urlPlan = urlParams.get('plan');
+const urlMode = urlParams.get('mode');
 
 // Se già loggato redirect
 sb.auth.getSession().then(async ({ data: { session } }) => {
@@ -126,6 +127,8 @@ if (urlPlan === 'pro' || urlPlan === 'business') {
     : '💎 Stai attivando il Piano Business — €200/anno';
   switchTab('register');
   document.getElementById('btn-register').textContent = 'Continua al pagamento →';
+} else if (urlMode === 'signup') {
+  switchTab('register');
 }
 
 function switchTab(tab) {
