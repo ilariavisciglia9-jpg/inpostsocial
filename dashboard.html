@@ -253,6 +253,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
           </div>
         </div>
         <div class="fg"><label>Descrivi il tuo business *</label><textarea id="g-desc" placeholder="Cosa fai, quali servizi offri, chi sono i tuoi clienti ideali..."></textarea></div>
+        <div class="fg"><label>Stile personalizzato (opzionale)</label><textarea id="g-style" placeholder="es. Frasi brevi e dirette, molte emoji, colori pastello nelle immagini, niente hashtag generici..."></textarea></div>
         <div class="grid-2">
           <div class="fg"><label>Tono di voce</label>
             <select id="g-tone">
@@ -270,7 +271,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
         <div class="media-box">
           <div class="media-label">⚡ AI Media</div>
           <label class="media-opt"><input type="checkbox" id="gen-images"> 🖼️ Immagini AI (DALL-E 3)</label>
-          <label class="media-opt"><input type="checkbox" id="gen-video"> 🎬 Video Reel (Kling AI)</label>
+          <label class="media-opt"><input type="checkbox" id="gen-video"> 🎬 Video Reel (Seedance AI)</label>
         </div>
         <button class="btn-gen" id="btn-gen">✨ Genera strategia e post AI</button>
       </div>
@@ -844,7 +845,7 @@ async function doGenerate() {
   var genVideo = document.getElementById('gen-video').checked;
   var lmsg = genImages && genVideo ? '✨ Generando post, immagini e video... (1-2 min)' :
              genImages ? '🖼️ Generando immagini con DALL-E 3...' :
-             genVideo ? '🎬 Generando video con Kling AI...' : 'L\'AI sta generando la tua strategia...';
+             genVideo ? '🎬 Generando video con Seedance AI...' : 'L\'AI sta generando la tua strategia...';
   showLoading(lmsg);
   document.getElementById('btn-gen').disabled = true;
   try {
@@ -855,6 +856,7 @@ async function doGenerate() {
         brand: brand, description: desc,
         sector: document.getElementById('g-sector').value,
         tone: document.getElementById('g-tone').value,
+        style: document.getElementById('g-style').value.trim(),
         socials: document.getElementById('g-social').value,
         userId: user.id,
         generateImages: genImages,
