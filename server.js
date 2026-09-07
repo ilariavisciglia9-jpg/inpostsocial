@@ -40,7 +40,7 @@ app.get('/healthz', (req, res) => res.json({ status: 'ok', version: '2.0.0' }));
 // ===== GENERATE =====
 app.post('/api/generate', async (req, res) => {
   try {
-    const { brand, description, sector, city, usp, goal, socials, frequency, tone, userId, generateImages, generateVideo } = req.body;
+    const { brand, description, sector, city, usp, goal, socials, frequency, tone, style, userId, generateImages, generateVideo } = req.body;
     if (!brand || !description) return res.status(400).json({ error: 'Brand e descrizione obbligatori' });
 
     if (userId) {
@@ -52,13 +52,17 @@ app.post('/api/generate', async (req, res) => {
 
     const socialsList = Array.isArray(socials) ? socials.join(', ') : (socials || 'Instagram');
 
+    const styleInstruction = style && style.trim()
+      ? `\nSTILE RICHIESTO DALL'UTENTE (seguilo con precisione, ha priorità sul tono generico sopra): ${style.trim()}\n`
+      : '';
+
     const prompt = `Sei un social media manager italiano. Crea strategia e 5 post per questo brand.
 BRAND: ${brand}
 SETTORE: ${sector || 'generale'}
 DESCRIZIONE: ${description}
 SOCIAL: ${socialsList}
 TONO: ${tone || 'professionale'}
-
+${styleInstruction}
 Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
 {"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"Instagram","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"Instagram","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"descrizione video breve 5 secondi stile cinematografico"},{"social":"Facebook","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato per Facebook","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale per Facebook"},{"social":"Instagram","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"Instagram","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
 
@@ -94,7 +98,8 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
             data.posts[i].carousel_images = imgs;
             data.posts[i].image_url = imgs[0];
           } else if (post.image_prompt) {
-            data.posts[i].image_url = await generateImage(post.image_prompt, brand);
+            const styledPrompt = style && style.trim() ? `${post.image_prompt}. Stile: ${style.trim()}` : post.image_prompt;
+            data.posts[i].image_url = await generateImage(styledPrompt, brand);
           }
         } catch (e) { console.error('Image error post', i, ':', e.message); }
       }
@@ -161,9 +166,33 @@ async function generateImage(prompt, brand) {
       }
     );
     const img = r.data.data[0];
-    if (img.url) return img.url;
-    if (img.b64_json) return `data:image/png;base64,${img.b64_json}`;
-    return null;
+
+    // Otteniamo i byte dell'immagine, sia che OpenAI dia un base64 sia un url temporaneo
+    let imageBuffer;
+    if (img.b64_json) {
+      imageBuffer = Buffer.from(img.b64_json, 'base64');
+    } else if (img.url) {
+      const imgResp = await axios.get(img.url, { responseType: 'arraybuffer' });
+      imageBuffer = Buffer.from(imgResp.data);
+    } else {
+      return null;
+    }
+
+    // Carichiamo su Supabase Storage per avere un link pubblico permanente
+    // (i link temporanei di OpenAI scadono dopo circa un'ora: troppo poco per
+    // i post schedulati, e Instagram/Seedance richiedono comunque un vero URL pubblico)
+    const fileName = `posts/${crypto.randomUUID()}.png`;
+    const { error: uploadError } = await supabase.storage
+      .from('post-images')
+      .upload(fileName, imageBuffer, { contentType: 'image/png', upsert: false });
+
+    if (uploadError) {
+      console.error('❌ Errore upload Supabase Storage:', uploadError.message);
+      throw new Error('Impossibile salvare l\'immagine generata: ' + uploadError.message);
+    }
+
+    const { data: publicUrlData } = supabase.storage.from('post-images').getPublicUrl(fileName);
+    return publicUrlData.publicUrl;
   } catch(e) {
     console.error('❌ DALL-E error:', e.response?.data || e.message);
     throw e;
