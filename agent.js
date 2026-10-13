@@ -1,5 +1,5 @@
 // =====================================================================
-// INPOSTSOCIAL.AI — AGENTE AI AUTONOMO (social media manager)
+// INPOSTSOCIAL — AGENTE AI AUTONOMO (social media manager)
 // ---------------------------------------------------------------------
 // Modulo aggiuntivo: non tocca il generatore manuale né la tabella
 // "posts" esistente. Lavora sulle proprie tabelle (vedi schema-agent.sql).

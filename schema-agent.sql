@@ -1,5 +1,5 @@
 -- =====================================================================
--- INPOSTSOCIAL.AI — Tabelle dell'Agente AI
+-- INPOSTSOCIAL — Tabelle dell'Agente AI
 -- Incolla tutto in Supabase → SQL Editor → Run. Si può rieseguire senza danni.
 -- =====================================================================
 

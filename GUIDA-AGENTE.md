@@ -1,4 +1,4 @@
-# InPostSocial.ai — Attivare l'Agente AI
+# InPostSocial — Attivare l'Agente AI
 
 ## 0. URGENTE — sicurezza
 La chiave Supabase che era in `dashboard.html` e `login.html` era la **service_role**
@@ -32,14 +32,6 @@ Per aprirla al pubblico chiedi in App Review questi permessi:
 `instagram_basic`, `instagram_content_publish`, `instagram_manage_comments`,
 `instagram_manage_insights`, `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`.
 Serve un video che mostra il flusso (collega → agente crea → pubblica → risponde).
-
-## 6. Passaggio a inpostsocial.ai
-Quando compri il dominio:
-- Railway → Settings → Domains → aggiungi `inpostsocial.ai` e imposta i DNS indicati.
-- `FRONTEND_URL=https://inpostsocial.ai` su Railway.
-- Meta → Facebook Login → Redirect URI validi: `https://inpostsocial.ai/auth/callback`.
-- Supabase → Authentication → URL Configuration: Site URL e Redirect URLs col nuovo dominio.
-- Stripe → webhook con il nuovo dominio.
 
 ## Come lavora l'agente (orari di Roma)
 | Quando | Cosa fa |
