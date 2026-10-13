@@ -160,6 +160,64 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 .media-label{font-size:0.8rem;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0}
 .media-opt{display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500}
 .media-opt input{width:16px;height:16px;accent-color:var(--purple)}
+/* ===== AGENTE AI ===== */
+.ag-hero{background:linear-gradient(135deg,var(--dark),#3D2B6B);border-radius:20px;padding:1.6rem 1.8rem;margin-bottom:1.5rem;color:white;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.ag-hero h2{font-size:1.25rem;margin-bottom:0.3rem}
+.ag-hero p{color:rgba(255,255,255,0.6);font-size:0.85rem}
+.ag-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;margin-right:0.4rem;box-shadow:0 0 0 4px rgba(34,197,94,0.2)}
+.ag-dot.off{background:#9ca3af;box-shadow:none}
+.ag-actions{display:flex;gap:0.5rem;flex-wrap:wrap}
+.ag-btn-light{background:white;color:var(--dark);padding:0.6rem 1.1rem;border-radius:100px;font-size:0.82rem;font-weight:700;border:none;cursor:pointer}
+.ag-btn-ghost{background:rgba(255,255,255,0.1);color:white;padding:0.6rem 1.1rem;border-radius:100px;font-size:0.82rem;font-weight:600;border:1px solid rgba(255,255,255,0.2);cursor:pointer}
+.ag-usage{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+.ag-meter{background:white;border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem}
+.ag-meter-top{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--gray);margin-bottom:0.5rem;font-weight:600}
+.ag-meter-top b{color:var(--dark)}
+.ag-bar{height:7px;background:var(--lavender);border-radius:100px;overflow:hidden}
+.ag-bar span{display:block;height:100%;background:var(--purple);border-radius:100px}
+.ag-tabs{display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1rem}
+.ag-tab{padding:0.5rem 0.95rem;border-radius:100px;font-size:0.8rem;font-weight:600;background:white;border:1.5px solid var(--border);color:var(--gray);cursor:pointer}
+.ag-tab.active{background:var(--purple);border-color:var(--purple);color:white}
+.ag-tab .cnt{display:inline-block;margin-left:0.35rem;background:rgba(0,0,0,0.08);border-radius:100px;padding:0 0.45rem;font-size:0.7rem}
+.ag-panel{display:none}
+.ag-panel.active{display:block}
+.ag-post{background:white;border:1.5px solid var(--border);border-radius:14px;margin-bottom:0.9rem;display:grid;grid-template-columns:200px 1fr;overflow:hidden}
+.ag-media{background:var(--lavender);display:flex;align-items:center;justify-content:center;min-height:200px;position:relative}
+.ag-media img,.ag-media video{width:100%;height:100%;object-fit:cover;display:block;max-height:280px}
+.ag-media .wait{font-size:0.78rem;color:var(--purple);text-align:center;padding:1rem}
+.ag-media .badge{position:absolute;top:8px;left:8px;background:rgba(26,23,48,0.75);color:white;font-size:0.68rem;font-weight:700;padding:0.2rem 0.55rem;border-radius:100px}
+.ag-body{padding:1rem 1.1rem;display:flex;flex-direction:column;gap:0.6rem}
+.ag-meta{display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;font-size:0.76rem;color:var(--gray)}
+.ag-body textarea{width:100%;min-height:110px;border:1.5px solid var(--border);border-radius:10px;padding:0.7rem;font-size:0.85rem;line-height:1.55;font-family:'Outfit',sans-serif;resize:vertical;background:var(--off-white)}
+.ag-body input[type=datetime-local],.ag-body input[type=text]{border:1.5px solid var(--border);border-radius:8px;padding:0.45rem 0.6rem;font-size:0.8rem;font-family:'Outfit',sans-serif;background:var(--off-white)}
+.ag-caption{font-size:0.85rem;line-height:1.6;color:var(--dark2);white-space:pre-wrap}
+.ag-row{display:flex;gap:0.5rem;flex-wrap:wrap}
+.ag-err{font-size:0.76rem;color:#e11d48;background:#fff1f2;border-radius:8px;padding:0.45rem 0.7rem}
+.s-scheduled{background:#ede9fe;color:#6d28d9}
+.s-failed,.s-expired,.s-rejected{background:#fee2e2;color:#b91c1c}
+.s-pending_approval{background:#fef3c7;color:#d97706}
+.s-publishing{background:#e0f2fe;color:#0369a1}
+.ag-chk{display:flex;flex-wrap:wrap;gap:0.5rem}
+.ag-chk label{display:flex;align-items:center;gap:0.35rem;font-size:0.82rem;background:var(--off-white);border:1.5px solid var(--border);border-radius:100px;padding:0.35rem 0.75rem;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;color:var(--dark2);margin:0}
+.ag-chk input,.fg .ag-chk input{accent-color:var(--purple);width:16px;height:16px;padding:0;margin:0;appearance:auto;-webkit-appearance:checkbox;border:none;flex-shrink:0}
+.ag-switch{display:flex;align-items:flex-start;gap:0.75rem;padding:0.9rem 1rem;border:1.5px solid var(--border);border-radius:12px;background:var(--off-white);margin-bottom:0.75rem}
+.ag-switch input{width:18px;height:18px;accent-color:var(--purple);margin-top:2px;flex-shrink:0}
+.ag-switch b{display:block;font-size:0.88rem;margin-bottom:0.15rem}
+.ag-switch small{font-size:0.78rem;color:var(--gray);line-height:1.45}
+.ag-switch.locked{opacity:0.55}
+.ag-reply{background:white;border:1.5px solid var(--border);border-radius:12px;padding:0.9rem 1rem;margin-bottom:0.6rem}
+.ag-reply .who{font-size:0.78rem;font-weight:700;color:var(--purple)}
+.ag-reply .txt{font-size:0.86rem;margin:0.3rem 0;color:var(--dark2)}
+.ag-reply .ans{font-size:0.82rem;color:var(--gray);border-left:3px solid var(--lavender);padding-left:0.6rem}
+.ag-log{font-size:0.82rem;padding:0.6rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.75rem}
+.ag-log time{color:var(--gray-light);flex-shrink:0;font-size:0.75rem;min-width:92px}
+.ag-locked{text-align:center;padding:2.5rem 1.5rem;background:white;border-radius:18px;border:1.5px dashed var(--purple)}
+.ag-locked h3{font-size:1.2rem;margin-bottom:0.5rem}
+.ag-locked p{color:var(--gray);font-size:0.88rem;margin-bottom:1.2rem;max-width:520px;margin-left:auto;margin-right:auto}
+@media(max-width:900px){
+  .ag-usage{grid-template-columns:1fr}
+  .ag-post{grid-template-columns:1fr}
+}
 @media(max-width:900px){
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
@@ -183,6 +241,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
   <div class="nav-section">
     <div class="nav-label">Principale</div>
     <button class="nav-item active" data-page="home"><span class="nav-icon">🏠</span>Dashboard</button>
+    <button class="nav-item" data-page="agente"><span class="nav-icon">🤖</span>Agente AI</button>
     <button class="nav-item" data-page="genera"><span class="nav-icon">✨</span>Genera Post</button>
     <button class="nav-item" data-page="posts"><span class="nav-icon">📋</span>I miei post</button>
     <button class="nav-item" data-page="approvati"><span class="nav-icon">✅</span>Post approvati</button>
@@ -235,6 +294,104 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
         <button class="btn-sm btn-purple" data-page="genera">+ Genera nuovi</button>
       </div>
       <div id="home-posts"></div>
+    </div>
+
+    <!-- AGENTE AI -->
+    <div class="page" id="page-agente">
+      <div id="ag-locked" class="ag-locked" style="display:none">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem">🤖</div>
+        <h3>Il tuo social media manager AI, sempre al lavoro</h3>
+        <p>L'Agente AI pianifica i post della settimana, crea immagini e video, pubblica da solo su Instagram e Facebook, risponde ai commenti e ti manda un report con i risultati. È incluso nei piani Starter, Pro e Business.</p>
+        <button class="btn-sm btn-purple" data-page="piano">Scopri i piani →</button>
+      </div>
+
+      <div id="ag-main" style="display:none">
+        <div class="ag-hero">
+          <div>
+            <h2><span class="ag-dot" id="ag-dot"></span><span id="ag-status-title">Agente attivo</span></h2>
+            <p id="ag-status-sub">Piano —</p>
+          </div>
+          <div class="ag-actions">
+            <button class="ag-btn-light" id="ag-plan-now">⚡ Pianifica ora</button>
+            <button class="ag-btn-ghost" id="ag-toggle">⏸ Metti in pausa</button>
+          </div>
+        </div>
+
+        <div class="ag-usage">
+          <div class="ag-meter"><div class="ag-meter-top"><span>📝 Post del mese</span><b id="ag-u-posts">0/0</b></div><div class="ag-bar"><span id="ag-b-posts" style="width:0"></span></div></div>
+          <div class="ag-meter"><div class="ag-meter-top"><span>🎬 Video Reel</span><b id="ag-u-videos">0/0</b></div><div class="ag-bar"><span id="ag-b-videos" style="width:0"></span></div></div>
+          <div class="ag-meter"><div class="ag-meter-top"><span>💬 Risposte ai commenti</span><b id="ag-u-replies">0/0</b></div><div class="ag-bar"><span id="ag-b-replies" style="width:0"></span></div></div>
+        </div>
+
+        <div class="ag-tabs" id="ag-tabs">
+          <button class="ag-tab active" data-agtab="approve">Da approvare <span class="cnt" id="ag-c-approve">0</span></button>
+          <button class="ag-tab" data-agtab="scheduled">Programmati <span class="cnt" id="ag-c-scheduled">0</span></button>
+          <button class="ag-tab" data-agtab="published">Pubblicati <span class="cnt" id="ag-c-published">0</span></button>
+          <button class="ag-tab" data-agtab="comments">Commenti <span class="cnt" id="ag-c-comments">0</span></button>
+          <button class="ag-tab" data-agtab="report">Report</button>
+          <button class="ag-tab" data-agtab="brief">Profilo brand</button>
+          <button class="ag-tab" data-agtab="activity">Attività</button>
+        </div>
+
+        <div class="ag-panel active" id="agp-approve"></div>
+        <div class="ag-panel" id="agp-scheduled"></div>
+        <div class="ag-panel" id="agp-published"></div>
+        <div class="ag-panel" id="agp-comments"></div>
+        <div class="ag-panel" id="agp-report"></div>
+        <div class="ag-panel" id="agp-activity"><div class="card-box" id="ag-activity"></div></div>
+
+        <div class="ag-panel" id="agp-brief">
+          <div class="card-box">
+            <h3>🧭 Profilo del brand — il brief del tuo agente</h3>
+            <p style="color:var(--gray);font-size:0.84rem;margin:-0.6rem 0 1.2rem">Più dettagli dai, più i post sembreranno scritti da te.</p>
+            <div class="grid-2">
+              <div class="fg"><label>Nome del brand *</label><input id="ag-brand" type="text" placeholder="es. Pizzeria Da Mario"></div>
+              <div class="fg"><label>Settore</label><input id="ag-sector" type="text" placeholder="es. Ristorante pizzeria"></div>
+            </div>
+            <div class="fg"><label>Descrizione dell'attività *</label><textarea id="ag-description" placeholder="Cosa fai, cosa ti rende diverso, prodotti o servizi principali..."></textarea></div>
+            <div class="grid-2">
+              <div class="fg"><label>Città / zona</label><input id="ag-city" type="text" placeholder="es. Roma, Prati"></div>
+              <div class="fg"><label>Obiettivo principale</label>
+                <select id="ag-goal">
+                  <option>Più clienti e prenotazioni</option><option>Più vendite online</option>
+                  <option>Più follower e visibilità</option><option>Fidelizzare i clienti</option><option>Lanciare un nuovo prodotto</option>
+                </select>
+              </div>
+            </div>
+            <div class="fg"><label>Pubblico target</label><input id="ag-target" type="text" placeholder="es. Famiglie e giovani coppie del quartiere, 25-45 anni"></div>
+            <div class="grid-2">
+              <div class="fg"><label>Tono di voce</label><input id="ag-tone" type="text" placeholder="es. Caldo, ironico, dà del tu"></div>
+              <div class="fg"><label>Stile delle immagini</label><input id="ag-visual" type="text" placeholder="es. Foto calde e luminose, toni terracotta"></div>
+            </div>
+            <div class="fg"><label>Informazioni per post e risposte (orari, servizi, prezzi, link)</label><textarea id="ag-faq" placeholder="es. Aperti mar-dom 19-24. Prenotazioni al 06 1234567. Pizza del mese: zucca e salsiccia 12€. Consegna con Glovo."></textarea></div>
+
+            <div class="grid-2">
+              <div class="fg"><label>Pubblica su</label>
+                <div class="ag-chk">
+                  <label><input type="checkbox" class="ag-social" value="instagram" checked> 📸 Instagram</label>
+                  <label><input type="checkbox" class="ag-social" value="facebook"> 📘 Facebook</label>
+                </div>
+              </div>
+              <div class="fg"><label>Orari di pubblicazione</label>
+                <div class="ag-row"><input type="text" id="ag-time1" value="18:30" placeholder="18:30" style="width:90px"><input type="text" id="ag-time2" placeholder="12:30 (opz.)" style="width:110px"></div>
+              </div>
+            </div>
+            <div class="fg"><label>Giorni di pubblicazione</label>
+              <div class="ag-chk" id="ag-days"></div>
+            </div>
+
+            <div class="ag-switch" id="ag-sw-autopilot">
+              <input type="checkbox" id="ag-autopilot">
+              <div><b>🚀 Autopilota</b><small>L'agente pubblica senza chiederti l'approvazione. Puoi sempre modificare o annullare i post programmati. <span class="ag-lock-note">Disponibile da Pro.</span></small></div>
+            </div>
+            <div class="ag-switch" id="ag-sw-reply">
+              <input type="checkbox" id="ag-autoreply">
+              <div><b>💬 Risposte automatiche ai commenti</b><small>Risponde a domande e complimenti su Instagram. Lamentele e richieste senza risposta nelle info restano a te. <span class="ag-lock-note">Disponibile da Pro.</span></small></div>
+            </div>
+            <button class="btn-gen" style="max-width:260px" id="ag-save">Salva e avvia l'agente</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- GENERA -->
@@ -339,33 +496,33 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
     <div class="page" id="page-piano">
       <p style="color:var(--gray);margin-bottom:1.5rem;font-size:0.88rem">Scegli il piano più adatto alle tue esigenze.</p>
       <div class="plan-grid">
-        <div class="plan-card" id="pc-free">
-          <div class="plan-name">Gratuito</div>
-          <div class="plan-price">€0 <small>/mese</small></div>
+        <div class="plan-card" id="pc-starter">
+          <div class="plan-name">Starter</div>
+          <div class="plan-price">€29 <small>/mese</small></div>
           <ul class="plan-feats">
-            <li>✅ 2 post a settimana</li><li>✅ 1 profilo social</li>
-            <li>✅ Strategia AI base</li><li>✅ Caption + hashtag</li>
-            <li>❌ Pubblicazione automatica</li><li>❌ Immagini AI</li>
+            <li>✅ Agente AI con piano editoriale automatico</li><li>✅ 12 post al mese con immagini AI</li>
+            <li>✅ Pubblicazione automatica su Instagram e Facebook</li><li>✅ Tu approvi, l'agente pubblica</li>
+            <li>✅ Report mensile con consigli</li><li>❌ Video Reel e risposte ai commenti</li>
           </ul>
-          <button class="btn-plan btn-plan-current" id="pb-free">Piano attuale</button>
+          <button class="btn-plan btn-plan-primary" id="pb-starter">Passa a Starter →</button>
         </div>
         <div class="plan-card" id="pc-pro">
           <div class="plan-name">Pro</div>
-          <div class="plan-price">€35 <small>/mese</small></div>
+          <div class="plan-price">€79 <small>/mese</small></div>
           <ul class="plan-feats">
-            <li>✅ Post illimitati</li><li>✅ Fino a 4 profili social</li>
-            <li>✅ Pubblicazione automatica</li><li>✅ Immagini AI generate</li>
-            <li>✅ Instagram + Facebook + TikTok</li><li>✅ Supporto prioritario</li>
+            <li>✅ 30 post al mese + caroselli</li><li>✅ 4 video Reel AI al mese</li>
+            <li>✅ Autopilota: pubblica senza approvazione</li><li>✅ Risposte automatiche ai commenti (300/mese)</li>
+            <li>✅ Report settimanale con consigli</li><li>✅ Instagram + Facebook</li>
           </ul>
           <button class="btn-plan btn-plan-primary" id="pb-pro">Passa a Pro →</button>
         </div>
         <div class="plan-card" id="pc-business">
           <div class="plan-name">Business</div>
-          <div class="plan-price">€200 <small>/anno</small></div>
+          <div class="plan-price">€199 <small>/mese</small></div>
           <ul class="plan-feats">
-            <li>✅ Tutto il piano Pro</li><li>✅ Fino a 10 profili social</li>
-            <li>✅ Multi-brand dashboard</li><li>✅ Account manager dedicato</li>
-            <li>✅ Report mensile avanzato</li><li>✅ 2 mesi gratis vs mensile</li>
+            <li>✅ 60 post al mese (fino a 2 al giorno)</li><li>✅ 12 video Reel AI al mese</li>
+            <li>✅ Autopilota completo</li><li>✅ Risposte ai commenti ogni 30 minuti (1500/mese)</li>
+            <li>✅ Report settimanale con consigli</li><li>✅ Supporto prioritario</li>
           </ul>
           <button class="btn-plan btn-plan-primary" id="pb-business">Passa a Business →</button>
         </div>
@@ -405,7 +562,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 'use strict';
 
 var SUPABASE_URL = 'https://evkbftrxljkjvygckpso.supabase.co';
-var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2a2JmdHJ4bGpranZ5Z2NrcHNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Nzg1MjU1OCwiZXhwIjoyMDkzNDI4NTU4fQ.GZodvhZ443sg5BSM9KWicmebhzec2MdjWC1pPQmmWGU';
+var SUPABASE_ANON_KEY = 'INCOLLA_QUI_LA_ANON_KEY'; // ⚠️ Supabase → Project Settings → API → chiave "anon public" (MAI la service_role)
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 var user = null;
@@ -414,7 +571,7 @@ var posts = [];
 var socialCount = 0;
 
 var SOCIAL_EMOJI = {Instagram:'📸',Facebook:'📘',TikTok:'🎵',LinkedIn:'💼','Instagram + Facebook':'📸','Tutti i social':'🌐'};
-var PAGE_TITLES = {home:'Dashboard',genera:'Genera Post',posts:'I miei post',approvati:'Post approvati',social:'Social collegati',piano:'Piano e fatturazione',impostazioni:'Impostazioni'};
+var PAGE_TITLES = {agente:'Agente AI',home:'Dashboard',genera:'Genera Post',posts:'I miei post',approvati:'Post approvati',social:'Social collegati',piano:'Piano e fatturazione',impostazioni:'Impostazioni'};
 
 async function init() {
   var session = (await sb.auth.getSession()).data.session;
@@ -478,7 +635,9 @@ function bindEvents() {
   document.getElementById('btn-gen').addEventListener('click', doGenerate);
   document.getElementById('btn-rigenera').addEventListener('click', doGenerate);
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+  document.getElementById('pb-starter').addEventListener('click', function() { if (userPlan !== 'starter') doCheckout('starter'); });
   document.getElementById('pb-pro').addEventListener('click', function() { doCheckout('pro'); });
+  bindAgentEvents();
   document.getElementById('pb-business').addEventListener('click', function() { doCheckout('business'); });
   document.getElementById('btn-ig').addEventListener('click', function() { connectMeta(); });
   document.getElementById('btn-fb').addEventListener('click', function() { connectMeta(); });
@@ -497,6 +656,7 @@ function goTo(name) {
   document.getElementById('sidebar').classList.remove('open');
   if (name === 'posts') renderAllPosts();
   if (name === 'approvati') renderApprovedPosts();
+  if (name === 'agente') loadAgent();
 }
 
 async function loadUser() {
@@ -531,7 +691,12 @@ async function loadUser() {
 function updatePlanUI() {
   var badge = document.getElementById('plan-badge');
   var upBtn = document.getElementById('btn-upgrade');
-  if (userPlan === 'pro') {
+  if (userPlan === 'starter') {
+    badge.textContent = '🌱 Starter'; badge.className = 'plan-badge badge-pro';
+    upBtn.textContent = '⚡ Passa a Pro';
+    document.getElementById('pb-starter').className = 'btn-plan btn-plan-current';
+    document.getElementById('pb-starter').textContent = '✓ Piano attuale';
+  } else if (userPlan === 'pro') {
     badge.textContent = '⚡ Piano Pro'; badge.className = 'plan-badge badge-pro';
     upBtn.textContent = '⚡ Piano Pro';
     document.getElementById('pb-pro').className = 'btn-plan btn-plan-current';
@@ -543,8 +708,6 @@ function updatePlanUI() {
     document.getElementById('pb-business').textContent = '✓ Piano attuale';
   } else {
     badge.textContent = 'Piano Gratuito'; badge.className = 'plan-badge badge-free';
-    document.getElementById('pb-free').className = 'btn-plan btn-plan-current';
-    document.getElementById('pb-free').textContent = '✓ Piano attuale';
   }
 }
 
@@ -967,6 +1130,325 @@ async function checkVideo(btn) {
     btn.textContent = 'Aggiorna';
     btn.disabled = false;
     toast('Errore verifica video', 'error');
+  }
+}
+
+// =====================================================================
+// AGENTE AI
+// =====================================================================
+var agState = null;
+var AG_DAYS = [['1','Lun'],['2','Mar'],['3','Mer'],['4','Gio'],['5','Ven'],['6','Sab'],['0','Dom']];
+var AG_TYPE = {image:'🖼️ Post', carousel:'🎠 Carosello', reel:'🎬 Reel'};
+var AG_STATUS = {pending_approval:'⏳ Da approvare', scheduled:'🗓️ Programmato', publishing:'📤 In pubblicazione', published:'✅ Pubblicato', failed:'⚠️ Non pubblicato', rejected:'🗑️ Scartato', expired:'⌛ Scaduto'};
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+async function agentApi(path, method, body) {
+  var session = (await sb.auth.getSession()).data.session;
+  var resp = await fetch(path, {
+    method: method || 'GET',
+    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session ? session.access_token : '')},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  var data = await resp.json().catch(function(){ return {}; });
+  if (!resp.ok) throw new Error(data.error || ('Errore ' + resp.status));
+  return data;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('it-IT', {weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+}
+function toLocalInput(iso) {
+  var d = new Date(iso);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
+function bindAgentEvents() {
+  document.getElementById('ag-days').innerHTML = AG_DAYS.map(function(d) {
+    return '<label><input type="checkbox" class="ag-day" value="' + d[0] + '" checked> ' + d[1] + '</label>';
+  }).join('');
+  document.getElementById('ag-tabs').addEventListener('click', function(e) {
+    var t = e.target.closest('.ag-tab'); if (!t) return;
+    agShowTab(t.getAttribute('data-agtab'));
+  });
+  document.getElementById('ag-save').addEventListener('click', agSaveProfile);
+  document.getElementById('ag-plan-now').addEventListener('click', agPlanNow);
+  document.getElementById('ag-toggle').addEventListener('click', agToggle);
+  document.getElementById('page-agente').addEventListener('click', function(e) {
+    var b = e.target.closest('[data-agact]'); if (!b) return;
+    agAction(b.getAttribute('data-agact'), b.getAttribute('data-id'), b);
+  });
+}
+
+function agShowTab(name) {
+  document.querySelectorAll('.ag-tab').forEach(function(t) { t.classList.toggle('active', t.getAttribute('data-agtab') === name); });
+  document.querySelectorAll('.ag-panel').forEach(function(p) { p.classList.toggle('active', p.id === 'agp-' + name); });
+}
+
+async function loadAgent(silent) {
+  try {
+    agState = await agentApi('/api/agent/state');
+  } catch(e) {
+    if (!silent) toast('Agente: ' + e.message, 'error');
+    return;
+  }
+  var plan = agState.plan;
+  document.getElementById('ag-locked').style.display = plan.agent ? 'none' : 'block';
+  document.getElementById('ag-main').style.display = plan.agent ? 'block' : 'none';
+  if (!plan.agent) return;
+  agRenderHeader();
+  agRenderProfile();
+  agRenderPosts();
+  agRenderComments();
+  agRenderReport();
+  agRenderActivity();
+  if (!agState.profile) agShowTab('brief');
+  // aggiorna da solo mentre immagini e video vengono creati
+  clearTimeout(window._agTimer);
+  var working = agState.posts.some(function(p) { return ['pending','video_processing'].indexOf(p.media_status) >= 0 && ['pending_approval','scheduled'].indexOf(p.status) >= 0; });
+  if (working && document.getElementById('page-agente').classList.contains('active')) {
+    window._agTimer = setTimeout(function() { loadAgent(true); }, 20000);
+  }
+}
+
+function agMeter(key, used, max) {
+  document.getElementById('ag-u-' + key).textContent = max ? (used + '/' + max) : 'Non incluso';
+  document.getElementById('ag-b-' + key).style.width = max ? Math.min(100, Math.round(used / max * 100)) + '%' : '0';
+}
+
+function agRenderHeader() {
+  var p = agState.plan, u = agState.usage, prof = agState.profile;
+  var active = prof && prof.active;
+  document.getElementById('ag-dot').className = 'ag-dot' + (active ? '' : ' off');
+  document.getElementById('ag-status-title').textContent = !prof ? 'Agente da configurare' : active ? 'Agente attivo' : 'Agente in pausa';
+  var conn = agState.connections;
+  var warn = (!conn.instagram && !conn.facebook) ? ' · ⚠️ Collega Instagram o Facebook per pubblicare' : '';
+  document.getElementById('ag-status-sub').textContent = 'Piano ' + p.label + (prof && prof.autopilot ? ' · Autopilota' : ' · Approvazione manuale') + warn;
+  document.getElementById('ag-toggle').style.display = prof ? '' : 'none';
+  document.getElementById('ag-toggle').textContent = active ? '⏸ Metti in pausa' : '▶ Riattiva';
+  agMeter('posts', u.posts || 0, p.postsPerMonth);
+  agMeter('videos', u.videos || 0, p.videosPerMonth);
+  agMeter('replies', u.replies || 0, p.repliesPerMonth);
+}
+
+function agRenderProfile() {
+  var prof = agState.profile || {}, plan = agState.plan;
+  var map = {brand:'ag-brand', sector:'ag-sector', description:'ag-description', city:'ag-city', target:'ag-target', tone:'ag-tone', visual_style:'ag-visual', faq:'ag-faq'};
+  Object.keys(map).forEach(function(k) { if (prof[k] != null) document.getElementById(map[k]).value = prof[k]; });
+  if (!prof.brand) {
+    var defBrand = document.getElementById('s-brand').value;
+    if (defBrand) document.getElementById('ag-brand').value = defBrand;
+  }
+  if (prof.goal) document.getElementById('ag-goal').value = prof.goal;
+  var socials = prof.socials || ['instagram'];
+  document.querySelectorAll('.ag-social').forEach(function(c) { c.checked = socials.indexOf(c.value) >= 0; });
+  var days = (prof.posting_days || [0,1,2,3,4,5,6]).map(String);
+  document.querySelectorAll('.ag-day').forEach(function(c) { c.checked = days.indexOf(c.value) >= 0; });
+  var times = prof.posting_times || ['18:30'];
+  document.getElementById('ag-time1').value = times[0] || '18:30';
+  document.getElementById('ag-time2').value = times[1] || '';
+  var ap = document.getElementById('ag-autopilot'), ar = document.getElementById('ag-autoreply');
+  ap.checked = !!prof.autopilot; ar.checked = !!prof.auto_reply;
+  ap.disabled = !plan.autopilot; ar.disabled = !plan.autoReply;
+  document.getElementById('ag-sw-autopilot').classList.toggle('locked', !plan.autopilot);
+  document.getElementById('ag-sw-reply').classList.toggle('locked', !plan.autoReply);
+  document.querySelectorAll('.ag-lock-note').forEach(function(n, i) { n.style.display = (i === 0 ? plan.autopilot : plan.autoReply) ? 'none' : ''; });
+  document.getElementById('ag-save').textContent = agState.profile ? 'Salva modifiche' : 'Salva e avvia l\'agente';
+}
+
+function agMediaHtml(p) {
+  var badge = '<span class="badge">' + (AG_TYPE[p.type] || p.type) + '</span>';
+  if (p.type === 'reel' && p.video_url) return badge + '<video src="' + esc(p.video_url) + '" controls muted playsinline poster="' + esc(p.image_url || '') + '"></video>';
+  if (p.media_status === 'failed') return badge + '<div class="wait">⚠️ Immagine non creata<br>Prova "Nuova immagine"</div>';
+  if (p.type === 'reel' && p.media_status === 'video_processing') return badge + (p.image_url ? '<img src="' + esc(p.image_url) + '" alt="">' : '') + '<div class="wait" style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.85)">🎬 Video in creazione...</div>';
+  if (p.image_url) {
+    var extra = (p.type === 'carousel' && p.carousel_images && p.carousel_images.length > 1) ? '<span class="badge" style="left:auto;right:8px">+' + (p.carousel_images.length - 1) + '</span>' : '';
+    return badge + extra + '<img src="' + esc(p.image_url) + '" alt="">';
+  }
+  return badge + '<div class="wait">🎨 Sto creando l\'immagine...</div>';
+}
+
+function agPostCard(p, editable) {
+  var tags = (p.hashtags || []).map(function(h) { return '#' + h; }).join(' ');
+  var socials = (p.socials || []).map(function(s) { return s === 'facebook' ? '📘 Facebook' : '📸 Instagram'; }).join(' + ');
+  var h = '<div class="ag-post"><div class="ag-media">' + agMediaHtml(p) + '</div><div class="ag-body">';
+  h += '<div class="ag-meta"><span class="status s-' + esc(p.status) + '">' + (AG_STATUS[p.status] || esc(p.status)) + '</span><span>' + socials + '</span>';
+  h += '<span>· ' + (p.status === 'published' ? 'pubblicato ' + fmtDate(p.published_at) : fmtDate(p.scheduled_at)) + '</span>';
+  if (p.permalink) h += '<a href="' + esc(p.permalink) + '" target="_blank" rel="noopener" style="color:var(--purple);font-weight:600">Vedi su Instagram ↗</a>';
+  h += '</div>';
+  if (editable) {
+    h += '<textarea id="ag-cap-' + p.id + '">' + esc(p.caption) + '</textarea>';
+    h += '<input type="text" id="ag-tag-' + p.id + '" value="' + esc(tags) + '" placeholder="#hashtag">';
+    h += '<div class="ag-row" style="align-items:center"><span style="font-size:0.78rem;color:var(--gray)">Data e ora:</span><input type="datetime-local" id="ag-when-' + p.id + '" value="' + toLocalInput(p.scheduled_at) + '"></div>';
+  } else {
+    h += '<div class="ag-caption">' + esc(p.caption) + '</div><div style="font-size:0.78rem;color:var(--purple)">' + esc(tags) + '</div>';
+  }
+  if (p.error && p.status !== 'published') h += '<div class="ag-err">' + esc(p.error) + '</div>';
+  else if (p.error) h += '<div class="ag-err" style="background:#fffbeb;color:#b45309">' + esc(p.error) + '</div>';
+  h += '<div class="ag-row">';
+  if (p.status === 'pending_approval' || p.status === 'expired' || p.status === 'failed') {
+    h += '<button class="pBtn pBtn-approve" data-agact="approve" data-id="' + p.id + '">✓ Approva</button>';
+  }
+  if (p.status === 'scheduled') h += '<button class="pBtn pBtn-edit" data-agact="save" data-id="' + p.id + '">💾 Salva modifiche</button>';
+  if (editable && !p.video_task_id) h += '<button class="pBtn pBtn-edit" data-agact="regen" data-id="' + p.id + '">🎨 Nuova immagine</button>';
+  if (['pending_approval','scheduled','expired','failed'].indexOf(p.status) >= 0) h += '<button class="pBtn pBtn-delete" data-agact="reject" data-id="' + p.id + '">✕ Scarta</button>';
+  h += '</div></div></div>';
+  return h;
+}
+
+function agRenderPosts() {
+  var all = agState.posts || [];
+  var approve = all.filter(function(p) { return ['pending_approval','failed'].indexOf(p.status) >= 0; });
+  var scheduled = all.filter(function(p) { return ['scheduled','publishing'].indexOf(p.status) >= 0; });
+  var published = all.filter(function(p) { return p.status === 'published'; }).reverse();
+  document.getElementById('ag-c-approve').textContent = approve.length;
+  document.getElementById('ag-c-scheduled').textContent = scheduled.length;
+  document.getElementById('ag-c-published').textContent = published.length;
+  var empty = function(icon, title, text) { return '<div class="empty"><div class="icon">' + icon + '</div><h3>' + title + '</h3><p>' + text + '</p></div>'; };
+  document.getElementById('agp-approve').innerHTML = approve.length ? approve.map(function(p) { return agPostCard(p, true); }).join('')
+    : empty('✨', 'Niente da approvare', agState.profile && agState.profile.autopilot ? 'Sei in autopilota: i post vanno direttamente in "Programmati".' : 'Quando l\'agente prepara nuovi post li trovi qui.');
+  document.getElementById('agp-scheduled').innerHTML = scheduled.length ? scheduled.map(function(p) { return agPostCard(p, p.status === 'scheduled'); }).join('')
+    : empty('🗓️', 'Nessun post programmato', 'Approva i post o premi "Pianifica ora".');
+  document.getElementById('agp-published').innerHTML = published.length ? published.map(function(p) { return agPostCard(p, false); }).join('')
+    : empty('📭', 'Ancora nessun post pubblicato', 'Qui vedrai gli ultimi 30 giorni.');
+}
+
+function agRenderComments() {
+  var list = agState.replies || [];
+  var flagged = list.filter(function(r) { return r.status === 'flagged'; });
+  var replied = list.filter(function(r) { return r.status === 'replied'; });
+  document.getElementById('ag-c-comments').textContent = flagged.length;
+  var h = '';
+  if (!agState.plan.autoReply) {
+    h = '<div class="empty"><div class="icon">💬</div><h3>Risposte automatiche dal piano Pro</h3><p>L\'agente risponde ai commenti Instagram con il tono del tuo brand.</p><button class="btn-sm btn-purple" data-page="piano">Passa a Pro →</button></div>';
+  } else {
+    h += '<div class="section-header"><div class="section-title">🙋 Da gestire tu (' + flagged.length + ')</div></div>';
+    h += flagged.length ? flagged.map(function(r) {
+      return '<div class="ag-reply"><div class="who">@' + esc(r.username) + '</div><div class="txt">' + esc(r.comment_text) + '</div>' +
+        (r.reply_text ? '<div class="ag-err">' + esc(r.reply_text) + '</div>' : '') +
+        '<div class="ag-row" style="margin-top:0.5rem"><button class="pBtn pBtn-edit" data-agact="resolve" data-id="' + r.id + '">✓ Fatto, l\'ho gestito io</button></div></div>';
+    }).join('') : '<p style="color:var(--gray);font-size:0.85rem;margin-bottom:1.25rem">Nessun commento in attesa. 👌</p>';
+    h += '<div class="section-header" style="margin-top:1.5rem"><div class="section-title">🤖 Risposte inviate dall\'agente</div></div>';
+    h += replied.length ? replied.map(function(r) {
+      return '<div class="ag-reply"><div class="who">@' + esc(r.username) + '</div><div class="txt">' + esc(r.comment_text) + '</div><div class="ans">↳ ' + esc(r.reply_text) + '</div></div>';
+    }).join('') : '<p style="color:var(--gray);font-size:0.85rem">' + (agState.profile && agState.profile.auto_reply ? 'Ancora nessuna risposta: controllo i commenti ogni ' + (agState.plan.replyEveryMin >= 60 ? (agState.plan.replyEveryMin / 60) + ' ore' : agState.plan.replyEveryMin + ' minuti') + '.' : 'Attiva le risposte automatiche nel Profilo brand.') + '</p>';
+  }
+  document.getElementById('agp-comments').innerHTML = h;
+}
+
+function agRenderReport() {
+  var r = agState.report;
+  var h = '<div class="card-box">';
+  if (!r) {
+    h += '<h3>📊 Report</h3><p style="color:var(--gray);font-size:0.86rem;margin-bottom:1rem">Il primo report arriva ' + (agState.plan.report === 'monthly' ? 'il primo lunedì del mese' : 'lunedì mattina') + '. Puoi anche crearlo adesso.</p>';
+  } else {
+    var d = r.data || {}, t = d.totals || {};
+    h += '<h3>📊 Report — ' + esc(r.period) + '</h3>';
+    if (t.posts) h += '<div class="stats-grid" style="margin-bottom:1rem"><div class="stat-card"><div class="stat-label">Post</div><div class="stat-val">' + t.posts + '</div></div><div class="stat-card"><div class="stat-label">Mi piace</div><div class="stat-val">' + (t.likes || 0) + '</div></div><div class="stat-card"><div class="stat-label">Commenti</div><div class="stat-val">' + (t.comments || 0) + '</div></div><div class="stat-card"><div class="stat-label">Persone raggiunte</div><div class="stat-val">' + (t.reach || 0) + '</div></div></div>';
+    h += '<div class="strategy-box"><h4>In sintesi</h4><p>' + esc(d.summary) + '</p></div>';
+    if (d.highlights && d.highlights.length) h += '<div class="s-block" style="margin-bottom:0.75rem"><h5>⭐ Cosa ha funzionato</h5><ul>' + d.highlights.map(function(x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+    if (d.recommendations && d.recommendations.length) h += '<div class="s-block" style="margin-bottom:1rem"><h5>🎯 Cosa farà l\'agente nei prossimi post</h5><ul>' + d.recommendations.map(function(x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+  }
+  h += '<button class="btn-sm btn-outline" data-agact="report">↻ Crea report adesso</button></div>';
+  document.getElementById('agp-report').innerHTML = h;
+}
+
+function agRenderActivity() {
+  var a = agState.activity || [];
+  document.getElementById('ag-activity').innerHTML = '<h3>🕑 Cosa ha fatto l\'agente</h3>' + (a.length ? a.map(function(x) {
+    return '<div class="ag-log"><time>' + fmtDate(x.created_at) + '</time><span>' + esc(x.message) + '</span></div>';
+  }).join('') : '<p style="color:var(--gray);font-size:0.85rem">Ancora nessuna attività.</p>');
+}
+
+async function agSaveProfile() {
+  var brand = document.getElementById('ag-brand').value.trim();
+  var desc = document.getElementById('ag-description').value.trim();
+  if (!brand || !desc) return toast('Inserisci nome del brand e descrizione', 'error');
+  var socials = []; document.querySelectorAll('.ag-social:checked').forEach(function(c) { socials.push(c.value); });
+  var days = []; document.querySelectorAll('.ag-day:checked').forEach(function(c) { days.push(parseInt(c.value)); });
+  if (!socials.length) return toast('Scegli almeno un social', 'error');
+  if (!days.length) return toast('Scegli almeno un giorno', 'error');
+  var times = [document.getElementById('ag-time1').value.trim(), document.getElementById('ag-time2').value.trim()]
+    .filter(function(t) { return /^\d{1,2}:\d{2}$/.test(t); }).map(function(t) { return t.length === 4 ? '0' + t : t; });
+  var btn = document.getElementById('ag-save');
+  btn.disabled = true;
+  try {
+    var r = await agentApi('/api/agent/profile', 'POST', {
+      brand: brand, description: desc,
+      sector: document.getElementById('ag-sector').value.trim(),
+      city: document.getElementById('ag-city').value.trim(),
+      goal: document.getElementById('ag-goal').value,
+      target: document.getElementById('ag-target').value.trim(),
+      tone: document.getElementById('ag-tone').value.trim(),
+      visual_style: document.getElementById('ag-visual').value.trim(),
+      faq: document.getElementById('ag-faq').value.trim(),
+      socials: socials, posting_days: days, posting_times: times.length ? times : ['18:30'],
+      autopilot: document.getElementById('ag-autopilot').checked,
+      auto_reply: document.getElementById('ag-autoreply').checked
+    });
+    toast(r.started ? '🤖 Agente avviato! Sta preparando i primi post...' : 'Profilo salvato ✅');
+    await loadAgent();
+    if (r.started) { agShowTab('approve'); setTimeout(function() { loadAgent(true); }, 25000); }
+  } catch(e) { toast(e.message, 'error'); }
+  btn.disabled = false;
+}
+
+async function agPlanNow() {
+  showLoading('🤖 L\'agente sta scrivendo i post della settimana...');
+  try {
+    var r = await agentApi('/api/agent/plan-now', 'POST', {});
+    toast(r.message);
+    await loadAgent();
+  } catch(e) { toast(e.message, 'error'); }
+  hideLoading();
+}
+
+async function agToggle() {
+  if (!agState || !agState.profile) return;
+  try {
+    await agentApi('/api/agent/profile', 'POST', {active: !agState.profile.active, keepBrand: true});
+    toast(agState.profile.active ? 'Agente in pausa ⏸' : 'Agente riattivato ▶');
+    await loadAgent();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function agEdits(id) {
+  var cap = document.getElementById('ag-cap-' + id);
+  if (!cap) return {};
+  var tagsEl = document.getElementById('ag-tag-' + id);
+  var whenEl = document.getElementById('ag-when-' + id);
+  return {
+    caption: cap.value,
+    hashtags: tagsEl.value.split(/[\s,]+/).map(function(t) { return t.replace(/^#/, ''); }).filter(Boolean),
+    scheduled_at: whenEl.value ? new Date(whenEl.value).toISOString() : undefined
+  };
+}
+
+async function agAction(act, id, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    if (act === 'approve') { await agentApi('/api/agent/posts/' + id + '/approve', 'POST', agEdits(id)); toast('Approvato ✅ Verrà pubblicato all\'orario scelto.'); }
+    else if (act === 'save') { await agentApi('/api/agent/posts/' + id + '/update', 'POST', agEdits(id)); toast('Modifiche salvate ✅'); }
+    else if (act === 'reject') { if (!confirm('Scartare questo post?')) { if (btn) btn.disabled = false; return; } await agentApi('/api/agent/posts/' + id + '/reject', 'POST', {}); toast('Post scartato'); }
+    else if (act === 'regen') {
+      var np = prompt('Descrivi l\'immagine che vuoi (lascia vuoto per farla decidere all\'AI):', '');
+      if (np === null) { if (btn) btn.disabled = false; return; }
+      await agentApi('/api/agent/posts/' + id + '/regenerate-image', 'POST', {image_prompt: np});
+      toast('🎨 Sto creando una nuova immagine...');
+    }
+    else if (act === 'resolve') { await agentApi('/api/agent/replies/' + id + '/resolve', 'POST', {}); }
+    else if (act === 'report') { showLoading('📊 Sto analizzando i risultati...'); await agentApi('/api/agent/report-now', 'POST', {}); hideLoading(); toast('Report pronto 📊'); }
+    await loadAgent();
+  } catch(e) {
+    hideLoading();
+    toast(e.message, 'error');
+    if (btn) btn.disabled = false;
   }
 }
 

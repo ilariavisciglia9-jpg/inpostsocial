@@ -105,7 +105,7 @@ input:focus{border-color:var(--purple);background:white;box-shadow:0 0 0 3px rgb
 
 <script>
 const SUPABASE_URL = 'https://evkbftrxljkjvygckpso.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2a2JmdHJ4bGpranZ5Z2NrcHNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Nzg1MjU1OCwiZXhwIjoyMDkzNDI4NTU4fQ.GZodvhZ443sg5BSM9KWicmebhzec2MdjWC1pPQmmWGU';
+const SUPABASE_ANON_KEY = 'INCOLLA_QUI_LA_ANON_KEY'; // ⚠️ Supabase → Project Settings → API → chiave "anon public" (MAI la service_role)
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const urlParams = new URLSearchParams(window.location.search);
 const urlPlan = urlParams.get('plan');
@@ -119,12 +119,14 @@ sb.auth.getSession().then(async ({ data: { session } }) => {
 });
 
 // Se arriva da piano specifico mostra banner e apri register
-if (urlPlan === 'pro' || urlPlan === 'business') {
+if (urlPlan === 'starter' || urlPlan === 'pro' || urlPlan === 'business') {
   const banner = document.getElementById('plan-banner');
   banner.style.display = 'block';
-  banner.textContent = urlPlan === 'pro'
-    ? '🚀 Stai attivando il Piano Pro — €35/mese'
-    : '💎 Stai attivando il Piano Business — €200/anno';
+  banner.textContent = {
+    starter: '🌱 Stai attivando il Piano Starter — €29/mese',
+    pro: '🚀 Stai attivando il Piano Pro — €79/mese',
+    business: '💎 Stai attivando il Piano Business — €199/mese'
+  }[urlPlan];
   switchTab('register');
   document.getElementById('btn-register').textContent = 'Continua al pagamento →';
 } else if (urlMode === 'signup') {

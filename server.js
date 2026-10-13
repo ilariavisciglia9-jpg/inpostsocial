@@ -373,7 +373,8 @@ app.post('/api/user/save', async (req, res) => {
 app.post('/api/checkout', async (req, res) => {
   try {
     const { plan, userId, email } = req.body;
-    const prices = { pro: process.env.STRIPE_PRICE_PRO, business: process.env.STRIPE_PRICE_BUSINESS };
+    const prices = { starter: process.env.STRIPE_PRICE_STARTER, pro: process.env.STRIPE_PRICE_PRO, business: process.env.STRIPE_PRICE_BUSINESS };
+    if (!prices[plan]) return res.status(400).json({ error: 'Piano non valido o prezzo Stripe non configurato' });
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -397,6 +398,14 @@ app.post('/webhook/stripe', async (req, res) => {
       const { userId, plan } = event.data.object.metadata;
       await supabase.from('users').update({ plan, stripe_customer_id: event.data.object.customer, subscription_id: event.data.object.subscription }).eq('id', userId);
     }
+    if (event.type === 'customer.subscription.updated') {
+      // cambio piano o pagamento non riuscito
+      const sub = event.data.object;
+      const priceId = sub.items && sub.items.data[0] && sub.items.data[0].price.id;
+      const byPrice = { [process.env.STRIPE_PRICE_STARTER]: 'starter', [process.env.STRIPE_PRICE_PRO]: 'pro', [process.env.STRIPE_PRICE_BUSINESS]: 'business' };
+      const newPlan = ['unpaid', 'canceled', 'incomplete_expired'].includes(sub.status) ? 'free' : byPrice[priceId];
+      if (newPlan) await supabase.from('users').update({ plan: newPlan }).eq('subscription_id', sub.id);
+    }
     if (event.type === 'customer.subscription.deleted') {
       const { data: u } = await supabase.from('users').select('id').eq('subscription_id', event.data.object.id).single();
       if (u) await supabase.from('users').update({ plan: 'free', subscription_id: null }).eq('id', u.id);
@@ -410,8 +419,9 @@ app.get('/api/social/status', async (req, res) => {
   try {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId mancante' });
-    const { data, error } = await supabase.from('social_connections').select('*').eq('user_id', userId);
-    if (error) return res.status(500).json({ error: error.message, details: error });
+    const { data, error } = await supabase.from('social_connections').select('platform,page_name,connected_at').eq('user_id', userId);
+    if (error) return res.status(500).json({ error: error.message });
+    // i token di accesso restano solo sul server
     res.json({ count: data.length, connections: data });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -549,6 +559,9 @@ cron.schedule('*/15 * * * *', async () => {
     }
   } catch (e) { console.error('Scheduler error:', e); }
 });
+
+// ===== AGENTE AI AUTONOMO (vedi agent.js) =====
+require('./agent')(app, { supabase, anthropic, fal, generateImage, SEEDANCE_MODEL });
 
 // ===== START =====
 app.listen(PORT, () => {
