@@ -26,7 +26,33 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'placeholder');
 app.use(cors({ origin: [process.env.FRONTEND_URL, 'http://localhost:3000'], credentials: true }));
 app.use('/webhook/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+
+// ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
+// L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
+const PROTECTED_API = ['/api/generate', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status'];
+app.use(async (req, res, next) => {
+  const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
+  if (!PROTECTED_API.includes(req.path) && !userById) return next();
+  try {
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const { data, error } = token ? await supabase.auth.getUser(token) : { data: null, error: true };
+    if (error || !data || !data.user) return res.status(401).json({ error: 'Accesso richiesto' });
+    const uid = data.user.id;
+    if (userById && req.path.split('/').pop() !== uid) return res.status(403).json({ error: 'Non autorizzato' });
+    req.query.userId = uid;
+    if (req.body && typeof req.body === 'object') req.body.userId = uid;
+    next();
+  } catch (e) { res.status(401).json({ error: 'Accesso richiesto' }); }
+});
+// il codice del server e i file di configurazione non devono essere scaricabili dal sito
+app.use((req, res, next) => {
+  if (/^\/(server\.js|agent\.js|package(-lock)?\.json|schema.*\.sql|env\.example|download|.*\.md)$/i.test(req.path) || req.path.startsWith('/node_modules')) {
+    return res.status(404).end();
+  }
+  next();
+});
+app.use(express.static(path.join(__dirname), { dotfiles: 'deny' }));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/webhook')) return next();
   const html = req.path.includes('dashboard') ? 'dashboard.html'
@@ -36,6 +62,24 @@ app.get('*', (req, res, next) => {
 });
 
 app.get('/healthz', (req, res) => res.json({ status: 'ok', version: '2.0.0' }));
+
+// ===== CONFIG PUBBLICA PER IL BROWSER (solo la chiave anon, mai la service) =====
+function publicAnonKey() {
+  const k = process.env.SUPABASE_ANON_KEY || '';
+  if (!k || k.startsWith('sb_secret_')) return '';
+  try {
+    const payload = JSON.parse(Buffer.from(k.split('.')[1] || '', 'base64').toString() || '{}');
+    if (payload.role === 'service_role') return '';
+  } catch (e) { /* chiave nel nuovo formato sb_publishable_ */ }
+  return k;
+}
+app.get('/api/config.js', (req, res) => {
+  const key = publicAnonKey();
+  if (!key) console.error('⚠️ SUPABASE_ANON_KEY mancante o non valida (deve essere la chiave anon/publishable, non la service_role)');
+  res.type('application/javascript').set('Cache-Control', 'no-store');
+  res.send(`window.INPOST_CONFIG=${JSON.stringify({ supabaseAnonKey: key })};` +
+    (key ? '' : `console.error('InPostSocial: manca SUPABASE_ANON_KEY su Railway');`));
+});
 
 // ===== GENERATE =====
 app.post('/api/generate', async (req, res) => {

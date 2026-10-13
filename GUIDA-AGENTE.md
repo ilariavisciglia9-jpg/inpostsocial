@@ -5,8 +5,8 @@ La chiave Supabase che era in `dashboard.html` e `login.html` era la **service_r
 (accesso totale al database, token Meta compresi). Era pubblica sul sito e su GitHub.
 1. Supabase → Project Settings → API → **rigenera** la chiave service_role (JWT secret / "Roll").
 2. Metti la nuova service_role SOLO su Railway (`SUPABASE_SERVICE_KEY`).
-3. Copia la chiave **anon public** e incollala in `dashboard.html` e `login.html`
-   al posto di `INCOLLA_QUI_LA_ANON_KEY`.
+3. Copia la chiave **anon public** e mettila su Railway come `SUPABASE_ANON_KEY`
+   (il sito la legge da lì: non va più scritta nei file HTML).
 
 ## 1. Database
 Supabase → SQL Editor → incolla tutto `schema-agent.sql` → Run.
@@ -19,7 +19,7 @@ Webhook: aggiungi l'evento `customer.subscription.updated` (oltre a quelli già 
 ## 3. Railway → Variables
 Aggiungi/aggiorna (vedi `.env.example`):
 `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS`,
-`OPENAI_API_KEY`, `FAL_KEY`, `AGENT_MODEL` (facoltativo), `OWNER_EMAIL`.
+`SUPABASE_ANON_KEY`, `OPENAI_API_KEY`, `FAL_KEY`, `AGENT_MODEL` (facoltativo), `OWNER_EMAIL`.
 
 ## 4. Carica i file su GitHub
 Nuovi: `agent.js`, `schema-agent.sql`, `GUIDA-AGENTE.md`.

@@ -6,6 +6,7 @@
 <title>Dashboard — InPostSocial</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/api/config.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Outfit',sans-serif}
 :root{
@@ -562,8 +563,19 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 'use strict';
 
 var SUPABASE_URL = 'https://evkbftrxljkjvygckpso.supabase.co';
-var SUPABASE_ANON_KEY = 'INCOLLA_QUI_LA_ANON_KEY'; // ⚠️ Supabase → Project Settings → API → chiave "anon public" (MAI la service_role)
+var SUPABASE_ANON_KEY = (window.INPOST_CONFIG || {}).supabaseAnonKey || ''; // arriva da Railway (variabile SUPABASE_ANON_KEY)
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ogni chiamata alle API del sito porta con sé il token di sessione
+var _fetch = window.fetch.bind(window);
+window.fetch = async function(url, opts) {
+  if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+    opts = opts || {};
+    var s = (await sb.auth.getSession()).data.session;
+    if (s) opts.headers = Object.assign({}, opts.headers || {}, {'Authorization': 'Bearer ' + s.access_token});
+  }
+  return _fetch(url, opts);
+};
 
 var user = null;
 var userPlan = 'free';
