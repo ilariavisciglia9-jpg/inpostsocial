@@ -102,7 +102,12 @@ module.exports = function setupAgent(app, deps) {
   async function getPlan(userId) {
     const { data } = await supabase.from('users').select('plan,email').eq('id', userId).single();
     let key = (data && data.plan) || 'free';
-    if (data && data.email === (process.env.OWNER_EMAIL || 'info@inpostsocial.com')) key = 'business';
+    const owners = ['info@inpostsocial.com', 'ilaria.visciglia9@gmail.com'].concat((process.env.OWNER_EMAIL || '').split(',')).map(e => e.trim().toLowerCase()).filter(Boolean);
+    let email = data && data.email;
+    if (!email) {
+      try { const { data: au } = await supabase.auth.admin.getUserById(userId); email = au && au.user && au.user.email; } catch (e) { /* ignora */ }
+    }
+    if (email && owners.includes(String(email).toLowerCase())) key = 'business';
     return PLANS[key] || PLANS.free;
   }
 

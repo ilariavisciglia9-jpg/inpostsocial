@@ -48,6 +48,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// ===== ACCOUNT TITOLARE: nessun limite, piano Business =====
+// altri indirizzi si aggiungono su Railway in OWNER_EMAIL, separati da virgola
+const OWNER_EMAILS = ['info@inpostsocial.com', 'ilaria.visciglia9@gmail.com']
+  .concat((process.env.OWNER_EMAIL || '').split(','))
+  .map(e => e.trim().toLowerCase()).filter(Boolean);
+function isOwnerEmail(email) { return !!email && OWNER_EMAILS.includes(String(email).trim().toLowerCase()); }
+
 // ===== PROVA GRATUITA: 2 post a settimana =====
 const FREE_WEEKLY_POSTS = 2;
 function freeWeekKey() {
@@ -72,6 +79,7 @@ app.use(async (req, res, next) => {
     const { data, error } = token ? await supabase.auth.getUser(token) : { data: null, error: true };
     if (error || !data || !data.user) return res.status(401).json({ error: 'Accesso richiesto' });
     const uid = data.user.id;
+    req.authEmail = data.user.email || '';
     if (userById && req.path.split('/').pop() !== uid) return res.status(403).json({ error: 'Non autorizzato' });
     req.query.userId = uid;
     if (req.body && typeof req.body === 'object') req.body.userId = uid;
@@ -125,7 +133,7 @@ app.post('/api/generate', async (req, res) => {
     const freeKey = freeWeekKey();
     if (userId) {
       const { data: user } = await supabase.from('users').select('plan,email').eq('id', userId).single();
-      const isOwner = user && user.email === (process.env.OWNER_EMAIL || 'info@inpostsocial.com');
+      const isOwner = isOwnerEmail(req.authEmail) || (user && isOwnerEmail(user.email));
       if (!isOwner && (!user || !user.plan || user.plan === 'free')) {
         const { data: usage } = await supabase.from('agent_usage').select('posts').eq('user_id', userId).eq('month', freeKey).maybeSingle();
         freeUsed = (usage && usage.posts) || 0;
@@ -458,8 +466,8 @@ app.get('/api/user/profile', async (req, res) => {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId mancante' });
     const { data, error } = await supabase.from('users').select('plan,brand,sector,name,email').eq('id', userId).single();
-    if (error || !data) return res.json({ plan: 'free', brand: '', sector: '', name: '', email: '' });
-    if (data.email === (process.env.OWNER_EMAIL || 'info@inpostsocial.com')) data.plan = 'business';
+    if (error || !data) return res.json({ plan: isOwnerEmail(req.authEmail) ? 'business' : 'free', brand: '', sector: '', name: '', email: req.authEmail || '' });
+    if (isOwnerEmail(data.email) || isOwnerEmail(req.authEmail)) data.plan = 'business';
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
