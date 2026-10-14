@@ -1440,31 +1440,37 @@ function toast(msg, type) {
 
 async function checkVideo(btn) {
   var container = btn.parentElement;
-  var taskId = container.getAttribute('data-task');
   var idx = idxByUid(container.getAttribute('data-idx'));
   if (idx < 0) return;
-  if (!taskId) return;
-  btn.textContent = '…';
-  btn.disabled = true;
+  btn.textContent = '…'; btn.disabled = true;
+  var r = await pollVideo(posts[idx]);
+  if (r === 'processing') { btn.textContent = 'Aggiorna'; btn.disabled = false; toast('Video ancora in elaborazione...', 'error'); }
+  else if (r === 'error') { btn.textContent = 'Aggiorna'; btn.disabled = false; toast('Errore verifica video', 'error'); }
+}
+
+// controlla un video in elaborazione; quando è pronto lo salva nel post
+async function pollVideo(post) {
+  if (!post || !post.video_task_id || post.video_url) return 'done';
   try {
-    var resp = await fetch('/api/video/status?taskId=' + taskId);
+    var resp = await fetch('/api/video/status?taskId=' + encodeURIComponent(post.video_task_id));
     var result = await resp.json();
     if (result.video_url) {
-      posts[idx].video_url = result.video_url;
-      posts[idx].video_status = 'completed';
+      post.video_url = result.video_url; post.video_status = 'completed';
+      if (post._sid) fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid: post._sid, text: (post.text || '').substring(0, 50), video_url: result.video_url }) }).catch(function() {});
       rerenderPosts();
       toast('Video pronto!');
-    } else {
-      btn.textContent = 'Aggiorna';
-      btn.disabled = false;
-      toast('Video ancora in elaborazione...', 'error');
+      return 'done';
     }
-  } catch(e) {
-    btn.textContent = 'Aggiorna';
-    btn.disabled = false;
-    toast('Errore verifica video', 'error');
-  }
+    if (result.status === 'failed') { post.video_task_id = null; rerenderPosts(); toast('Il video non è stato creato: riprova a generare', 'error'); return 'done'; }
+    return 'processing';
+  } catch (e) { return 'error'; }
 }
+
+// controllo automatico ogni 20 secondi dei video in elaborazione
+setInterval(function() {
+  if (typeof posts === 'undefined' || !user) return;
+  posts.filter(function(p) { return p.video_task_id && !p.video_url; }).slice(0, 4).forEach(function(p) { pollVideo(p); });
+}, 20000);
 
 // =====================================================================
 // AGENTE AI

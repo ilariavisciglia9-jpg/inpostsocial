@@ -15,6 +15,7 @@ fal.config({ credentials: process.env.FAL_KEY });
 const SEEDANCE_MODEL = 'bytedance/seedance-2.0/fast/image-to-video';
 // tiene traccia di quale modello e' stato usato per ogni richiesta (serve per interrogare lo stato dopo)
 const videoJobs = new Map();
+const videoSaved = new Map(); // taskId -> link permanente del video
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -129,6 +130,7 @@ app.post('/api/generate', async (req, res) => {
     // foto del cliente: solo link del nostro storage
     const photos = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 8);
     const realPhotos = (useRealPhotos === true || useRealPhotos === 'true') && photos.length > 0;
+    const wantVideo = generateVideo === true || generateVideo === 'true';
     if (!brand || !description) return res.status(400).json({ error: 'Brand e descrizione obbligatori' });
 
     // piano gratuito: massimo FREE_WEEKLY_POSTS post a settimana, senza video
@@ -165,9 +167,10 @@ DESCRIZIONE: ${description}
 SOCIAL: ogni post verrà pubblicato su ${socialsList}: scrivi testi che funzionino su ${platforms.length > 1 ? 'tutti questi social' : 'questo social'}.
 TONO: ${tone || 'professionale'}
 ${styleInstruction}${style && style.trim() ? `IMMAGINI: ogni "image_prompt" (anche quelli di ogni slide del carosello e della scena del reel) deve descrivere esplicitamente i colori, la palette e lo stile visivo richiesti dall'utente qui sopra.\n` : ''}
+REEL: ogni post di tipo "reel" deve parlare di un argomento concreto e specifico di questo settore e di questa attività (un servizio, un prodotto, un lavoro tipico, un dietro le quinte, un consiglio pratico), mai generico. Il suo "image_prompt" descrive la scena di apertura verticale (9:16) con il soggetto del settore ben riconoscibile; il suo "video_prompt" va scritto IN INGLESE (50-90 parole) e descrive cosa succede nei 5 secondi: azione concreta del soggetto, movimento della camera, luce, atmosfera, coerente con l'immagine di apertura.${wantVideo ? ' Includi almeno 2 post di tipo "reel".' : ''}
 IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo scritto nell'immagine.
 ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)} foto reali del brand. Studiale con attenzione (prodotti, ambienti, persone, colori, stile) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
-{"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"descrizione video breve 5 secondi stile cinematografico"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
+{"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel su un tema specifico del settore","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"english description of the 5-second action and camera movement, specific to this business"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
 
     // le foto del cliente vengono mostrate anche all'AI che scrive post e descrizioni delle immagini
     let content = prompt;
@@ -226,9 +229,11 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
     const doImages = (generateImages === true || generateImages === 'true') && !realPhotos;
     const doVideo = freeLeft === null && (generateVideo === true || generateVideo === 'true');
     console.log('🖼️ generateImages:', generateImages, '→ doImages:', doImages, '| KEY:', !!process.env.OPENAI_API_KEY);
-    if (doImages && process.env.OPENAI_API_KEY) {
+    // il video parte da un'immagine: per i reel la creiamo anche se "Immagini AI" non è spuntato
+    if ((doImages || doVideo) && process.env.OPENAI_API_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
+        if (!doImages && (post.type !== 'reel' || post.image_url)) continue;
         try {
           if (post.type === 'carousel' && post.carousel_slides) {
             const imgs = [];
@@ -251,12 +256,14 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
         const post = data.posts[i];
         if (post.type === 'reel' && post.image_url) {
           try {
+            const motion = post.video_prompt || post.text;
             const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
               input: {
-                prompt: post.video_prompt || post.text,
+                prompt: `${motion} Business: ${brand}${sector ? ' (' + sector + ')' : ''}. Realistic, cinematic, smooth camera movement, natural lighting, vertical social media reel.${style && style.trim() ? ' Visual style and colors: ' + style.trim() + '.' : ''}`.substring(0, 2000),
                 image_url: post.image_url,
                 resolution: '720p',
-                duration: '5'
+                duration: '5',
+                aspect_ratio: '9:16'
               }
             });
             videoJobs.set(request_id, SEEDANCE_MODEL);
@@ -694,15 +701,18 @@ app.post('/api/media/upload', async (req, res) => {
 // ===== STATO DI UN POST DENTRO LA STRATEGIA (approvato / eliminato) =====
 app.post('/api/posts/state', async (req, res) => {
   try {
-    const { userId, sid, text, status } = req.body;
-    if (!userId || !sid || !['approved', 'deleted', 'draft'].includes(status)) return res.status(400).json({ error: 'Dati mancanti' });
+    const { userId, sid, text, status, video_url } = req.body;
+    if (!userId || !sid || (!['approved', 'deleted', 'draft'].includes(status) && !video_url)) return res.status(400).json({ error: 'Dati mancanti' });
     const { data: st, error } = await supabase.from('strategies').select('posts').eq('id', sid).eq('user_id', userId).single();
     if (error || !st) return res.status(404).json({ error: 'Strategia non trovata' });
     const list = Array.isArray(st.posts) ? st.posts : [];
     const key = String(text || '').substring(0, 50);
     const i = list.findIndex(p => p && String(p.text || '').substring(0, 50) === key && p.status !== 'deleted');
     if (i < 0) return res.status(404).json({ error: 'Post non trovato' });
-    list[i] = Object.assign({}, list[i], { status });
+    const patch = {};
+    if (status) patch.status = status;
+    if (typeof video_url === 'string' && /^https:\/\//.test(video_url)) { patch.video_url = video_url; patch.video_status = 'completed'; }
+    list[i] = Object.assign({}, list[i], patch);
     const { error: upErr } = await supabase.from('strategies').update({ posts: list }).eq('id', sid).eq('user_id', userId);
     if (upErr) throw upErr;
     res.json({ success: true });
@@ -728,12 +738,18 @@ app.get('/api/video/status', async (req, res) => {
   try {
     const { taskId } = req.query;
     if (!taskId) return res.status(400).json({ error: 'taskId mancante' });
+    if (videoSaved.has(taskId)) return res.json({ status: 'completed', video_url: videoSaved.get(taskId) });
     const model = videoJobs.get(taskId) || SEEDANCE_MODEL;
     const status = await fal.queue.status(model, { requestId: taskId, logs: false });
     if (status.status === 'COMPLETED') {
       const result = await fal.queue.result(model, { requestId: taskId });
-      return res.json({ status: 'completed', video_url: result.data.video.url });
+      // il link di fal.ai è temporaneo: copiamo il video nel nostro storage
+      let url = result.data.video.url;
+      try { if (agentApi) url = await agentApi.uploadVideoFromUrl(url); } catch (e) { console.log('Copia video non riuscita, uso il link temporaneo:', e.message); }
+      videoSaved.set(taskId, url);
+      return res.json({ status: 'completed', video_url: url });
     }
+    if (status.status === 'FAILED' || status.status === 'ERROR') return res.json({ status: 'failed', video_url: null });
     res.json({ status: 'processing', video_url: null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
