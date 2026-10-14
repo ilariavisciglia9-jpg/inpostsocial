@@ -17,6 +17,31 @@ const SEEDANCE_MODEL = 'bytedance/seedance-2.0/fast/image-to-video';
 const videoJobs = new Map();
 const videoSaved = new Map(); // taskId -> link permanente del video
 
+// ===== VIDEO PUBBLICITARI (Seedance via fal.ai) =====
+function adVideoPrompt(motion, brand, sector, style) {
+  return (`${motion || ''} ` +
+    `This is a short commercial advertising video for "${brand || 'the brand'}"${sector ? ' (' + sector + ')' : ''}: ` +
+    `premium ad look, the product or service is the hero and clearly visible, dynamic but smooth camera movement (slow push-in, orbit or tracking shot), ` +
+    `realistic people and details, natural cinematic lighting, shallow depth of field, vertical 9:16 social media reel, no on-screen text.` +
+    (style && style.trim() ? ` Visual style and colors: ${style.trim()}.` : '')).substring(0, 2000);
+}
+function falErrorMessage(e) {
+  const st = e && (e.status || (e.response && e.response.status));
+  const body = e && (e.body || (e.response && e.response.data)) || {};
+  const detail = typeof body.detail === 'string' ? body.detail : (Array.isArray(body.detail) && body.detail[0] && body.detail[0].msg) || body.message || (e && e.message) || 'errore sconosciuto';
+  if (!process.env.FAL_KEY) return 'Chiave FAL_KEY mancante su Railway: video non creati';
+  if (st === 401 || st === 403) return /balance|credit|locked|billing/i.test(detail) ? 'Credito fal.ai esaurito: ricaricalo su fal.ai → Billing' : 'Chiave FAL_KEY non valida (controllala su Railway)';
+  if (st === 402 || /balance|credit|billing/i.test(detail)) return 'Credito fal.ai esaurito: ricaricalo su fal.ai → Billing';
+  return 'Video: ' + detail;
+}
+async function startAdVideo(imageUrl, motion, brand, sector, style) {
+  const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
+    input: { prompt: adVideoPrompt(motion, brand, sector, style), image_url: imageUrl, resolution: '720p', duration: '5', aspect_ratio: '9:16' }
+  });
+  videoJobs.set(request_id, SEEDANCE_MODEL);
+  return request_id;
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -258,23 +283,16 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
     if (doVideo) {
       for (let i = 0; i < data.posts.length; i++) {
         const post = data.posts[i];
-        if (post.type === 'reel' && post.image_url) {
-          try {
-            const motion = post.video_prompt || post.text;
-            const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
-              input: {
-                prompt: `${motion} Business: ${brand}${sector ? ' (' + sector + ')' : ''}. Realistic, cinematic, smooth camera movement, natural lighting, vertical social media reel.${style && style.trim() ? ' Visual style and colors: ' + style.trim() + '.' : ''}`.substring(0, 2000),
-                image_url: post.image_url,
-                resolution: '720p',
-                duration: '5',
-                aspect_ratio: '9:16'
-              }
-            });
-            videoJobs.set(request_id, SEEDANCE_MODEL);
-            data.posts[i].video_task_id = request_id;
-            data.posts[i].video_status = 'processing';
-            console.log('🎬 Video Seedance avviato:', request_id);
-          } catch (e) { console.error('Video error post', i, ':', e.message); }
+        if (post.type !== 'reel') continue;
+        if (!post.image_url) { mediaErrors.push('Video non creato: manca l\'immagine di partenza del reel (usa "Crea immagine", poi partirà il video)'); continue; }
+        try {
+          data.posts[i].video_task_id = await startAdVideo(post.image_url, post.video_prompt || post.text, brand, sector, style);
+          data.posts[i].video_status = 'processing';
+          console.log('🎬 Video Seedance avviato:', data.posts[i].video_task_id);
+        } catch (e) {
+          const msg = falErrorMessage(e);
+          console.error('Video error post', i, ':', msg);
+          mediaErrors.push(msg);
         }
       }
     }
@@ -429,14 +447,11 @@ app.post('/api/generate-carousel', async (req, res) => {
 
 app.post('/api/generate-video', async (req, res) => {
   try {
-    const { prompt, imageUrl, userId } = req.body;
+    const { prompt, imageUrl, userId, brand, sector, style } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl obbligatoria' });
-    const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
-      input: { prompt: prompt || '', image_url: imageUrl, resolution: '720p', duration: '5' }
-    });
-    videoJobs.set(request_id, SEEDANCE_MODEL);
+    const request_id = await startAdVideo(imageUrl, prompt, brand, sector, style);
     res.json({ success: true, task_id: request_id, status: 'processing' });
-  } catch (e) { res.status(500).json({ error: 'Errore video', details: e.message }); }
+  } catch (e) { res.status(500).json({ error: falErrorMessage(e) }); }
 });
 
 app.get('/api/video-status/:taskId', async (req, res) => {
@@ -747,8 +762,8 @@ app.post('/api/posts/update', async (req, res) => {
 // ===== STATO DI UN POST DENTRO LA STRATEGIA (approvato / eliminato) =====
 app.post('/api/posts/state', async (req, res) => {
   try {
-    const { userId, sid, text, status, video_url, image_url, carousel_images, new_text, scheduled_time, day } = req.body;
-    const hasEdit = video_url || image_url || carousel_images || new_text || scheduled_time || day;
+    const { userId, sid, text, status, video_url, video_task_id, image_url, carousel_images, new_text, scheduled_time, day } = req.body;
+    const hasEdit = video_url || video_task_id || image_url || carousel_images || new_text || scheduled_time || day;
     if (!userId || !sid || (!['approved', 'deleted', 'draft'].includes(status) && !hasEdit)) return res.status(400).json({ error: 'Dati mancanti' });
     const { data: st, error } = await supabase.from('strategies').select('posts').eq('id', sid).eq('user_id', userId).single();
     if (error || !st) return res.status(404).json({ error: 'Strategia non trovata' });
@@ -760,6 +775,7 @@ app.post('/api/posts/state', async (req, res) => {
     if (status) patch.status = status;
     if (typeof video_url === 'string' && /^https:\/\//.test(video_url)) { patch.video_url = video_url; patch.video_status = 'completed'; }
     if (typeof image_url === 'string' && /^https:\/\//.test(image_url)) patch.image_url = image_url;
+    if (typeof video_task_id === 'string' && video_task_id.length < 200) { patch.video_task_id = video_task_id; patch.video_status = 'processing'; }
     if (Array.isArray(carousel_images)) patch.carousel_images = carousel_images.filter(u => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, 10);
     if (typeof new_text === 'string' && new_text.trim()) patch.text = new_text.slice(0, 2200);
     if (typeof scheduled_time === 'string' && /^\d{1,2}:\d{2}$/.test(scheduled_time)) patch.scheduled_time = scheduled_time;
@@ -803,7 +819,12 @@ app.get('/api/video/status', async (req, res) => {
     }
     if (status.status === 'FAILED' || status.status === 'ERROR') return res.json({ status: 'failed', video_url: null });
     res.json({ status: 'processing', video_url: null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    // fal.ai segnala un video fallito con un errore sul risultato
+    const msg = falErrorMessage(e);
+    if (e && (e.status === 422 || e.status === 400 || e.status === 404)) return res.json({ status: 'failed', video_url: null, error: msg });
+    res.status(500).json({ error: msg });
+  }
 });
 
 // ===== PUBBLICAZIONE DEI POST APPROVATI (Instagram e/o Facebook) =====
