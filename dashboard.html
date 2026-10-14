@@ -250,6 +250,18 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .ag-locked{text-align:center;padding:2.5rem 1.5rem;background:#fff;border-radius:12px;border:1px solid var(--border)}
 .ag-locked h3{font-size:1.1rem;font-weight:600;margin-bottom:0.5rem}
 .ag-locked p{color:var(--gray);font-size:0.88rem;margin-bottom:1.2rem;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.6}
+/* ===== FOTO DEL BRAND ===== */
+.ph-box{border:1px dashed var(--border-strong);border-radius:10px;padding:0.85rem;background:var(--off-white)}
+.ph-grid{display:flex;flex-wrap:wrap;gap:0.5rem}
+.ph-grid:not(:empty){margin-bottom:0.7rem}
+.ph-item{position:relative;width:76px;height:76px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.ph-item img{width:100%;height:100%;object-fit:cover;display:block}
+.ph-item.loading{opacity:0.5}
+.ph-del{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(17,17,24,0.75);color:#fff;font-size:0.9rem;line-height:1}
+.fg label.ph-add{display:inline-flex;align-items:center;padding:0.45rem 0.8rem;border-radius:7px;background:#fff;border:1px solid var(--border-strong);font-size:0.8rem;font-weight:600;color:var(--dark2);cursor:pointer;margin:0}
+.ph-hint{font-size:0.78rem;color:var(--gray);margin:0.55rem 0 0.4rem;line-height:1.45}
+.fg label.ph-real{margin:0.3rem 0 0;font-size:0.82rem;font-weight:500;color:var(--dark2)}
+.fg .ph-real input{width:16px;height:16px;padding:0;appearance:auto;-webkit-appearance:checkbox;box-shadow:none}
 /* ===== ANTEPRIMA POST ===== */
 .posts-list{gap:1rem}
 .pv-card{display:grid;grid-template-columns:minmax(0,380px) 1fr;gap:0;align-items:start;padding:0;overflow:hidden}
@@ -266,11 +278,13 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .pv-fb .pv-av{background:var(--dark);box-shadow:none}
 .pv-media{position:relative;aspect-ratio:1/1;background:var(--off-white);overflow:hidden}
 .pv-media.pv-reel{aspect-ratio:9/16;max-height:560px}
-.pv-media>img,.pv-media>video{width:100%;height:100%;object-fit:cover;display:block}
+.pv-media>img,.pv-media>video{width:100%;height:100%;object-fit:contain;display:block;background:#111}
+.pv-media:has(>img:only-child){aspect-ratio:auto}
+.pv-media>img:only-child{height:auto;max-height:640px;object-fit:contain;background:var(--off-white)}
 .pv-empty{display:flex;align-items:center;justify-content:center;color:var(--gray-light);font-size:0.8rem}
 .pv-track{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
 .pv-track::-webkit-scrollbar{display:none}
-.pv-track img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:start}
+.pv-track img{flex:0 0 100%;width:100%;height:100%;object-fit:contain;background:var(--off-white);scroll-snap-align:start}
 .pv-nav{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.9);color:#111;font-size:1.2rem;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.2)}
 .pv-prev{left:8px}.pv-next{right:8px}
 .pv-count{position:absolute;top:10px;right:10px;background:rgba(17,17,24,0.7);color:#fff;font-size:0.7rem;font-weight:600;padding:0.15rem 0.5rem;border-radius:100px}
@@ -502,6 +516,15 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
         </div>
         <div class="fg"><label>Descrivi il tuo business *</label><textarea id="g-desc" placeholder="Cosa fai, quali servizi offri, chi sono i tuoi clienti ideali..."></textarea></div>
         <div class="fg"><label>Stile personalizzato (opzionale)</label><textarea id="g-style" placeholder="es. Frasi brevi e dirette, molte emoji, colori pastello nelle immagini, niente hashtag generici..."></textarea></div>
+        <div class="fg">
+          <label>Foto del tuo brand (opzionale, fino a 8)</label>
+          <div class="ph-box">
+            <div class="ph-grid" id="ph-grid"></div>
+            <label class="ph-add"><input type="file" id="ph-input" accept="image/jpeg,image/png,image/webp" multiple hidden>+ Aggiungi foto</label>
+            <p class="ph-hint">Prodotti, locale, lavori fatti, persone del team: l'AI le studia per creare post e immagini più fedeli al tuo brand.</p>
+            <label class="media-opt ph-real"><input type="checkbox" id="ph-real"> Usa direttamente le mie foto nei post e nei caroselli (al posto delle immagini AI)</label>
+          </div>
+        </div>
         <div class="grid-2">
           <div class="fg"><label>Tono di voce</label>
             <select id="g-tone">
@@ -518,7 +541,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
         </div>
         <div class="media-box">
           <div class="media-label">AI Media</div>
-          <label class="media-opt"><input type="checkbox" id="gen-images"> Immagini AI (DALL-E 3)</label>
+          <label class="media-opt"><input type="checkbox" id="gen-images"> Immagini AI realistiche</label>
           <label class="media-opt"><input type="checkbox" id="gen-video"> Video Reel (Seedance AI)</label>
         </div>
         <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Prova gratuita: puoi generare <b>2 post a settimana</b> con immagini AI. I video Reel sono inclusi nei piani a pagamento.</p>
@@ -1242,13 +1265,74 @@ async function deletePost(idx) {
   toast('Post eliminato');
 }
 
+// ===== FOTO DEL BRAND =====
+var brandPhotos = []; // { url, thumb }
+try { brandPhotos = JSON.parse(localStorage.getItem('inpost_brand_photos') || '[]').map(function(u) { return { url: u, thumb: u }; }); } catch (e) { brandPhotos = []; }
+function saveBrandPhotos() { try { localStorage.setItem('inpost_brand_photos', JSON.stringify(brandPhotos.map(function(p) { return p.url; }).filter(Boolean))); } catch (e) {} }
+function renderBrandPhotos() {
+  var g = document.getElementById('ph-grid');
+  if (!g) return;
+  g.innerHTML = brandPhotos.map(function(p, i) {
+    return '<div class="ph-item' + (p.url ? '' : ' loading') + '"><img src="' + escH(p.thumb) + '" alt=""><button type="button" class="ph-del" data-ph="' + i + '" aria-label="Rimuovi">&times;</button></div>';
+  }).join('');
+}
+function resizeImage(file) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image(), fr = new FileReader();
+    fr.onload = function() { img.src = fr.result; };
+    fr.onerror = reject;
+    img.onload = function() {
+      var max = 1600, w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
+      var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.86));
+    };
+    img.onerror = function() { reject(new Error('Immagine non valida')); };
+    fr.readAsDataURL(file);
+  });
+}
+async function addBrandPhotos(fileList) {
+  var files = Array.prototype.slice.call(fileList || [], 0, Math.max(0, 8 - brandPhotos.length));
+  if (!files.length) return toast('Puoi caricare fino a 8 foto', 'error');
+  var datas = [];
+  for (var i = 0; i < files.length; i++) {
+    try { var d = await resizeImage(files[i]); datas.push(d); brandPhotos.push({ url: null, thumb: d }); } catch (e) {}
+  }
+  renderBrandPhotos();
+  try {
+    var resp = await fetch('/api/media/upload', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ files: datas.map(function(d) { return { data: d }; }) }) });
+    var r = await resp.json();
+    if (!resp.ok || !r.success) throw new Error(r.error || 'Caricamento non riuscito');
+    var k = 0;
+    brandPhotos.forEach(function(p) { if (!p.url && r.urls[k]) { p.url = r.urls[k++]; } });
+    brandPhotos = brandPhotos.filter(function(p) { return p.url; });
+    saveBrandPhotos(); renderBrandPhotos();
+    toast('Foto caricate');
+  } catch (e) {
+    brandPhotos = brandPhotos.filter(function(p) { return p.url; });
+    renderBrandPhotos();
+    toast('Errore: ' + e.message, 'error');
+  }
+}
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'ph-input') { addBrandPhotos(e.target.files); e.target.value = ''; }
+});
+document.addEventListener('click', function(e) {
+  var del = e.target.closest('.ph-del');
+  if (del) { brandPhotos.splice(parseInt(del.getAttribute('data-ph')), 1); saveBrandPhotos(); renderBrandPhotos(); }
+});
+document.addEventListener('DOMContentLoaded', renderBrandPhotos);
+renderBrandPhotos();
+
 async function doGenerate() {
   var brand = document.getElementById('g-brand').value.trim();
   var desc = document.getElementById('g-desc').value.trim();
   if (!brand || !desc) return toast('Inserisci brand e descrizione', 'error');
   var genImages = document.getElementById('gen-images').checked;
   var genVideo = document.getElementById('gen-video').checked;
-  var lmsg = genImages && genVideo ? 'Generando post, immagini e video... (1-2 min)' :
+  var useReal = document.getElementById('ph-real').checked;
+  if (useReal && !brandPhotos.length) return toast('Aggiungi almeno una foto per usarla nei post', 'error');
+  var lmsg = useReal ? 'Preparo i post con le tue foto...' : genImages && genVideo ? 'Generando post, immagini e video... (1-2 min)' :
              genImages ? 'Generando immagini con DALL-E 3...' :
              genVideo ? 'Generando video con Seedance AI...' : 'L\'AI sta generando la tua strategia...';
   showLoading(lmsg);
@@ -1265,7 +1349,9 @@ async function doGenerate() {
         socials: document.getElementById('g-social').value,
         userId: user.id,
         generateImages: genImages,
-        generateVideo: genVideo
+        generateVideo: genVideo,
+        refImages: brandPhotos.map(function(p) { return p.url; }).filter(Boolean),
+        useRealPhotos: useReal
       })
     });
     var result = await resp.json();

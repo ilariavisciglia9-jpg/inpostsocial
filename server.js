@@ -25,7 +25,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'placeholder');
 
 app.use(cors({ origin: [siteUrl(), siteUrl().replace('://www.', '://'), 'http://localhost:3000'], credentials: true }));
 app.use('/webhook/stripe', express.raw({ type: 'application/json' }));
-app.use(express.json());
+app.use(express.json({ limit: '30mb' })); // spazio per le foto caricate dal cliente
 
 // URL pubblico del sito, sempre con https:// e senza slash finale (anche se su Railway manca il protocollo)
 function siteUrl() {
@@ -70,7 +70,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -125,7 +125,10 @@ app.get('/api/config.js', (req, res) => {
 // ===== GENERATE =====
 app.post('/api/generate', async (req, res) => {
   try {
-    const { brand, description, sector, city, usp, goal, socials, frequency, tone, style, userId, generateImages, generateVideo } = req.body;
+    const { brand, description, sector, city, usp, goal, socials, frequency, tone, style, userId, generateImages, generateVideo, refImages, useRealPhotos } = req.body;
+    // foto del cliente: solo link del nostro storage
+    const photos = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 8);
+    const realPhotos = (useRealPhotos === true || useRealPhotos === 'true') && photos.length > 0;
     if (!brand || !description) return res.status(400).json({ error: 'Brand e descrizione obbligatori' });
 
     // piano gratuito: massimo FREE_WEEKLY_POSTS post a settimana, senza video
@@ -162,13 +165,27 @@ DESCRIZIONE: ${description}
 SOCIAL: ogni post verrà pubblicato su ${socialsList}: scrivi testi che funzionino su ${platforms.length > 1 ? 'tutti questi social' : 'questo social'}.
 TONO: ${tone || 'professionale'}
 ${styleInstruction}${style && style.trim() ? `IMMAGINI: ogni "image_prompt" (anche quelli di ogni slide del carosello e della scena del reel) deve descrivere esplicitamente i colori, la palette e lo stile visivo richiesti dall'utente qui sopra.\n` : ''}
-Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
+IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo scritto nell'immagine.
+${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)} foto reali del brand. Studiale con attenzione (prodotti, ambienti, persone, colori, stile) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
 {"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"descrizione video breve 5 secondi stile cinematografico"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
 
+    // le foto del cliente vengono mostrate anche all'AI che scrive post e descrizioni delle immagini
+    let content = prompt;
+    if (photos.length) {
+      const blocks = [];
+      for (const u of photos.slice(0, 4)) {
+        try {
+          const f = await axios.get(u, { responseType: 'arraybuffer', timeout: 20000 });
+          const mt = (f.headers['content-type'] || 'image/jpeg').split(';')[0];
+          if (['image/jpeg', 'image/png', 'image/webp'].includes(mt)) blocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: Buffer.from(f.data).toString('base64') } });
+        } catch (e) { console.log('Foto di riferimento non leggibile:', e.message); }
+      }
+      if (blocks.length) content = blocks.concat([{ type: 'text', text: prompt }]);
+    }
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }]
+      max_tokens: 6000,
+      messages: [{ role: 'user', content }]
     });
 
     const raw = response.content.map(b => b.text || '').join('');
@@ -190,7 +207,23 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
       data.posts = data.posts.slice().sort((a, b) => (order[a.type] ?? 1) - (order[b.type] ?? 1)).slice(0, freeLeft);
     }
 
-    const doImages = generateImages === true || generateImages === 'true';
+    // "usa le mie foto": i post usano direttamente le foto reali caricate
+    if (realPhotos && Array.isArray(data.posts)) {
+      let k = 0;
+      const next = () => photos[(k++) % photos.length];
+      data.posts.forEach(p => {
+        if (p.type === 'carousel') {
+          const n = Math.min(Math.max(photos.length, 2), 5);
+          p.carousel_images = Array.from({ length: n }, next);
+          p.image_url = p.carousel_images[0];
+        } else {
+          p.image_url = next();
+        }
+        p.real_photo = true;
+      });
+    }
+
+    const doImages = (generateImages === true || generateImages === 'true') && !realPhotos;
     const doVideo = freeLeft === null && (generateVideo === true || generateVideo === 'true');
     console.log('🖼️ generateImages:', generateImages, '→ doImages:', doImages, '| KEY:', !!process.env.OPENAI_API_KEY);
     if (doImages && process.env.OPENAI_API_KEY) {
@@ -201,13 +234,13 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
             const imgs = [];
             for (const slide of post.carousel_slides.slice(0, 3)) {
               const slidePrompt = style && style.trim() ? `${slide.image_prompt}. Stile e colori: ${style.trim()}` : slide.image_prompt;
-              imgs.push(await generateImage(slidePrompt, brand));
+              imgs.push(await generateImage(slidePrompt, brand, { refs: photos }));
             }
             data.posts[i].carousel_images = imgs;
             data.posts[i].image_url = imgs[0];
           } else if (post.image_prompt) {
             const styledPrompt = style && style.trim() ? `${post.image_prompt}. Stile e colori: ${style.trim()}` : post.image_prompt;
-            data.posts[i].image_url = await generateImage(styledPrompt, brand);
+            data.posts[i].image_url = await generateImage(styledPrompt, brand, { refs: photos, size: post.type === 'reel' ? '1024x1536' : '1024x1024' });
           }
         } catch (e) { console.error('Image error post', i, ':', e.message); }
       }
@@ -261,27 +294,46 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
 });
 
 // ===== DALL-E 3 =====
-async function generateImage(prompt, brand) {
-  const safePrompt = `Social media image for "${brand}": ${prompt}`.substring(0, 900);
-  console.log('🎨 DALL-E prompt length:', safePrompt.length);
+// opts.size: '1024x1024' (feed/carosello) o '1024x1536' (reel verticale)
+// opts.refs: link di foto reali del cliente da usare come riferimento visivo
+async function generateImage(prompt, brand, opts) {
+  opts = opts || {};
+  const size = opts.size || '1024x1024';
+  const refs = (opts.refs || []).filter(Boolean).slice(0, 4);
+  const safePrompt = (`Fotografia realistica per i social di "${brand}". ${prompt}. ` +
+    `Stile: foto vera scattata con fotocamera professionale, luce naturale, dettagli e texture reali, composizione curata, ` +
+    `soggetto principale ben visibile e centrato con margine sui bordi (niente tagliato), nessuna illustrazione o resa da cartone animato, ` +
+    `niente scritte o loghi inventati nell'immagine.` +
+    (refs.length ? ' Usa le foto di riferimento allegate: mantieni prodotti, ambienti, colori e stile reali del brand.' : '')).substring(0, 3800);
+  console.log('🎨 Prompt immagine:', safePrompt.length, 'caratteri', refs.length ? `+ ${refs.length} foto di riferimento` : '');
   try {
-    const r = await axios.post(
-      'https://api.openai.com/v1/images/generations',
-      {
-        model: 'gpt-image-1',
-        prompt: safePrompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'medium'
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 60000
+    let r;
+    if (refs.length) {
+      // modifica guidata da foto reali (gpt-image-1 accetta più immagini di riferimento)
+      const form = new FormData();
+      form.append('model', 'gpt-image-1');
+      form.append('prompt', safePrompt);
+      form.append('size', size);
+      form.append('quality', 'medium');
+      for (let i = 0; i < refs.length; i++) {
+        const f = await axios.get(refs[i], { responseType: 'arraybuffer', timeout: 30000 });
+        const type = f.headers['content-type'] || 'image/jpeg';
+        const ext = type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : 'jpg';
+        form.append('image[]', new Blob([f.data], { type }), `ref${i}.${ext}`);
       }
-    );
+      const resp = await fetch('https://api.openai.com/v1/images/edits', {
+        method: 'POST', headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }, body: form
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error((json.error && json.error.message) || 'Errore modifica immagine');
+      r = { data: json };
+    } else {
+      r = await axios.post(
+        'https://api.openai.com/v1/images/generations',
+        { model: 'gpt-image-1', prompt: safePrompt, n: 1, size, quality: 'medium' },
+        { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 90000 }
+      );
+    }
     const img = r.data.data[0];
 
     // Otteniamo i byte dell'immagine, sia che OpenAI dia un base64 sia un url temporaneo
@@ -615,6 +667,28 @@ app.post('/api/posts/save', async (req, res) => {
     console.error('Save post error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ===== FOTO DEL CLIENTE (riferimento per l'AI o da usare direttamente nei post) =====
+app.post('/api/media/upload', async (req, res) => {
+  try {
+    const { userId, files } = req.body;
+    if (!userId || !Array.isArray(files) || !files.length) return res.status(400).json({ error: 'Nessuna foto' });
+    const urls = [];
+    for (const f of files.slice(0, 8)) {
+      const m = /^data:(image\/(jpeg|png|webp));base64,(.+)$/.exec(f.data || '');
+      if (!m) continue;
+      const buf = Buffer.from(m[3], 'base64');
+      if (buf.length > 8 * 1024 * 1024) continue;
+      const ext = m[2] === 'jpeg' ? 'jpg' : m[2];
+      const fileName = `uploads/${userId}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from('post-images').upload(fileName, buf, { contentType: m[1], upsert: false });
+      if (error) throw new Error(error.message);
+      urls.push(supabase.storage.from('post-images').getPublicUrl(fileName).data.publicUrl);
+    }
+    if (!urls.length) return res.status(400).json({ error: 'Formato non supportato (usa JPG, PNG o WEBP)' });
+    res.json({ success: true, urls });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== STATO DI UN POST DENTRO LA STRATEGIA (approvato / eliminato) =====
