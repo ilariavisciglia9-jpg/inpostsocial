@@ -550,6 +550,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
         <div class="media-box">
           <div class="media-label">AI Media</div>
           <label class="media-opt"><input type="checkbox" id="gen-images"> Immagini AI realistiche</label>
+          <label class="media-opt"><input type="checkbox" id="gen-text" checked> Scritte sulle immagini (italiano corretto)</label>
           <label class="media-opt"><input type="checkbox" id="gen-video"> Video Reel (Seedance AI)</label>
         </div>
         <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Prova gratuita: puoi generare <b>2 post a settimana</b> con immagini AI. I video Reel sono inclusi nei piani a pagamento.</p>
@@ -1297,7 +1298,11 @@ function openEditor(item, post) {
   var when = (st === 'approved' || st === 'failed')
     ? '<label>Data e ora di pubblicazione</label><input type="datetime-local" class="pv-in-dt" value="' + toLocalInput(post.scheduled_at) + '">'
     : '<label>Giorno e ora</label><div class="pv-row"><select class="pv-in-day">' + DAYS_IT.map(function(d) { return '<option' + (String(post.day || '').toLowerCase().indexOf(d.toLowerCase().slice(0, 5)) === 0 ? ' selected' : '') + '>' + d + '</option>'; }).join('') + '</select><input type="time" class="pv-in-time" value="' + escH(post.scheduled_time || '11:00') + '"></div>';
-  box.innerHTML = '<label>Testo del post</label><textarea class="pv-in-text">' + escH(post.text || '') + '</textarea>' + when +
+  var ovl = (post.image_raw_url && post.type !== 'carousel' && post.type !== 'reel')
+    ? '<label>Scritta sull\'immagine (titolo)</label><input type="text" class="pv-in-ot" maxlength="60" value="' + escH(post.overlay_title || '') + '" placeholder="Lascia vuoto per togliere la scritta">' +
+      '<label>Riga sotto il titolo (facoltativa)</label><input type="text" class="pv-in-os" maxlength="90" value="' + escH(post.overlay_subtitle || '') + '">'
+    : '';
+  box.innerHTML = '<label>Testo del post</label><textarea class="pv-in-text">' + escH(post.text || '') + '</textarea>' + ovl + when +
     '<div class="post-actions"><button type="button" class="pBtn pBtn-approve pv-save">Salva</button><button type="button" class="pBtn pv-cancel">Annulla</button></div>';
   box.hidden = false;
 }
@@ -1307,6 +1312,18 @@ async function saveEditor(item, post) {
   if (!newText) return toast('Il testo non può essere vuoto', 'error');
   var st = post.status || 'draft';
   try {
+    // scritta sull'immagine cambiata: la ridisegniamo sull'immagine originale
+    var otEl = box.querySelector('.pv-in-ot');
+    if (otEl && (st === 'draft' || !post.status)) {
+      var ot = otEl.value.trim(), os = box.querySelector('.pv-in-os').value.trim();
+      if (ot !== (post.overlay_title || '') || os !== (post.overlay_subtitle || '')) {
+        var f = {}; try { f = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+        var ro = await fetch('/api/image/overlay', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ rawUrl: post.image_raw_url, title: ot, subtitle: os, style: f['g-style'] || '' }) });
+        var rj = await ro.json(); if (!ro.ok || !rj.url) throw new Error(rj.error || 'Scritta non applicata');
+        post.image_url = rj.url; post.overlay_title = ot; post.overlay_subtitle = os;
+        if (post._sid) await fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid: post._sid, text: (post.text || '').substring(0, 50), image_url: rj.url, overlay_title: ot, overlay_subtitle: os }) });
+      }
+    }
     if (st === 'approved' || st === 'failed') {
       var dt = box.querySelector('.pv-in-dt').value;
       var iso = dt ? new Date(dt).toISOString() : null;
@@ -1347,6 +1364,27 @@ async function createPostImage(post, btn) {
     } else {
       post.image_url = await one(post.image_prompt || post.text, post.type === 'reel' ? '1024x1536' : '1024x1024');
       body.image_url = post.image_url;
+    }
+    // se il post prevede le scritte, le aggiungiamo anche alle immagini create adesso
+    var gf = {}; try { gf = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+    var ovl = async function(raw, t, sub) {
+      if (!t) return raw;
+      var ro = await fetch('/api/image/overlay', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ rawUrl: raw, title: t, subtitle: sub || '', style: gf['g-style'] || '' }) });
+      var rj = await ro.json(); return (ro.ok && rj.url) ? rj.url : raw;
+    };
+    if (gf['gen-text'] !== false && post.type !== 'reel') {
+      if (post.type === 'carousel') {
+        var sl2 = post.carousel_slides || [], out = [];
+        for (var q = 0; q < post.carousel_images.length; q++) {
+          var s0 = sl2[q] || {}, tt = s0.title && !/^slide\s*\d+$/i.test(s0.title) ? s0.title : (q === 0 ? post.overlay_title : '');
+          out.push(await ovl(post.carousel_images[q], tt, s0.subtitle || (q === 0 ? post.overlay_subtitle : '')));
+        }
+        post.carousel_images = out; post.image_url = out[0]; body.carousel_images = out; body.image_url = out[0];
+      } else if (post.overlay_title) {
+        post.image_raw_url = post.image_url;
+        post.image_url = await ovl(post.image_url, post.overlay_title, post.overlay_subtitle);
+        body.image_url = post.image_url; body.image_raw_url = post.image_raw_url;
+      }
     }
     if (post._sid) await fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) }).catch(function() {});
     rerenderPosts();
@@ -1409,14 +1447,14 @@ function restoreGenForm() {
   try {
     var saved = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}');
     GEN_FIELDS.forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.value = saved[id]; });
-    ['gen-images', 'gen-video', 'ph-real'].forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.checked = !!saved[id]; });
+    ['gen-images', 'gen-video', 'ph-real', 'gen-text'].forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.checked = !!saved[id]; });
   } catch (e) {}
 }
 function saveGenForm() {
   try {
     var data = {};
     GEN_FIELDS.forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.value; });
-    ['gen-images', 'gen-video', 'ph-real'].forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.checked; });
+    ['gen-images', 'gen-video', 'ph-real', 'gen-text'].forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.checked; });
     localStorage.setItem('inpost_gen_form', JSON.stringify(data));
   } catch (e) {}
 }
@@ -1510,7 +1548,8 @@ async function doGenerate() {
         generateImages: genImages,
         generateVideo: genVideo,
         refImages: brandPhotos.map(function(p) { return p.url; }).filter(Boolean),
-        useRealPhotos: useReal
+        useRealPhotos: useReal,
+        textOverlay: document.getElementById('gen-text').checked
       })
     });
     var result = await resp.json();

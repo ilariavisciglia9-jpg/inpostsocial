@@ -1,0 +1,2 @@
+Montserrat (c) The Montserrat Project Authors - SIL Open Font License 1.1 (https://openfontlicense.org)
+Usato per le scritte disegnate sulle immagini dei post (overlay.js).

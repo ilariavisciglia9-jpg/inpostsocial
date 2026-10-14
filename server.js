@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
+const { addTextOverlay } = require('./overlay');
 const Stripe = require('stripe');
 const axios = require('axios');
 const cron = require('node-cron');
@@ -16,6 +17,25 @@ const SEEDANCE_MODEL = 'bytedance/seedance-2.0/fast/image-to-video';
 // tiene traccia di quale modello e' stato usato per ogni richiesta (serve per interrogare lo stato dopo)
 const videoJobs = new Map();
 const videoSaved = new Map(); // taskId -> link permanente del video
+
+// ===== SCRITTE IN ITALIANO CORRETTO SULLE IMMAGINI =====
+// colore d'accento preso dallo stile del brand (es. "marrone e oro" -> oro)
+function accentFromStyle(style) {
+  const t = String(style || '').toLowerCase();
+  const map = [['oro', '#d4af37'], ['gold', '#d4af37'], ['rosso', '#e5484d'], ['bordeaux', '#9b2335'], ['rosa', '#f0a6ca'], ['viola', '#8e6cef'], ['lilla', '#c3a6f0'],
+    ['blu', '#4c8dff'], ['azzurro', '#7cc4ff'], ['verde', '#46c37b'], ['arancio', '#ff9a3c'], ['giallo', '#f5d142'], ['beige', '#e8d5b5'], ['marrone', '#c8a27a'], ['argento', '#c0c4cc']];
+  for (const [k, v] of map) if (t.includes(k)) return v;
+  return '#ffffff';
+}
+async function overlayAndUpload(imageUrl, title, subtitle, accent) {
+  if (!imageUrl || !title || !String(title).trim()) return imageUrl;
+  const f = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000 });
+  const out = await addTextOverlay(Buffer.from(f.data), String(title).trim().slice(0, 90), subtitle ? String(subtitle).trim().slice(0, 140) : '', { accent });
+  const fileName = `posts/${crypto.randomUUID()}.png`;
+  const { error } = await supabase.storage.from('post-images').upload(fileName, out, { contentType: 'image/png', upsert: false });
+  if (error) throw new Error('Salvataggio immagine con scritta: ' + error.message);
+  return supabase.storage.from('post-images').getPublicUrl(fileName).data.publicUrl;
+}
 
 // ===== VIDEO PUBBLICITARI (Seedance via fal.ai) =====
 function adVideoPrompt(motion, brand, sector, style) {
@@ -99,7 +119,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -154,7 +174,8 @@ app.get('/api/config.js', (req, res) => {
 // ===== GENERATE =====
 app.post('/api/generate', async (req, res) => {
   try {
-    const { brand, description, sector, city, usp, goal, socials, frequency, tone, style, userId, generateImages, generateVideo, refImages, useRealPhotos } = req.body;
+    const { brand, description, sector, city, usp, goal, socials, frequency, tone, style, userId, generateImages, generateVideo, refImages, useRealPhotos, textOverlay } = req.body;
+    const wantText = textOverlay === true || textOverlay === 'true';
     // foto del cliente: solo link del nostro storage
     const photos = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 8);
     const realPhotos = (useRealPhotos === true || useRealPhotos === 'true') && photos.length > 0;
@@ -197,7 +218,7 @@ TONO: ${tone || 'professionale'}
 LINGUA: scrivi in italiano corretto e naturale, come un copywriter madrelingua: niente traduzioni letterali dall'inglese, niente errori di grammatica, accenti e apostrofi giusti (è, perché, po', un'idea).
 ${styleInstruction}${style && style.trim() ? `IMMAGINI: ogni "image_prompt" (anche quelli di ogni slide del carosello e della scena del reel) deve descrivere esplicitamente i colori, la palette e lo stile visivo richiesti dall'utente qui sopra.\n` : ''}
 REEL: ogni post di tipo "reel" deve parlare di un argomento concreto e specifico di questo settore e di questa attività (un servizio, un prodotto, un lavoro tipico, un dietro le quinte, un consiglio pratico), mai generico. Il suo "image_prompt" descrive la scena di apertura verticale (9:16) con il soggetto del settore ben riconoscibile; il suo "video_prompt" va scritto IN INGLESE (50-90 parole) e descrive cosa succede nei 5 secondi: un'azione semplice e realistica del soggetto (movimenti lenti, niente mani in primo piano che fanno gesti complessi), movimento della camera, luce, atmosfera, coerente con l'immagine di apertura. Nel video non deve comparire nessuna scritta e nessuno deve parlare.${wantVideo ? ' Includi almeno 2 post di tipo "reel".' : ''}
-IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo, scritte, insegne o loghi nell'immagine: i messaggi vanno solo nel testo del post.
+${wantText ? `SCRITTE SULLE IMMAGINI: per ogni post aggiungi "overlay_title" (titolo d'impatto, massimo 6 parole, italiano perfetto, senza emoji e senza hashtag) e "overlay_subtitle" (frase breve di supporto, massimo 10 parole). Per ogni slide del carosello scrivi in "title" il titolo che apparirà su quella slide (massimo 6 parole) e in "subtitle" una riga di supporto (massimo 10 parole). Queste scritte verranno sovrapposte all'immagine in modo tipografico, quindi l'immagine stessa NON deve contenere testo.\n` : ''}IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo, scritte, insegne o loghi nell'immagine: i messaggi vanno solo nel testo del post.
 ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)} foto reali del brand. Studiale con attenzione (prodotti, ambienti, persone, colori, stile) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
 {"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel su un tema specifico del settore","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"english description of the 5-second action and camera movement, specific to this business"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
 
@@ -282,6 +303,31 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
       });
       // 2 post alla volta: più veloce, senza superare i limiti al minuto di OpenAI
       for (let k = 0; k < jobs.length; k += 2) await Promise.all(jobs.slice(k, k + 2).map(j => j()));
+    }
+
+    // scritte tipografiche sulle immagini (non sui reel: il video deformerebbe le lettere)
+    if (wantText && Array.isArray(data.posts)) {
+      const accent = accentFromStyle(style);
+      for (const post of data.posts) {
+        if (post.type === 'reel') continue;
+        try {
+          if (post.type === 'carousel' && Array.isArray(post.carousel_images) && post.carousel_images.length) {
+            post.carousel_raw_images = post.carousel_images.slice();
+            const slides = post.carousel_slides || [];
+            const out = [];
+            for (let k = 0; k < post.carousel_images.length; k++) {
+              const sl = slides[k] || {};
+              const t = sl.title && !/^slide\s*\d+$/i.test(sl.title) ? sl.title : (k === 0 ? post.overlay_title : '');
+              out.push(t ? await overlayAndUpload(post.carousel_images[k], t, sl.subtitle || (k === 0 ? post.overlay_subtitle : ''), accent) : post.carousel_images[k]);
+            }
+            post.carousel_images = out;
+            post.image_url = out[0];
+          } else if (post.image_url && post.overlay_title) {
+            post.image_raw_url = post.image_url;
+            post.image_url = await overlayAndUpload(post.image_url, post.overlay_title, post.overlay_subtitle, accent);
+          }
+        } catch (e) { console.error('Scritta su immagine non riuscita:', e.message); mediaErrors.push('Scritta sull\'immagine non applicata: ' + e.message); }
+      }
     }
 
     if (doVideo) {
@@ -747,6 +793,17 @@ app.post('/api/media/upload', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== RIFAI LA SCRITTA SULL'IMMAGINE (dall'editor del post) =====
+app.post('/api/image/overlay', async (req, res) => {
+  try {
+    const { rawUrl, title, subtitle, style } = req.body;
+    if (!rawUrl || !/^https:\/\//.test(rawUrl) || !rawUrl.includes('/storage/v1/object/public/post-images/')) return res.status(400).json({ error: 'Immagine non valida' });
+    if (!title || !String(title).trim()) return res.json({ success: true, url: rawUrl });
+    const url = await overlayAndUpload(rawUrl, title, subtitle, accentFromStyle(style));
+    res.json({ success: true, url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== MODIFICA DI UN POST GIÀ APPROVATO (testo e data di pubblicazione) =====
 app.post('/api/posts/update', async (req, res) => {
   try {
@@ -766,8 +823,8 @@ app.post('/api/posts/update', async (req, res) => {
 // ===== STATO DI UN POST DENTRO LA STRATEGIA (approvato / eliminato) =====
 app.post('/api/posts/state', async (req, res) => {
   try {
-    const { userId, sid, text, status, video_url, video_task_id, image_url, carousel_images, new_text, scheduled_time, day } = req.body;
-    const hasEdit = video_url || video_task_id || image_url || carousel_images || new_text || scheduled_time || day;
+    const { userId, sid, text, status, video_url, video_task_id, image_url, carousel_images, new_text, scheduled_time, day, overlay_title, overlay_subtitle } = req.body;
+    const hasEdit = video_url || video_task_id || image_url || carousel_images || new_text || scheduled_time || day || overlay_title !== undefined;
     if (!userId || !sid || (!['approved', 'deleted', 'draft'].includes(status) && !hasEdit)) return res.status(400).json({ error: 'Dati mancanti' });
     const { data: st, error } = await supabase.from('strategies').select('posts').eq('id', sid).eq('user_id', userId).single();
     if (error || !st) return res.status(404).json({ error: 'Strategia non trovata' });
@@ -779,11 +836,14 @@ app.post('/api/posts/state', async (req, res) => {
     if (status) patch.status = status;
     if (typeof video_url === 'string' && /^https:\/\//.test(video_url)) { patch.video_url = video_url; patch.video_status = 'completed'; }
     if (typeof image_url === 'string' && /^https:\/\//.test(image_url)) patch.image_url = image_url;
+    if (typeof req.body.image_raw_url === 'string' && /^https:\/\//.test(req.body.image_raw_url)) patch.image_raw_url = req.body.image_raw_url;
     if (typeof video_task_id === 'string' && video_task_id.length < 200) { patch.video_task_id = video_task_id; patch.video_status = 'processing'; }
     if (Array.isArray(carousel_images)) patch.carousel_images = carousel_images.filter(u => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, 10);
     if (typeof new_text === 'string' && new_text.trim()) patch.text = new_text.slice(0, 2200);
     if (typeof scheduled_time === 'string' && /^\d{1,2}:\d{2}$/.test(scheduled_time)) patch.scheduled_time = scheduled_time;
     if (typeof day === 'string' && day.length < 20) patch.day = day;
+    if (typeof overlay_title === 'string') patch.overlay_title = overlay_title.slice(0, 90);
+    if (typeof overlay_subtitle === 'string') patch.overlay_subtitle = overlay_subtitle.slice(0, 140);
     list[i] = Object.assign({}, list[i], patch);
     const { error: upErr } = await supabase.from('strategies').update({ posts: list }).eq('id', sid).eq('user_id', userId);
     if (upErr) throw upErr;
