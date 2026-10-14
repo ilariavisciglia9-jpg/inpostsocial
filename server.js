@@ -63,7 +63,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -516,6 +516,27 @@ app.post('/webhook/stripe', async (req, res) => {
     }
     res.json({ received: true });
   } catch (e) { res.status(400).json({ error: 'Webhook error' }); }
+});
+
+// ===== SCOLLEGA SOCIAL =====
+// Facebook e Instagram si collegano insieme (stesso accesso Meta), quindi si scollegano insieme.
+app.post('/api/social/disconnect', async (req, res) => {
+  try {
+    const { userId, platform } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId mancante' });
+    const platforms = platform === 'tiktok' ? ['tiktok'] : ['facebook', 'instagram'];
+    if (platforms.includes('facebook')) {
+      // revoca anche l'autorizzazione lato Meta, così al prossimo collegamento si può scegliere un altro account
+      const { data: fb } = await supabase.from('social_connections').select('access_token').eq('user_id', userId).eq('platform', 'facebook').maybeSingle();
+      if (fb && fb.access_token) {
+        try { await axios.delete('https://graph.facebook.com/v19.0/me/permissions', { params: { access_token: fb.access_token } }); }
+        catch (e) { console.log('Revoca Meta non riuscita (ignoro):', e.message); }
+      }
+    }
+    const { error } = await supabase.from('social_connections').delete().eq('user_id', userId).in('platform', platforms);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== DEBUG SOCIAL =====

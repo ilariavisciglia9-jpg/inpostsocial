@@ -149,6 +149,8 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .btn-ig:hover,.btn-fb:hover,.btn-tt:hover{background:#2A2A33}
 .btn-li{background:var(--off-white);color:var(--gray-light);border-color:var(--border);cursor:not-allowed}
 .btn-connected{background:var(--green-bg);color:var(--green);border-color:#C9F0D8;cursor:default}
+.btn-unlink{margin-top:0.5rem;width:100%;padding:0.45rem;border-radius:7px;font-size:0.78rem;font-weight:600;background:#fff;color:var(--red);border:1px solid var(--border-strong);cursor:pointer}
+.btn-unlink:hover{background:var(--red-bg);border-color:#F3C5CD}
 
 /* ===== PLANS ===== */
 .plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
@@ -800,11 +802,49 @@ function markConnected(cardId, btnId, label) {
   var card = document.getElementById(cardId);
   var btn = document.getElementById(btnId);
   if (!card || !btn) return;
+  if (!btn.dataset.origLabel) { btn.dataset.origLabel = btn.textContent; btn.dataset.origClass = btn.className; }
+  if (!card.querySelector('.btn-unlink')) {
+    var un = document.createElement('button');
+    un.className = 'btn-unlink';
+    un.textContent = 'Scollega account';
+    un.addEventListener('click', function() { disconnectSocial(btnId === 'btn-tt' ? 'tiktok' : 'meta'); });
+    card.appendChild(un);
+  }
   card.classList.add('connected');
   btn.className = 'btn-connect btn-connected';
   btn.textContent = label;
   btn.disabled = true;
   btn.style.opacity = '1';
+}
+
+function resetConnected(cardId, btnId) {
+  var card = document.getElementById(cardId);
+  var btn = document.getElementById(btnId);
+  if (!card || !btn) return;
+  card.classList.remove('connected');
+  var un = card.querySelector('.btn-unlink'); if (un) un.remove();
+  if (btn.dataset.origLabel) { btn.textContent = btn.dataset.origLabel; btn.className = btn.dataset.origClass; }
+  btn.disabled = false;
+}
+
+async function disconnectSocial(which) {
+  var msg = which === 'tiktok' ? 'Vuoi scollegare TikTok?' : 'Vuoi scollegare Instagram e Facebook? L\'agente non potrà più pubblicare finché non li ricolleghi.';
+  if (!confirm(msg)) return;
+  showLoading('Scollegamento in corso...');
+  try {
+    var resp = await fetch('/api/social/disconnect', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ platform: which === 'tiktok' ? 'tiktok' : 'meta' })
+    });
+    var r = await resp.json();
+    if (!resp.ok || !r.success) throw new Error(r.error || 'Errore');
+    if (which === 'tiktok') resetConnected('card-tt', 'btn-tt');
+    else { resetConnected('card-ig', 'btn-ig'); resetConnected('card-fb', 'btn-fb'); }
+    document.getElementById('os-social').classList.remove('done');
+    await loadSocialConnections();
+    toast('Account scollegato');
+  } catch (e) { toast('Errore: ' + e.message, 'error'); }
+  hideLoading();
 }
 
 function connectMeta() {
