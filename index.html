@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+<script>
+// se Supabase rimanda qui dopo l'accesso (Google / conferma email), passa la sessione alla dashboard
+if (/access_token=|refresh_token=/.test(location.hash) || /[?&]code=/.test(location.search)) {
+  location.replace('/dashboard.html' + location.search + location.hash);
+}
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>InPostSocial — Il tuo Social Media Manager Virtuale</title>

@@ -623,6 +623,14 @@ var PAGE_TITLES = {agente:'Agente AI',home:'Dashboard',genera:'Genera Post',post
 
 async function init() {
   var session = (await sb.auth.getSession()).data.session;
+  if (!session) {
+    // di ritorno da Google o dal link di conferma email la sessione arriva un attimo dopo: aspettiamola
+    session = await new Promise(function(resolve) {
+      var done = false;
+      var t = setTimeout(function() { if (!done) { done = true; resolve(null); } }, 2500);
+      sb.auth.onAuthStateChange(function(ev, s) { if (s && !done) { done = true; clearTimeout(t); resolve(s); } });
+    });
+  }
   if (!session) { window.location.href = '/login.html'; return; }
   user = session.user;
 
