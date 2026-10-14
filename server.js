@@ -23,9 +23,28 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_SERVICE_KEY || '');
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'placeholder');
 
-app.use(cors({ origin: [process.env.FRONTEND_URL, 'http://localhost:3000'], credentials: true }));
+app.use(cors({ origin: [siteUrl(), siteUrl().replace('://www.', '://'), 'http://localhost:3000'], credentials: true }));
 app.use('/webhook/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json());
+
+// URL pubblico del sito, sempre con https:// e senza slash finale (anche se su Railway manca il protocollo)
+function siteUrl() {
+  let u = (process.env.FRONTEND_URL || 'https://www.inpostsocial.com').trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  return u;
+}
+
+// ===== PROVA GRATUITA: 2 post a settimana =====
+const FREE_WEEKLY_POSTS = 2;
+function freeWeekKey() {
+  const d = new Date();
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = t.getUTCFullYear();
+  const w = Math.ceil(((t - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7);
+  return `free-${y}-W${w}`;
+}
 
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
@@ -87,10 +106,19 @@ app.post('/api/generate', async (req, res) => {
     const { brand, description, sector, city, usp, goal, socials, frequency, tone, style, userId, generateImages, generateVideo } = req.body;
     if (!brand || !description) return res.status(400).json({ error: 'Brand e descrizione obbligatori' });
 
+    // piano gratuito: massimo FREE_WEEKLY_POSTS post a settimana, senza video
+    let freeLeft = null, freeUsed = 0;
+    const freeKey = freeWeekKey();
     if (userId) {
-      const { data: user } = await supabase.from('users').select('plan,posts_this_week').eq('id', userId).single();
-      if (user && user.plan === 'free' && user.posts_this_week >= 2) {
-        return res.status(403).json({ error: 'Limite piano gratuito raggiunto', upgrade: true });
+      const { data: user } = await supabase.from('users').select('plan,email').eq('id', userId).single();
+      const isOwner = user && user.email === (process.env.OWNER_EMAIL || 'info@inpostsocial.com');
+      if (!isOwner && (!user || !user.plan || user.plan === 'free')) {
+        const { data: usage } = await supabase.from('agent_usage').select('posts').eq('user_id', userId).eq('month', freeKey).maybeSingle();
+        freeUsed = (usage && usage.posts) || 0;
+        freeLeft = FREE_WEEKLY_POSTS - freeUsed;
+        if (freeLeft <= 0) {
+          return res.status(403).json({ error: `Hai già usato i ${FREE_WEEKLY_POSTS} post gratuiti di questa settimana. Si ricaricano lunedì, oppure scegli un piano per generarne di più.`, upgrade: true });
+        }
       }
     }
 
@@ -127,8 +155,14 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
       return res.status(500).json({ error: 'Errore parsing risposta AI', details: parseErr.message });
     }
 
+    if (freeLeft !== null && Array.isArray(data.posts)) {
+      // nella prova gratuita teniamo prima i post con immagine singola (niente reel)
+      const order = { image: 0, carousel: 1, reel: 2 };
+      data.posts = data.posts.slice().sort((a, b) => (order[a.type] ?? 1) - (order[b.type] ?? 1)).slice(0, freeLeft);
+    }
+
     const doImages = generateImages === true || generateImages === 'true';
-    const doVideo = generateVideo === true || generateVideo === 'true';
+    const doVideo = freeLeft === null && (generateVideo === true || generateVideo === 'true');
     console.log('🖼️ generateImages:', generateImages, '→ doImages:', doImages, '| KEY:', !!process.env.OPENAI_API_KEY);
     if (doImages && process.env.OPENAI_API_KEY) {
       for (let i = 0; i < data.posts.length; i++) {
@@ -179,7 +213,14 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
       });
     }
 
-    res.json({ success: true, data });
+    let free = null;
+    if (freeLeft !== null) {
+      const usedNow = freeUsed + data.posts.length;
+      await supabase.from('agent_usage').upsert({ user_id: userId, month: freeKey, posts: usedNow }, { onConflict: 'user_id,month' });
+      free = { limit: FREE_WEEKLY_POSTS, left: Math.max(0, FREE_WEEKLY_POSTS - usedNow) };
+    }
+
+    res.json({ success: true, data, free });
 
   } catch (error) {
     console.error('Generate error:', error);
@@ -293,7 +334,7 @@ app.get('/api/video-status/:taskId', async (req, res) => {
 // ===== META OAUTH =====
 app.get('/auth/meta', (req, res) => {
   const { userId } = req.query;
-  if (!userId) return res.redirect(`${process.env.FRONTEND_URL}/dashboard.html?error=no_user`);
+  if (!userId) return res.redirect(`${siteUrl()}/dashboard.html?error=no_user`);
   const scope = [
     'instagram_basic',
     'instagram_content_publish',
@@ -304,14 +345,14 @@ app.get('/auth/meta', (req, res) => {
     'pages_manage_posts'
   ].join(',');
   const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
-  const redirectUri = encodeURIComponent(process.env.FRONTEND_URL + '/auth/callback');
+  const redirectUri = encodeURIComponent(siteUrl() + '/auth/callback');
   const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${process.env.META_APP_ID}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}&response_type=code`;
   console.log('🔗 Meta OAuth start for user:', userId);
   res.redirect(url);
 });
 
 app.get('/auth/callback', async (req, res) => {
-  const DASH = process.env.FRONTEND_URL + '/dashboard.html';
+  const DASH = siteUrl() + '/dashboard.html';
   try {
     const { code, state, error } = req.query;
     if (error || !code) {
@@ -326,7 +367,7 @@ app.get('/auth/callback', async (req, res) => {
       params: {
         client_id: process.env.META_APP_ID,
         client_secret: process.env.META_APP_SECRET,
-        redirect_uri: process.env.FRONTEND_URL + '/auth/callback',
+        redirect_uri: siteUrl() + '/auth/callback',
         code
       }
     });
@@ -424,8 +465,8 @@ app.post('/api/checkout', async (req, res) => {
       payment_method_types: ['card'],
       customer_email: email,
       line_items: [{ price: prices[plan], quantity: 1 }],
-      success_url: `${process.env.FRONTEND_URL}/dashboard.html?payment=success`,
-      cancel_url: `${process.env.FRONTEND_URL}/index.html#prezzi`,
+      success_url: `${siteUrl()}/dashboard.html?payment=success`,
+      cancel_url: `${siteUrl()}/index.html#prezzi`,
       metadata: { userId, plan }
     });
     res.json({ url: session.url });

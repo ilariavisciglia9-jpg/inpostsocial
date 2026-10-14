@@ -466,6 +466,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
           <label class="media-opt"><input type="checkbox" id="gen-images"> Immagini AI (DALL-E 3)</label>
           <label class="media-opt"><input type="checkbox" id="gen-video"> Video Reel (Seedance AI)</label>
         </div>
+        <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Prova gratuita: puoi generare <b>2 post a settimana</b> con immagini AI. I video Reel sono inclusi nei piani a pagamento.</p>
         <button class="btn-gen" id="btn-gen">Genera strategia e post AI</button>
       </div>
       <div id="gen-result" style="display:none">
@@ -756,6 +757,8 @@ function updatePlanUI() {
   } else {
     badge.textContent = 'Piano Gratuito'; badge.className = 'plan-badge badge-free';
   }
+  var fn = document.getElementById('free-note');
+  if (fn) fn.style.display = userPlan === 'free' ? 'block' : 'none';
 }
 
 async function loadSocialConnections() {
@@ -1050,7 +1053,6 @@ async function doGenerate() {
   var brand = document.getElementById('g-brand').value.trim();
   var desc = document.getElementById('g-desc').value.trim();
   if (!brand || !desc) return toast('Inserisci brand e descrizione', 'error');
-  if (userPlan === 'free' && posts.length >= 10) return toast('Limite raggiunto. Passa a Pro!', 'error');
   var genImages = document.getElementById('gen-images').checked;
   var genVideo = document.getElementById('gen-video').checked;
   var lmsg = genImages && genVideo ? 'Generando post, immagini e video... (1-2 min)' :
@@ -1085,7 +1087,8 @@ async function doGenerate() {
     document.getElementById('gen-result').scrollIntoView({behavior:'smooth', block:'nearest'});
     updateStats();
     document.getElementById('os-post').classList.add('done');
-    toast(genImages ? 'Post e immagini pronti!' : genVideo ? 'Post e video pronti!' : 'Strategia e post generati!');
+    if (result.free) toast('Post pronti! Ti restano ' + result.free.left + ' post gratuiti questa settimana.');
+    else toast(genImages ? 'Post e immagini pronti!' : genVideo ? 'Post e video pronti!' : 'Strategia e post generati!');
   } catch(e) {
     toast('Errore: ' + e.message, 'error');
   }

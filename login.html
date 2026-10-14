@@ -45,6 +45,10 @@ input:focus{border-color:var(--purple);background:white;box-shadow:0 0 0 3px rgb
 .back a{color:var(--purple);font-weight:600;text-decoration:none}
 .panel{display:none}.panel.active{display:block}
 .plan-banner{background:linear-gradient(135deg,var(--purple),#9B7DFD);color:white;border-radius:14px;padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:0.88rem;font-weight:500;display:none}
+.session-box{display:none;background:var(--off-white);border:1px solid var(--border);border-radius:14px;padding:0.9rem 1rem;margin-bottom:1.5rem;font-size:0.86rem;color:var(--dark);text-align:center}
+.session-actions{display:flex;gap:0.5rem;margin-top:0.7rem}
+.session-actions button{flex:1;padding:0.55rem;border-radius:100px;border:none;background:var(--purple);color:white;font-family:inherit;font-size:0.82rem;font-weight:600;cursor:pointer}
+.session-actions button.ghost{background:white;color:var(--dark);border:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -53,6 +57,13 @@ input:focus{border-color:var(--purple);background:white;box-shadow:0 0 0 3px rgb
   <div class="logo"><a href="/">InPost<span>Social</span></a></div>
   <div class="logo-sub" id="logo-sub">Il tuo social media manager virtuale</div>
   <div class="plan-banner" id="plan-banner"></div>
+  <div class="session-box" id="session-box">
+    Sei già connesso come <b id="session-email"></b>
+    <div class="session-actions">
+      <button type="button" id="session-go">Vai alla dashboard →</button>
+      <button type="button" id="session-out" class="ghost">Usa un altro account</button>
+    </div>
+  </div>
   <div class="tabs">
     <button class="tab active" id="tab-login" onclick="switchTab('login')">Accedi</button>
     <button class="tab" id="tab-register" onclick="switchTab('register')">Registrati</button>
@@ -112,11 +123,22 @@ const urlParams = new URLSearchParams(window.location.search);
 const urlPlan = urlParams.get('plan');
 const urlMode = urlParams.get('mode');
 
-// Se già loggato redirect
-sb.auth.getSession().then(async ({ data: { session } }) => {
+// Se già loggato: niente redirect automatico, mostriamo il form con un avviso
+sb.auth.getSession().then(({ data: { session } }) => {
   if (!session) return;
-  if (urlPlan) await goToCheckout(urlPlan, session.user);
-  else window.location.href = '/dashboard.html';
+  const box = document.getElementById('session-box');
+  document.getElementById('session-email').textContent = session.user.email;
+  const go = document.getElementById('session-go');
+  if (urlPlan) go.textContent = 'Continua al pagamento →';
+  go.onclick = async () => {
+    if (urlPlan) await goToCheckout(urlPlan, session.user);
+    else window.location.href = '/dashboard.html';
+  };
+  document.getElementById('session-out').onclick = async () => {
+    await sb.auth.signOut();
+    box.style.display = 'none';
+  };
+  box.style.display = 'block';
 });
 
 // Se arriva da piano specifico mostra banner e apri register
