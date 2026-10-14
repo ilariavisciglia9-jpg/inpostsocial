@@ -238,7 +238,8 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
         if (!doImages && (post.type !== 'reel' || post.image_url)) return;
         try {
           if (post.type === 'carousel' && post.carousel_slides) {
-            const imgs = await Promise.all(post.carousel_slides.slice(0, 3).map(sl => generateImage(styled(sl.image_prompt || post.text), brand, { refs: photos })));
+            const imgs = [];
+            for (const sl of post.carousel_slides.slice(0, 3)) imgs.push(await generateImage(styled(sl.image_prompt || post.text), brand, { refs: photos }));
             data.posts[i].carousel_images = imgs.filter(Boolean);
             data.posts[i].image_url = data.posts[i].carousel_images[0] || null;
           } else if (post.image_prompt || post.text) {
@@ -250,8 +251,8 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
           mediaErrors.push(msg);
         }
       });
-      // 3 immagini alla volta: molto più veloce che una dopo l'altra
-      for (let k = 0; k < jobs.length; k += 3) await Promise.all(jobs.slice(k, k + 3).map(j => j()));
+      // 2 post alla volta: più veloce, senza superare i limiti al minuto di OpenAI
+      for (let k = 0; k < jobs.length; k += 2) await Promise.all(jobs.slice(k, k + 2).map(j => j()));
     }
 
     if (doVideo) {
@@ -342,11 +343,32 @@ async function generateImage(prompt, brand, opts) {
       }
       r = { data: json };
     } else {
-      r = await axios.post(
-        'https://api.openai.com/v1/images/generations',
-        { model: 'gpt-image-1', prompt: safePrompt, n: 1, size, quality: 'medium' },
-        { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 90000 }
-      );
+      // OpenAI risponde 429 sia per "troppe richieste" (si riprova dopo una pausa) sia per credito esaurito (inutile riprovare)
+      for (let attempt = 1; ; attempt++) {
+        try {
+          r = await axios.post(
+            'https://api.openai.com/v1/images/generations',
+            { model: 'gpt-image-1', prompt: safePrompt, n: 1, size, quality: 'medium' },
+            { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 120000 }
+          );
+          break;
+        } catch (err) {
+          const st = err.response && err.response.status;
+          const oe = (err.response && err.response.data && err.response.data.error) || {};
+          if (st === 429 && (oe.code === 'insufficient_quota' || /quota|billing/i.test(oe.message || ''))) {
+            throw new Error('Credito OpenAI esaurito: ricarica il saldo su platform.openai.com → Billing');
+          }
+          if (st === 429 && attempt < 5) {
+            const wait = (parseInt(err.response.headers['retry-after'], 10) || attempt * 15) * 1000;
+            console.log(`⏳ OpenAI 429 (troppe richieste), riprovo tra ${wait / 1000}s (tentativo ${attempt})`);
+            await new Promise(res => setTimeout(res, wait));
+            continue;
+          }
+          if (st === 429) throw new Error('OpenAI: limite di immagini al minuto raggiunto. Riprova tra qualche minuto.');
+          if (oe.message) throw new Error('OpenAI: ' + oe.message);
+          throw err;
+        }
+      }
     }
     const img = r.data.data[0];
 

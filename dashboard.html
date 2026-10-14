@@ -1328,7 +1328,8 @@ async function createPostImage(post, btn) {
     var body = { sid: post._sid, text: (post.text || '').substring(0, 50) };
     if (post.type === 'carousel') {
       var slides = (post.carousel_slides && post.carousel_slides.length ? post.carousel_slides : [{}, {}, {}]).slice(0, 3);
-      var urls = await Promise.all(slides.map(function(sl) { return one(sl.image_prompt || post.image_prompt || post.text, '1024x1024'); }));
+      var urls = [];
+      for (var k = 0; k < slides.length; k++) urls.push(await one(slides[k].image_prompt || post.image_prompt || post.text, '1024x1024'));
       post.carousel_images = urls; post.image_url = urls[0]; body.carousel_images = urls; body.image_url = urls[0];
     } else {
       post.image_url = await one(post.image_prompt || post.text, post.type === 'reel' ? '1024x1536' : '1024x1024');
