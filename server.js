@@ -137,7 +137,7 @@ app.use(async (req, res, next) => {
 });
 // il codice del server e i file di configurazione non devono essere scaricabili dal sito
 app.use((req, res, next) => {
-  if (/^\/(server\.js|agent\.js|package(-lock)?\.json|schema.*\.sql|env\.example|download|.*\.md)$/i.test(req.path) || req.path.startsWith('/node_modules')) {
+  if (/^\/(server\.js|agent\.js|overlay\.js|package(-lock)?\.json|schema.*\.sql|env\.example|download|.*\.md)$/i.test(req.path) || req.path.startsWith('/node_modules')) {
     return res.status(404).end();
   }
   next();
