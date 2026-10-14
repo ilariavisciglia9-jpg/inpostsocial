@@ -4,227 +4,263 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — InPostSocial</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/api/config.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Outfit',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,-apple-system,sans-serif}
 :root{
-  --purple:#7C5CFC;--purple-light:#9B7DFD;--purple-dark:#5B3EDB;
-  --lavender:#E8E4FF;--off-white:#F8F7FF;
-  --dark:#1A1730;--dark2:#2D2850;--gray:#6B6B8A;--gray-light:#A0A0B8;
-  --border:rgba(124,92,252,0.12);--shadow:0 4px 24px rgba(124,92,252,0.10);
-  --sidebar:255px;--gold:#f5c842;
+  --purple:#6D4AFF;--purple-light:#8A6DFF;--purple-dark:#5835E8;
+  --lavender:#F1EEFF;--off-white:#F7F7F8;
+  --dark:#111118;--dark2:#3A3A44;--gray:#6E6E78;--gray-light:#9C9CA6;
+  --border:#E7E7EA;--border-strong:#D9D9DE;--shadow:0 1px 2px rgba(16,16,24,0.04);
+  --sidebar:240px;--gold:#B7791F;
+  --green:#15803D;--green-bg:#ECFDF3;--red:#C81E3A;--red-bg:#FEF2F3;--amber:#B45309;--amber-bg:#FFF7ED;--blue:#1D4ED8;--blue-bg:#EFF4FF;
 }
-body{background:var(--off-white);color:var(--dark);display:flex;min-height:100vh}
-h1,h2,h3,h4,h5{font-family:'Playfair Display',serif}
+body{background:var(--off-white);color:var(--dark);display:flex;min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,h5{font-family:inherit;letter-spacing:-0.01em}
 a{text-decoration:none;color:inherit}
-button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-serif}
-.sidebar{width:var(--sidebar);background:var(--dark);min-height:100vh;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:50;transition:transform 0.3s}
-.sidebar-logo{padding:1.8rem 1.5rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.07)}
-.sidebar-logo-text{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:white}
-.sidebar-logo-text span{color:var(--purple-light)}
-.plan-badge{display:inline-flex;align-items:center;margin-top:0.5rem;padding:0.25rem 0.75rem;border-radius:100px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em}
-.badge-free{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5)}
-.badge-pro{background:rgba(124,92,252,0.25);color:#C4B5FD}
-.badge-business{background:rgba(245,200,66,0.15);color:var(--gold)}
-.nav-section{padding:1.2rem 0.75rem}
-.nav-label{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:rgba(255,255,255,0.25);padding:0 0.75rem;margin-bottom:0.5rem}
-.nav-item{display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.75rem;border-radius:10px;font-size:0.85rem;font-weight:500;color:rgba(255,255,255,0.45);transition:all 0.2s;width:100%;text-align:left;margin-bottom:2px}
-.nav-item:hover{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.85)}
-.nav-item.active{background:rgba(124,92,252,0.2);color:white}
-.nav-icon{font-size:1rem;width:18px;text-align:center;flex-shrink:0}
-.sidebar-bottom{margin-top:auto;padding:1.2rem 0.75rem;border-top:1px solid rgba(255,255,255,0.07)}
-.user-box{display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.5rem}
-.user-av{width:34px;height:34px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:0.82rem;font-weight:700;color:white;flex-shrink:0}
-.user-name{font-size:0.82rem;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
-.user-email{font-size:0.7rem;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
-.btn-logout{width:100%;padding:0.55rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.4);font-size:0.78rem;margin-top:0.75rem;transition:all 0.2s}
-.btn-logout:hover{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.25);color:#fca5a5}
-.main{margin-left:var(--sidebar);flex:1;min-height:100vh}
-.topbar{padding:1.2rem 2rem;border-bottom:1px solid var(--border);background:white;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;gap:1rem}
-.topbar h1{font-size:1.25rem;font-weight:700;white-space:nowrap}
-.btn-upgrade{background:linear-gradient(135deg,var(--purple),var(--purple-light));color:white;padding:0.5rem 1.1rem;border-radius:100px;font-size:0.8rem;font-weight:700;transition:all 0.2s;white-space:nowrap}
-.btn-upgrade:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,92,252,0.4)}
-.content{padding:1.75rem}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+
+/* ===== SIDEBAR ===== */
+.sidebar{width:var(--sidebar);background:#fff;border-right:1px solid var(--border);min-height:100vh;display:flex;flex-direction:column;position:fixed;left:0;top:0;z-index:50;transition:transform 0.25s}
+.sidebar-logo{padding:1.25rem 1.25rem 1rem;display:flex;align-items:center;flex-wrap:wrap;gap:0.4rem 0.5rem}
+.sidebar-logo-text{font-size:1.05rem;font-weight:700;color:var(--dark);letter-spacing:-0.02em}
+.sidebar-logo-text span{color:var(--purple)}
+.plan-badge{display:inline-flex;align-items:center;padding:0.15rem 0.5rem;border-radius:6px;font-size:0.66rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap}
+.badge-free{background:var(--off-white);color:var(--gray);border:1px solid var(--border)}
+.badge-pro{background:var(--lavender);color:var(--purple)}
+.badge-business{background:#FDF6E7;color:var(--gold)}
+.nav-section{padding:0.5rem 0.75rem}
+.nav-label{font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--gray-light);padding:0.5rem 0.6rem;margin-bottom:0.15rem}
+.nav-item{display:flex;align-items:center;gap:0.65rem;padding:0.5rem 0.6rem;border-radius:7px;font-size:0.86rem;font-weight:500;color:var(--dark2);transition:background 0.15s,color 0.15s;width:100%;text-align:left;margin-bottom:1px}
+.nav-item:hover{background:var(--off-white);color:var(--dark)}
+.nav-item.active{background:var(--lavender);color:var(--purple)}
+.nav-icon{width:17px;height:17px;flex-shrink:0;display:inline-flex;color:var(--gray-light)}
+.nav-icon svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-item:hover .nav-icon{color:var(--dark2)}
+.nav-item.active .nav-icon{color:var(--purple)}
+.sidebar-bottom{margin-top:auto;padding:0.75rem;border-top:1px solid var(--border)}
+.user-box{display:flex;align-items:center;gap:0.65rem;padding:0.4rem}
+.user-av{width:32px;height:32px;border-radius:50%;background:var(--lavender);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:600;color:var(--purple);flex-shrink:0}
+.user-name{font-size:0.82rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.user-email{font-size:0.72rem;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.btn-logout{width:100%;padding:0.45rem;background:#fff;border:1px solid var(--border);border-radius:7px;color:var(--gray);font-size:0.78rem;font-weight:500;margin-top:0.5rem;transition:all 0.15s}
+.btn-logout:hover{border-color:#F3C5CD;color:var(--red);background:var(--red-bg)}
+
+/* ===== LAYOUT ===== */
+.main{margin-left:var(--sidebar);flex:1;min-height:100vh;min-width:0}
+.topbar{height:60px;padding:0 2rem;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.9);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;gap:1rem}
+.topbar h1{font-size:1.05rem;font-weight:600;white-space:nowrap}
+.btn-upgrade{background:var(--dark);color:#fff;padding:0.45rem 0.95rem;border-radius:7px;font-size:0.8rem;font-weight:600;transition:background 0.15s;white-space:nowrap}
+.btn-upgrade:hover{background:#2A2A33}
+.content{padding:2rem;max-width:1180px}
 .page{display:none}
 .page.active{display:block}
-.welcome-card{background:linear-gradient(135deg,var(--dark),#3D2B6B);border-radius:20px;padding:2rem 2.5rem;margin-bottom:1.75rem;position:relative;overflow:hidden}
-.welcome-card::after{content:'';position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(124,92,252,0.15);top:-100px;right:-50px;pointer-events:none}
-.welcome-card h2{color:white;font-size:1.4rem;margin-bottom:0.4rem;position:relative}
-.welcome-card p{color:rgba(255,255,255,0.55);font-size:0.88rem;position:relative;margin-bottom:1.2rem}
-.onboarding-steps{display:flex;gap:0.6rem;flex-wrap:wrap;position:relative}
-.o-step{display:flex;align-items:center;gap:0.4rem;background:rgba(255,255,255,0.07);border-radius:100px;padding:0.35rem 0.8rem;font-size:0.78rem;color:rgba(255,255,255,0.6)}
-.o-step.done{background:rgba(34,197,94,0.15);color:#86efac}
-.o-step .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);flex-shrink:0}
-.o-step.done .dot{background:#22c55e}
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.75rem}
-.stat-card{background:white;border-radius:16px;padding:1.4rem;border:1px solid var(--border)}
-.stat-icon{font-size:1.4rem;margin-bottom:0.5rem}
-.stat-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray);margin-bottom:0.4rem}
-.stat-val{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--dark);line-height:1}
-.stat-sub{font-size:0.72rem;color:var(--gray-light);margin-top:0.2rem}
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
-.section-title{font-size:1rem;font-weight:700;font-family:'Playfair Display',serif}
-.btn-sm{padding:0.5rem 1rem;border-radius:100px;font-size:0.8rem;font-weight:600;transition:all 0.2s;border:none;cursor:pointer}
-.btn-purple{background:var(--purple);color:white}
+
+/* ===== HOME ===== */
+.welcome-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.5rem 1.75rem;margin-bottom:1.5rem}
+.welcome-card h2{color:var(--dark);font-size:1.25rem;font-weight:600;margin-bottom:0.25rem}
+.welcome-card p{color:var(--gray);font-size:0.88rem;margin-bottom:1.1rem}
+.onboarding-steps{display:flex;gap:0.5rem;flex-wrap:wrap}
+.o-step{display:flex;align-items:center;gap:0.45rem;background:var(--off-white);border:1px solid var(--border);border-radius:7px;padding:0.35rem 0.7rem;font-size:0.78rem;color:var(--dark2);font-weight:500}
+.o-step.done{background:var(--green-bg);border-color:#C9F0D8;color:var(--green)}
+.o-step .dot{width:7px;height:7px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+.o-step.done .dot{background:var(--green)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
+.stat-card{background:#fff;border-radius:12px;padding:1.2rem 1.25rem;border:1px solid var(--border)}
+.stat-icon{display:none}
+.stat-label{font-size:0.78rem;font-weight:500;color:var(--gray);margin-bottom:0.5rem}
+.stat-val{font-size:1.75rem;font-weight:600;color:var(--dark);line-height:1;letter-spacing:-0.02em}
+.stat-sub{font-size:0.74rem;color:var(--gray-light);margin-top:0.35rem}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;gap:1rem}
+.section-title{font-size:0.95rem;font-weight:600}
+
+/* ===== BUTTONS ===== */
+.btn-sm{padding:0.45rem 0.9rem;border-radius:7px;font-size:0.8rem;font-weight:600;transition:all 0.15s;border:none;cursor:pointer}
+.btn-purple{background:var(--purple);color:#fff}
 .btn-purple:hover{background:var(--purple-dark)}
-.btn-outline{background:transparent;color:var(--purple);border:1.5px solid var(--lavender)}
-.btn-outline:hover{background:var(--lavender)}
+.btn-outline{background:#fff;color:var(--dark2);border:1px solid var(--border-strong)}
+.btn-outline:hover{background:var(--off-white)}
+.btn-gen{width:100%;padding:0.7rem 1rem;background:var(--purple);color:#fff;border:none;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;transition:background 0.15s}
+.btn-gen:hover{background:var(--purple-dark)}
+.btn-gen:disabled{opacity:0.5;cursor:not-allowed}
+
+/* ===== POSTS ===== */
 .posts-list{display:flex;flex-direction:column;gap:0.75rem}
-.post-item{background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden}
-.post-header{display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;border-bottom:1px solid var(--border);background:var(--off-white)}
-.post-social{display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;font-weight:700}
-.post-day{font-size:0.74rem;color:var(--gray-light)}
-.status{padding:0.2rem 0.65rem;border-radius:100px;font-size:0.7rem;font-weight:700}
-.s-draft{background:#fef3c7;color:#d97706}
-.s-approved{background:#dcfce7;color:#16a34a}
-.s-published{background:#dbeafe;color:#2563eb}
-.post-body{padding:1.1rem}
-.post-text{font-size:0.88rem;line-height:1.7;color:var(--dark2);margin-bottom:0.75rem}
+.post-item{background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:0.75rem}
+.posts-list .post-item{margin-bottom:0}
+.post-header{display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.75rem 1rem;border-bottom:1px solid var(--border)}
+.post-social{display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;font-weight:600}
+.post-day{font-size:0.76rem;color:var(--gray)}
+.status{padding:0.15rem 0.5rem;border-radius:6px;font-size:0.7rem;font-weight:600;white-space:nowrap}
+.s-draft{background:var(--amber-bg);color:var(--amber)}
+.s-approved{background:var(--green-bg);color:var(--green)}
+.s-published{background:var(--blue-bg);color:var(--blue)}
+.post-body{padding:1rem}
+.post-text{font-size:0.88rem;line-height:1.65;color:var(--dark2);margin-bottom:0.75rem}
 .hashtags{display:flex;flex-wrap:wrap;gap:0.35rem}
-.hashtag{font-size:0.7rem;padding:0.18rem 0.55rem;background:var(--lavender);color:var(--purple);border-radius:100px;font-weight:600}
-.post-actions{padding:0.7rem 1.1rem;border-top:1px solid var(--border);display:flex;gap:0.5rem}
-.pBtn{flex:1;padding:0.5rem;border-radius:8px;font-size:0.76rem;font-weight:600;transition:all 0.2s;text-align:center;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.pBtn-approve{background:#dcfce7;color:#16a34a}
-.pBtn-approve:hover,.pBtn-approve:active{background:#16a34a;color:white}
+.hashtag{font-size:0.72rem;padding:0.12rem 0.45rem;background:var(--off-white);color:var(--purple);border-radius:5px;font-weight:500}
+.post-actions{padding:0.65rem 1rem;border-top:1px solid var(--border);display:flex;gap:0.5rem}
+.pBtn{flex:1;padding:0.45rem 0.6rem;border-radius:7px;font-size:0.78rem;font-weight:600;transition:all 0.15s;text-align:center;border:1px solid var(--border-strong);background:#fff;color:var(--dark2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pBtn:hover{background:var(--off-white)}
+.pBtn-approve{background:var(--dark);border-color:var(--dark);color:#fff}
+.pBtn-approve:hover,.pBtn-approve:active{background:#2A2A33}
 .pBtn-approve:disabled{opacity:0.4;cursor:not-allowed}
-.pBtn-edit{background:var(--off-white);color:var(--gray);border:1px solid var(--border)}
-.pBtn-delete{background:#fff1f2;color:#e11d48}
-.pBtn-delete:hover,.pBtn-delete:active{background:#e11d48;color:white}
-.post-img{width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-bottom:0.75rem;display:block}
+.pBtn-edit{background:#fff;color:var(--dark2)}
+.pBtn-delete{flex:0 0 auto;color:var(--red)}
+.pBtn-delete:hover,.pBtn-delete:active{background:var(--red-bg);border-color:#F3C5CD}
+.post-img{width:100%;max-height:260px;object-fit:cover;border-radius:8px;margin-bottom:0.75rem;display:block}
 .carousel-strip{display:flex;gap:6px;overflow-x:auto;margin-bottom:0.75rem;padding-bottom:4px;-webkit-overflow-scrolling:touch}
 .carousel-strip img{width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0}
-.video-processing{background:#f3f4f6;border-radius:8px;padding:0.6rem 0.9rem;font-size:0.8rem;color:#6B6B8A;margin-bottom:0.75rem}
-.post-video{width:100%;border-radius:10px;margin-bottom:0.75rem;max-height:260px}
-.card-box{background:white;border-radius:18px;border:1px solid var(--border);padding:1.75rem;margin-bottom:1.5rem}
-.card-box h3{font-size:1rem;margin-bottom:1.25rem}
+.video-processing{background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.9rem;font-size:0.8rem;color:var(--gray);margin-bottom:0.75rem}
+.post-video{width:100%;border-radius:8px;margin-bottom:0.75rem;max-height:260px}
+
+/* ===== FORMS / CARDS ===== */
+.card-box{background:#fff;border-radius:12px;border:1px solid var(--border);padding:1.5rem;margin-bottom:1.5rem}
+.card-box h3{font-size:1rem;font-weight:600;margin-bottom:1.1rem}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .fg{margin-bottom:1rem}
-.fg label{display:block;font-size:0.74rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--gray);margin-bottom:0.45rem}
-.fg input,.fg textarea,.fg select{width:100%;padding:0.75rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-size:0.9rem;color:var(--dark);background:var(--off-white);outline:none;transition:border-color 0.2s;appearance:none;font-family:'Outfit',sans-serif}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--purple);background:white}
-.fg textarea{resize:vertical;min-height:85px;line-height:1.6}
-.btn-gen{width:100%;padding:0.9rem;background:linear-gradient(135deg,var(--purple),var(--purple-light));color:white;border:none;border-radius:100px;font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all 0.25s}
-.btn-gen:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(124,92,252,0.4)}
-.btn-gen:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none}
-.strategy-box{background:linear-gradient(135deg,var(--lavender),#EDE9FF);border-radius:14px;padding:1.4rem;margin-bottom:1.25rem;border:1px solid rgba(124,92,252,0.15)}
-.strategy-box h4{font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--purple);margin-bottom:0.6rem}
-.strategy-box p{font-size:0.88rem;color:var(--dark2);line-height:1.7}
+.fg label{display:block;font-size:0.8rem;font-weight:500;color:var(--dark2);margin-bottom:0.4rem}
+.fg input,.fg textarea,.fg select{width:100%;padding:0.6rem 0.8rem;border:1px solid var(--border-strong);border-radius:8px;font-size:0.88rem;color:var(--dark);background:#fff;outline:none;transition:border-color 0.15s,box-shadow 0.15s;appearance:none;font-family:inherit}
+.fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236E6E78' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.8rem center;padding-right:2rem}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(109,74,255,0.12)}
+.fg textarea{resize:vertical;min-height:85px;line-height:1.55}
+.strategy-box{background:#fff;border-radius:12px;padding:1.25rem;margin-bottom:1.25rem;border:1px solid var(--border)}
+.strategy-box h4{font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--purple);margin-bottom:0.5rem}
+.strategy-box p{font-size:0.88rem;color:var(--dark2);line-height:1.65}
 .strategy-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem}
-.s-block{background:white;border-radius:10px;padding:1rem;border:1px solid var(--border)}
-.s-block h5{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--purple);margin-bottom:0.5rem}
-.s-block p,.s-block li{font-size:0.83rem;color:var(--dark2);line-height:1.6}
+.s-block{background:var(--off-white);border-radius:8px;padding:0.9rem 1rem;border:1px solid var(--border)}
+.s-block h5{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--gray);margin-bottom:0.4rem}
+.s-block p,.s-block li{font-size:0.84rem;color:var(--dark2);line-height:1.6}
 .s-block ul{list-style:none}
-.s-block li{padding:0.2rem 0 0.2rem 1rem;position:relative}
-.s-block li::before{content:'→';position:absolute;left:0;color:var(--purple);font-size:0.75rem}
+.s-block li{padding:0.15rem 0 0.15rem 0.9rem;position:relative}
+.s-block li::before{content:'';position:absolute;left:0;top:0.7em;width:4px;height:4px;border-radius:50%;background:var(--purple)}
+
+/* ===== SOCIAL ===== */
 .social-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.social-card{background:white;border-radius:16px;border:1.5px solid var(--border);padding:1.4rem;text-align:center;transition:all 0.2s}
-.social-card.connected{border-color:#22c55e;background:#f0fdf4}
-.social-card-icon{font-size:2.2rem;margin-bottom:0.6rem}
-.social-card h4{font-size:0.9rem;font-weight:700;margin-bottom:0.35rem}
-.social-card p{font-size:0.8rem;color:var(--gray);margin-bottom:1rem;line-height:1.5}
-.btn-connect{width:100%;padding:0.6rem;border-radius:100px;font-size:0.8rem;font-weight:700;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.btn-ig{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:white}
-.btn-fb{background:#1877f2;color:white}
-.btn-tt{background:#010101;color:white}
-.btn-li{background:#0a66c2;color:white;opacity:0.5;cursor:not-allowed}
-.btn-connected{background:#dcfce7;color:#16a34a;cursor:default}
-.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem}
-.plan-card{background:white;border-radius:18px;border:1.5px solid var(--border);padding:1.75rem;position:relative}
-.plan-card.active-plan{border-color:var(--purple);border-width:2px}
-.current-label{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--purple);color:white;font-size:0.68rem;font-weight:700;padding:0.22rem 0.75rem;border-radius:100px;white-space:nowrap}
-.plan-name{font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray);margin-bottom:0.75rem}
-.plan-price{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;color:var(--dark);line-height:1;margin-bottom:1.25rem}
-.plan-price small{font-size:0.9rem;font-weight:400;color:var(--gray)}
-.plan-feats{list-style:none;margin-bottom:1.5rem;display:flex;flex-direction:column;gap:0.5rem}
-.plan-feats li{font-size:0.82rem;color:var(--dark2);display:flex;gap:0.5rem;line-height:1.4}
-.btn-plan{width:100%;padding:0.75rem;border-radius:100px;font-size:0.85rem;font-weight:700;border:none;cursor:pointer}
-.btn-plan-primary{background:var(--purple);color:white}
+.social-card{background:#fff;border-radius:12px;border:1px solid var(--border);padding:1.25rem;text-align:left;transition:border-color 0.15s;display:flex;flex-direction:column}
+.social-card.connected{border-color:#BDE8CC}
+.social-card-icon{display:none}
+.social-card h4{font-size:0.92rem;font-weight:600;margin-bottom:0.3rem}
+.social-card p{font-size:0.82rem;color:var(--gray);margin-bottom:1rem;line-height:1.5;flex:1}
+.btn-connect{width:100%;padding:0.55rem;border-radius:7px;font-size:0.8rem;font-weight:600;border:1px solid transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.btn-ig,.btn-fb,.btn-tt{background:var(--dark);color:#fff}
+.btn-ig:hover,.btn-fb:hover,.btn-tt:hover{background:#2A2A33}
+.btn-li{background:var(--off-white);color:var(--gray-light);border-color:var(--border);cursor:not-allowed}
+.btn-connected{background:var(--green-bg);color:var(--green);border-color:#C9F0D8;cursor:default}
+
+/* ===== PLANS ===== */
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.plan-card{background:#fff;border-radius:12px;border:1px solid var(--border);padding:1.5rem;position:relative;display:flex;flex-direction:column}
+.plan-card.active-plan{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple)}
+.current-label{position:absolute;top:-10px;left:1.5rem;background:var(--purple);color:#fff;font-size:0.68rem;font-weight:600;padding:0.18rem 0.55rem;border-radius:6px;white-space:nowrap}
+.plan-name{font-size:0.85rem;font-weight:600;color:var(--dark);margin-bottom:0.6rem}
+.plan-price{font-size:2rem;font-weight:700;color:var(--dark);line-height:1;margin-bottom:1.25rem;letter-spacing:-0.02em}
+.plan-price small{font-size:0.85rem;font-weight:500;color:var(--gray);letter-spacing:0}
+.plan-feats{list-style:none;margin-bottom:1.5rem;display:flex;flex-direction:column;gap:0.55rem;flex:1}
+.plan-feats li{font-size:0.84rem;color:var(--dark2);line-height:1.45;padding-left:1.4rem;position:relative}
+.plan-feats li::before{content:'';position:absolute;left:0;top:0.15em;width:15px;height:15px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236D4AFF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") no-repeat center/contain}
+.plan-feats li.no{color:var(--gray-light)}
+.plan-feats li.no::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239C9CA6' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")}
+.btn-plan{width:100%;padding:0.6rem;border-radius:8px;font-size:0.85rem;font-weight:600;border:none;cursor:pointer;transition:background 0.15s}
+.btn-plan-primary{background:var(--dark);color:#fff}
+.btn-plan-primary:hover{background:#2A2A33}
 .btn-plan-current{background:var(--lavender);color:var(--purple);cursor:default}
-.empty{text-align:center;padding:3rem 2rem;color:var(--gray)}
-.empty .icon{font-size:2.5rem;margin-bottom:0.75rem}
-.empty h3{font-size:1rem;color:var(--dark);margin-bottom:0.4rem;font-family:'Playfair Display',serif}
-.empty p{font-size:0.85rem;margin-bottom:1.25rem}
-.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.92);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem}
+
+/* ===== EMPTY / LOADING / TOAST ===== */
+.empty{text-align:center;padding:3rem 2rem;color:var(--gray);background:#fff;border:1px dashed var(--border-strong);border-radius:12px}
+.empty .icon{display:none}
+.empty h3{font-size:0.95rem;font-weight:600;color:var(--dark);margin-bottom:0.35rem}
+.empty p{font-size:0.85rem;margin-bottom:1.1rem}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.9);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem}
 .loading-overlay.show{display:flex}
-.spinner{width:44px;height:44px;border:3px solid var(--lavender);border-top-color:var(--purple);border-radius:50%;animation:spin 0.8s linear infinite}
+.spinner{width:32px;height:32px;border:2.5px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{color:var(--gray);font-size:0.88rem}
-.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:0.75rem 1.1rem;border-radius:10px;font-size:0.84rem;font-weight:500;z-index:1000;transform:translateY(80px);opacity:0;transition:all 0.3s;max-width:320px;pointer-events:none}
+.loading-text{color:var(--gray);font-size:0.86rem}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:0.7rem 1rem;border-radius:8px;font-size:0.84rem;font-weight:500;z-index:1000;transform:translateY(80px);opacity:0;transition:all 0.25s;max-width:340px;pointer-events:none;box-shadow:0 8px 24px rgba(16,16,24,0.12)}
 .toast.show{transform:translateY(0);opacity:1}
-.toast-success{background:var(--dark);color:white}
-.toast-error{background:#e11d48;color:white}
-.hamburger{display:none;position:fixed;top:1rem;left:1rem;z-index:100;background:var(--purple);border:none;border-radius:10px;padding:0.55rem;cursor:pointer;flex-direction:column;gap:4px}
-.hamburger span{display:block;width:20px;height:2px;background:white;border-radius:2px}
-.media-box{background:var(--lavender);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center}
-.media-label{font-size:0.8rem;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0}
-.media-opt{display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;color:var(--dark2);font-weight:500}
+.toast-success{background:var(--dark);color:#fff}
+.toast-error{background:var(--red);color:#fff}
+.hamburger{display:none;position:fixed;top:0.8rem;left:1rem;z-index:100;background:#fff;border:1px solid var(--border);border-radius:8px;padding:0.55rem;cursor:pointer;flex-direction:column;gap:4px}
+.hamburger span{display:block;width:18px;height:2px;background:var(--dark);border-radius:2px}
+.media-box{background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center}
+.media-label{font-size:0.75rem;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0}
+.media-opt{display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.86rem;color:var(--dark2);font-weight:500}
 .media-opt input{width:16px;height:16px;accent-color:var(--purple)}
+
 /* ===== AGENTE AI ===== */
-.ag-hero{background:linear-gradient(135deg,var(--dark),#3D2B6B);border-radius:20px;padding:1.6rem 1.8rem;margin-bottom:1.5rem;color:white;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between}
-.ag-hero h2{font-size:1.25rem;margin-bottom:0.3rem}
-.ag-hero p{color:rgba(255,255,255,0.6);font-size:0.85rem}
-.ag-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;margin-right:0.4rem;box-shadow:0 0 0 4px rgba(34,197,94,0.2)}
-.ag-dot.off{background:#9ca3af;box-shadow:none}
+.ag-hero{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.25rem;color:var(--dark);display:flex;gap:1.25rem;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.ag-hero h2{font-size:1.05rem;font-weight:600;margin-bottom:0.2rem;display:flex;align-items:center}
+.ag-hero p{color:var(--gray);font-size:0.84rem}
+.ag-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:0.5rem;box-shadow:0 0 0 3px rgba(34,197,94,0.18)}
+.ag-dot.off{background:var(--gray-light);box-shadow:none}
 .ag-actions{display:flex;gap:0.5rem;flex-wrap:wrap}
-.ag-btn-light{background:white;color:var(--dark);padding:0.6rem 1.1rem;border-radius:100px;font-size:0.82rem;font-weight:700;border:none;cursor:pointer}
-.ag-btn-ghost{background:rgba(255,255,255,0.1);color:white;padding:0.6rem 1.1rem;border-radius:100px;font-size:0.82rem;font-weight:600;border:1px solid rgba(255,255,255,0.2);cursor:pointer}
+.ag-btn-light{background:var(--purple);color:#fff;padding:0.5rem 0.95rem;border-radius:7px;font-size:0.8rem;font-weight:600;border:none;cursor:pointer}
+.ag-btn-light:hover{background:var(--purple-dark)}
+.ag-btn-ghost{background:#fff;color:var(--dark2);padding:0.5rem 0.95rem;border-radius:7px;font-size:0.8rem;font-weight:600;border:1px solid var(--border-strong);cursor:pointer}
+.ag-btn-ghost:hover{background:var(--off-white)}
 .ag-usage{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
-.ag-meter{background:white;border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem}
-.ag-meter-top{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--gray);margin-bottom:0.5rem;font-weight:600}
-.ag-meter-top b{color:var(--dark)}
-.ag-bar{height:7px;background:var(--lavender);border-radius:100px;overflow:hidden}
+.ag-meter{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.15rem}
+.ag-meter-top{display:flex;justify-content:space-between;font-size:0.8rem;color:var(--gray);margin-bottom:0.6rem;font-weight:500}
+.ag-meter-top b{color:var(--dark);font-weight:600}
+.ag-bar{height:6px;background:var(--off-white);border-radius:100px;overflow:hidden}
 .ag-bar span{display:block;height:100%;background:var(--purple);border-radius:100px}
-.ag-tabs{display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1rem}
-.ag-tab{padding:0.5rem 0.95rem;border-radius:100px;font-size:0.8rem;font-weight:600;background:white;border:1.5px solid var(--border);color:var(--gray);cursor:pointer}
-.ag-tab.active{background:var(--purple);border-color:var(--purple);color:white}
-.ag-tab .cnt{display:inline-block;margin-left:0.35rem;background:rgba(0,0,0,0.08);border-radius:100px;padding:0 0.45rem;font-size:0.7rem}
+.ag-tabs{display:flex;gap:0.25rem;flex-wrap:wrap;margin-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.ag-tab{padding:0.6rem 0.8rem;font-size:0.84rem;font-weight:500;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--gray);cursor:pointer}
+.ag-tab:hover{color:var(--dark)}
+.ag-tab.active{color:var(--dark);border-bottom-color:var(--purple)}
+.ag-tab .cnt{display:inline-block;margin-left:0.35rem;background:var(--off-white);border:1px solid var(--border);border-radius:5px;padding:0 0.35rem;font-size:0.7rem;color:var(--gray)}
 .ag-panel{display:none}
 .ag-panel.active{display:block}
-.ag-post{background:white;border:1.5px solid var(--border);border-radius:14px;margin-bottom:0.9rem;display:grid;grid-template-columns:200px 1fr;overflow:hidden}
-.ag-media{background:var(--lavender);display:flex;align-items:center;justify-content:center;min-height:200px;position:relative}
+.ag-post{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:0.85rem;display:grid;grid-template-columns:200px 1fr;overflow:hidden}
+.ag-media{background:var(--off-white);display:flex;align-items:center;justify-content:center;min-height:200px;position:relative;border-right:1px solid var(--border)}
 .ag-media img,.ag-media video{width:100%;height:100%;object-fit:cover;display:block;max-height:280px}
-.ag-media .wait{font-size:0.78rem;color:var(--purple);text-align:center;padding:1rem}
-.ag-media .badge{position:absolute;top:8px;left:8px;background:rgba(26,23,48,0.75);color:white;font-size:0.68rem;font-weight:700;padding:0.2rem 0.55rem;border-radius:100px}
+.ag-media .wait{font-size:0.78rem;color:var(--gray);text-align:center;padding:1rem}
+.ag-media .badge{position:absolute;top:8px;left:8px;background:rgba(17,17,24,0.72);color:#fff;font-size:0.68rem;font-weight:600;padding:0.15rem 0.45rem;border-radius:5px}
 .ag-body{padding:1rem 1.1rem;display:flex;flex-direction:column;gap:0.6rem}
-.ag-meta{display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;font-size:0.76rem;color:var(--gray)}
-.ag-body textarea{width:100%;min-height:110px;border:1.5px solid var(--border);border-radius:10px;padding:0.7rem;font-size:0.85rem;line-height:1.55;font-family:'Outfit',sans-serif;resize:vertical;background:var(--off-white)}
-.ag-body input[type=datetime-local],.ag-body input[type=text]{border:1.5px solid var(--border);border-radius:8px;padding:0.45rem 0.6rem;font-size:0.8rem;font-family:'Outfit',sans-serif;background:var(--off-white)}
-.ag-caption{font-size:0.85rem;line-height:1.6;color:var(--dark2);white-space:pre-wrap}
+.ag-meta{display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;font-size:0.78rem;color:var(--gray)}
+.ag-body textarea{width:100%;min-height:110px;border:1px solid var(--border-strong);border-radius:8px;padding:0.65rem;font-size:0.86rem;line-height:1.55;font-family:inherit;resize:vertical;background:#fff;outline:none}
+.ag-body textarea:focus,.ag-body input:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(109,74,255,0.12)}
+.ag-body input[type=datetime-local],.ag-body input[type=text]{border:1px solid var(--border-strong);border-radius:7px;padding:0.4rem 0.6rem;font-size:0.8rem;font-family:inherit;background:#fff;outline:none}
+.ag-caption{font-size:0.86rem;line-height:1.6;color:var(--dark2);white-space:pre-wrap}
 .ag-row{display:flex;gap:0.5rem;flex-wrap:wrap}
-.ag-err{font-size:0.76rem;color:#e11d48;background:#fff1f2;border-radius:8px;padding:0.45rem 0.7rem}
-.s-scheduled{background:#ede9fe;color:#6d28d9}
-.s-failed,.s-expired,.s-rejected{background:#fee2e2;color:#b91c1c}
-.s-pending_approval{background:#fef3c7;color:#d97706}
-.s-publishing{background:#e0f2fe;color:#0369a1}
+.ag-err{font-size:0.78rem;color:var(--red);background:var(--red-bg);border-radius:7px;padding:0.45rem 0.7rem}
+.s-scheduled{background:var(--lavender);color:var(--purple)}
+.s-failed,.s-expired,.s-rejected{background:var(--red-bg);color:var(--red)}
+.s-pending_approval{background:var(--amber-bg);color:var(--amber)}
+.s-publishing{background:var(--blue-bg);color:var(--blue)}
 .ag-chk{display:flex;flex-wrap:wrap;gap:0.5rem}
-.ag-chk label{display:flex;align-items:center;gap:0.35rem;font-size:0.82rem;background:var(--off-white);border:1.5px solid var(--border);border-radius:100px;padding:0.35rem 0.75rem;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;color:var(--dark2);margin:0}
-.ag-chk input,.fg .ag-chk input{accent-color:var(--purple);width:16px;height:16px;padding:0;margin:0;appearance:auto;-webkit-appearance:checkbox;border:none;flex-shrink:0}
-.ag-switch{display:flex;align-items:flex-start;gap:0.75rem;padding:0.9rem 1rem;border:1.5px solid var(--border);border-radius:12px;background:var(--off-white);margin-bottom:0.75rem}
-.ag-switch input{width:18px;height:18px;accent-color:var(--purple);margin-top:2px;flex-shrink:0}
-.ag-switch b{display:block;font-size:0.88rem;margin-bottom:0.15rem}
-.ag-switch small{font-size:0.78rem;color:var(--gray);line-height:1.45}
+.ag-chk label{display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;background:#fff;border:1px solid var(--border-strong);border-radius:7px;padding:0.35rem 0.7rem;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;color:var(--dark2);margin:0}
+.ag-chk input,.fg .ag-chk input{accent-color:var(--purple);width:15px;height:15px;padding:0;margin:0;appearance:auto;-webkit-appearance:checkbox;border:none;flex-shrink:0;box-shadow:none}
+.ag-switch{display:flex;align-items:flex-start;gap:0.75rem;padding:0.85rem 1rem;border:1px solid var(--border);border-radius:10px;background:var(--off-white);margin-bottom:0.75rem}
+.ag-switch input{width:17px;height:17px;accent-color:var(--purple);margin-top:2px;flex-shrink:0}
+.ag-switch b{display:block;font-size:0.86rem;font-weight:600;margin-bottom:0.15rem}
+.ag-switch small{font-size:0.8rem;color:var(--gray);line-height:1.45}
 .ag-switch.locked{opacity:0.55}
-.ag-reply{background:white;border:1.5px solid var(--border);border-radius:12px;padding:0.9rem 1rem;margin-bottom:0.6rem}
-.ag-reply .who{font-size:0.78rem;font-weight:700;color:var(--purple)}
+.ag-reply{background:#fff;border:1px solid var(--border);border-radius:10px;padding:0.85rem 1rem;margin-bottom:0.6rem}
+.ag-reply .who{font-size:0.8rem;font-weight:600;color:var(--dark)}
 .ag-reply .txt{font-size:0.86rem;margin:0.3rem 0;color:var(--dark2)}
-.ag-reply .ans{font-size:0.82rem;color:var(--gray);border-left:3px solid var(--lavender);padding-left:0.6rem}
-.ag-log{font-size:0.82rem;padding:0.6rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.75rem}
-.ag-log time{color:var(--gray-light);flex-shrink:0;font-size:0.75rem;min-width:92px}
-.ag-locked{text-align:center;padding:2.5rem 1.5rem;background:white;border-radius:18px;border:1.5px dashed var(--purple)}
-.ag-locked h3{font-size:1.2rem;margin-bottom:0.5rem}
-.ag-locked p{color:var(--gray);font-size:0.88rem;margin-bottom:1.2rem;max-width:520px;margin-left:auto;margin-right:auto}
+.ag-reply .ans{font-size:0.83rem;color:var(--gray);border-left:2px solid var(--purple);padding-left:0.6rem}
+.ag-log{font-size:0.83rem;padding:0.6rem 0;border-bottom:1px solid var(--border);display:flex;gap:0.75rem}
+.ag-log:last-child{border-bottom:none}
+.ag-log time{color:var(--gray-light);flex-shrink:0;font-size:0.76rem;min-width:92px}
+.ag-locked{text-align:center;padding:2.5rem 1.5rem;background:#fff;border-radius:12px;border:1px solid var(--border)}
+.ag-locked h3{font-size:1.1rem;font-weight:600;margin-bottom:0.5rem}
+.ag-locked p{color:var(--gray);font-size:0.88rem;margin-bottom:1.2rem;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.6}
+@media(max-width:1100px){
+  .stats-grid{grid-template-columns:1fr 1fr}
+}
 @media(max-width:900px){
   .ag-usage{grid-template-columns:1fr}
   .ag-post{grid-template-columns:1fr}
-}
-@media(max-width:900px){
-  .sidebar{transform:translateX(-100%)}
+  .ag-media{border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar{transform:translateX(-100%);box-shadow:0 0 40px rgba(16,16,24,0.12)}
   .sidebar.open{transform:translateX(0)}
   .main{margin-left:0}
   .hamburger{display:flex}
-  .stats-grid{grid-template-columns:1fr 1fr}
+  .topbar{padding:0 1rem 0 4rem}
+  .content{padding:1.25rem 1rem}
   .grid-2,.social-grid,.plan-grid,.strategy-grid{grid-template-columns:1fr}
   .s-block[style]{grid-column:span 1 !important}
 }
@@ -241,17 +277,17 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
   </div>
   <div class="nav-section">
     <div class="nav-label">Principale</div>
-    <button class="nav-item active" data-page="home"><span class="nav-icon">🏠</span>Dashboard</button>
-    <button class="nav-item" data-page="agente"><span class="nav-icon">🤖</span>Agente AI</button>
-    <button class="nav-item" data-page="genera"><span class="nav-icon">✨</span>Genera Post</button>
-    <button class="nav-item" data-page="posts"><span class="nav-icon">📋</span>I miei post</button>
-    <button class="nav-item" data-page="approvati"><span class="nav-icon">✅</span>Post approvati</button>
-    <button class="nav-item" data-page="social"><span class="nav-icon">🔗</span>Social collegati</button>
+    <button class="nav-item active" data-page="home"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>Dashboard</button>
+    <button class="nav-item" data-page="agente"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 17v4M17 19h4"/></svg></span>Agente AI</button>
+    <button class="nav-item" data-page="genera"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>Genera Post</button>
+    <button class="nav-item" data-page="posts"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>I miei post</button>
+    <button class="nav-item" data-page="approvati"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></span>Post approvati</button>
+    <button class="nav-item" data-page="social"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></span>Social collegati</button>
   </div>
   <div class="nav-section">
     <div class="nav-label">Account</div>
-    <button class="nav-item" data-page="piano"><span class="nav-icon">💎</span>Piano e fatturazione</button>
-    <button class="nav-item" data-page="impostazioni"><span class="nav-icon">⚙️</span>Impostazioni</button>
+    <button class="nav-item" data-page="piano"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>Piano e fatturazione</button>
+    <button class="nav-item" data-page="impostazioni"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></span>Impostazioni</button>
   </div>
   <div class="sidebar-bottom">
     <div class="user-box">
@@ -268,14 +304,14 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 <main class="main">
   <div class="topbar">
     <h1 id="page-title">Dashboard</h1>
-    <button class="btn-upgrade" id="btn-upgrade">⚡ Passa a Pro</button>
+    <button class="btn-upgrade" id="btn-upgrade">Passa a Pro</button>
   </div>
   <div class="content">
 
     <!-- HOME -->
     <div class="page active" id="page-home">
       <div class="welcome-card">
-        <h2 id="welcome-msg">Bentornato! 👋</h2>
+        <h2 id="welcome-msg">Bentornato!</h2>
         <p>Il tuo social media manager AI è pronto.</p>
         <div class="onboarding-steps">
           <div class="o-step done"><span class="dot"></span>Account creato</div>
@@ -285,10 +321,10 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
         </div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-label">Post generati</div><div class="stat-val" id="s1">0</div><div class="stat-sub">totali</div></div>
-        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Approvati</div><div class="stat-val" id="s2">0</div><div class="stat-sub">pronti a pubblicare</div></div>
-        <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Da approvare</div><div class="stat-val" id="s3">0</div><div class="stat-sub">in attesa</div></div>
-        <div class="stat-card"><div class="stat-icon">🔗</div><div class="stat-label">Social collegati</div><div class="stat-val" id="s4">0</div><div class="stat-sub">profili attivi</div></div>
+        <div class="stat-card"><div class="stat-icon"></div><div class="stat-label">Post generati</div><div class="stat-val" id="s1">0</div><div class="stat-sub">totali</div></div>
+        <div class="stat-card"><div class="stat-icon"></div><div class="stat-label">Approvati</div><div class="stat-val" id="s2">0</div><div class="stat-sub">pronti a pubblicare</div></div>
+        <div class="stat-card"><div class="stat-icon"></div><div class="stat-label">Da approvare</div><div class="stat-val" id="s3">0</div><div class="stat-sub">in attesa</div></div>
+        <div class="stat-card"><div class="stat-icon"></div><div class="stat-label">Social collegati</div><div class="stat-val" id="s4">0</div><div class="stat-sub">profili attivi</div></div>
       </div>
       <div class="section-header">
         <div class="section-title">Post recenti da approvare</div>
@@ -300,8 +336,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
     <!-- AGENTE AI -->
     <div class="page" id="page-agente">
       <div id="ag-locked" class="ag-locked" style="display:none">
-        <div style="font-size:2.5rem;margin-bottom:0.5rem">🤖</div>
-        <h3>Il tuo social media manager AI, sempre al lavoro</h3>
+                <h3>Il tuo social media manager AI, sempre al lavoro</h3>
         <p>L'Agente AI pianifica i post della settimana, crea immagini e video, pubblica da solo su Instagram e Facebook, risponde ai commenti e ti manda un report con i risultati. È incluso nei piani Starter, Pro e Business.</p>
         <button class="btn-sm btn-purple" data-page="piano">Scopri i piani →</button>
       </div>
@@ -313,15 +348,15 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
             <p id="ag-status-sub">Piano —</p>
           </div>
           <div class="ag-actions">
-            <button class="ag-btn-light" id="ag-plan-now">⚡ Pianifica ora</button>
-            <button class="ag-btn-ghost" id="ag-toggle">⏸ Metti in pausa</button>
+            <button class="ag-btn-light" id="ag-plan-now">Pianifica ora</button>
+            <button class="ag-btn-ghost" id="ag-toggle">Metti in pausa</button>
           </div>
         </div>
 
         <div class="ag-usage">
-          <div class="ag-meter"><div class="ag-meter-top"><span>📝 Post del mese</span><b id="ag-u-posts">0/0</b></div><div class="ag-bar"><span id="ag-b-posts" style="width:0"></span></div></div>
-          <div class="ag-meter"><div class="ag-meter-top"><span>🎬 Video Reel</span><b id="ag-u-videos">0/0</b></div><div class="ag-bar"><span id="ag-b-videos" style="width:0"></span></div></div>
-          <div class="ag-meter"><div class="ag-meter-top"><span>💬 Risposte ai commenti</span><b id="ag-u-replies">0/0</b></div><div class="ag-bar"><span id="ag-b-replies" style="width:0"></span></div></div>
+          <div class="ag-meter"><div class="ag-meter-top"><span>Post del mese</span><b id="ag-u-posts">0/0</b></div><div class="ag-bar"><span id="ag-b-posts" style="width:0"></span></div></div>
+          <div class="ag-meter"><div class="ag-meter-top"><span>Video Reel</span><b id="ag-u-videos">0/0</b></div><div class="ag-bar"><span id="ag-b-videos" style="width:0"></span></div></div>
+          <div class="ag-meter"><div class="ag-meter-top"><span>Risposte ai commenti</span><b id="ag-u-replies">0/0</b></div><div class="ag-bar"><span id="ag-b-replies" style="width:0"></span></div></div>
         </div>
 
         <div class="ag-tabs" id="ag-tabs">
@@ -343,7 +378,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 
         <div class="ag-panel" id="agp-brief">
           <div class="card-box">
-            <h3>🧭 Profilo del brand — il brief del tuo agente</h3>
+            <h3>Profilo del brand — il brief del tuo agente</h3>
             <p style="color:var(--gray);font-size:0.84rem;margin:-0.6rem 0 1.2rem">Più dettagli dai, più i post sembreranno scritti da te.</p>
             <div class="grid-2">
               <div class="fg"><label>Nome del brand *</label><input id="ag-brand" type="text" placeholder="es. Pizzeria Da Mario"></div>
@@ -369,8 +404,8 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
             <div class="grid-2">
               <div class="fg"><label>Pubblica su</label>
                 <div class="ag-chk">
-                  <label><input type="checkbox" class="ag-social" value="instagram" checked> 📸 Instagram</label>
-                  <label><input type="checkbox" class="ag-social" value="facebook"> 📘 Facebook</label>
+                  <label><input type="checkbox" class="ag-social" value="instagram" checked> Instagram</label>
+                  <label><input type="checkbox" class="ag-social" value="facebook"> Facebook</label>
                 </div>
               </div>
               <div class="fg"><label>Orari di pubblicazione</label>
@@ -383,11 +418,11 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
 
             <div class="ag-switch" id="ag-sw-autopilot">
               <input type="checkbox" id="ag-autopilot">
-              <div><b>🚀 Autopilota</b><small>L'agente pubblica senza chiederti l'approvazione. Puoi sempre modificare o annullare i post programmati. <span class="ag-lock-note">Disponibile da Pro.</span></small></div>
+              <div><b>Autopilota</b><small>L'agente pubblica senza chiederti l'approvazione. Puoi sempre modificare o annullare i post programmati. <span class="ag-lock-note">Disponibile da Pro.</span></small></div>
             </div>
             <div class="ag-switch" id="ag-sw-reply">
               <input type="checkbox" id="ag-autoreply">
-              <div><b>💬 Risposte automatiche ai commenti</b><small>Risponde a domande e complimenti su Instagram. Lamentele e richieste senza risposta nelle info restano a te. <span class="ag-lock-note">Disponibile da Pro.</span></small></div>
+              <div><b>Risposte automatiche ai commenti</b><small>Risponde a domande e complimenti su Instagram. Lamentele e richieste senza risposta nelle info restano a te. <span class="ag-lock-note">Disponibile da Pro.</span></small></div>
             </div>
             <button class="btn-gen" style="max-width:260px" id="ag-save">Salva e avvia l'agente</button>
           </div>
@@ -398,7 +433,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
     <!-- GENERA -->
     <div class="page" id="page-genera">
       <div class="card-box">
-        <h3>✨ Genera strategia e post AI</h3>
+        <h3>Genera strategia e post AI</h3>
         <div class="grid-2">
           <div class="fg"><label>Nome del brand *</label><input id="g-brand" placeholder="es. Pizzeria Da Mario" type="text"></div>
           <div class="fg"><label>Settore</label>
@@ -427,17 +462,17 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
           </div>
         </div>
         <div class="media-box">
-          <div class="media-label">⚡ AI Media</div>
-          <label class="media-opt"><input type="checkbox" id="gen-images"> 🖼️ Immagini AI (DALL-E 3)</label>
-          <label class="media-opt"><input type="checkbox" id="gen-video"> 🎬 Video Reel (Seedance AI)</label>
+          <div class="media-label">AI Media</div>
+          <label class="media-opt"><input type="checkbox" id="gen-images"> Immagini AI (DALL-E 3)</label>
+          <label class="media-opt"><input type="checkbox" id="gen-video"> Video Reel (Seedance AI)</label>
         </div>
-        <button class="btn-gen" id="btn-gen">✨ Genera strategia e post AI</button>
+        <button class="btn-gen" id="btn-gen">Genera strategia e post AI</button>
       </div>
       <div id="gen-result" style="display:none">
-        <div class="section-header"><div class="section-title">📊 La tua strategia</div></div>
+        <div class="section-header"><div class="section-title">La tua strategia</div></div>
         <div id="strategy-output"></div>
         <div class="section-header" style="margin-top:1.5rem">
-          <div class="section-title">📝 Post generati</div>
+          <div class="section-title">Post generati</div>
           <button class="btn-sm btn-outline" id="btn-rigenera">↻ Rigenera</button>
         </div>
         <div id="gen-posts" class="posts-list"></div>
@@ -456,7 +491,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
     <!-- POST APPROVATI -->
     <div class="page" id="page-approvati">
       <div class="section-header">
-        <div class="section-title">✅ Post approvati — pronti alla pubblicazione</div>
+        <div class="section-title">Post approvati — pronti alla pubblicazione</div>
       </div>
       <p style="color:var(--gray);font-size:0.85rem;margin-bottom:1.25rem">Questi post sono stati approvati e verranno pubblicati automaticamente all'orario schedulato sul tuo profilo social.</p>
       <div id="approved-posts"></div>
@@ -467,25 +502,25 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
       <p style="color:var(--gray);margin-bottom:1.5rem;font-size:0.88rem">Collega i tuoi profili per abilitare la pubblicazione automatica.</p>
       <div class="social-grid">
         <div class="social-card" id="card-ig">
-          <div class="social-card-icon">📸</div>
+          <div class="social-card-icon"></div>
           <h4>Instagram Business</h4>
           <p>Pubblica post, reel e caroselli. Il collegamento avviene tramite il tuo account Facebook — è la procedura standard richiesta da Meta.</p>
           <button class="btn-connect btn-ig" id="btn-ig">Collega Instagram</button>
         </div>
         <div class="social-card" id="card-fb">
-          <div class="social-card-icon">📘</div>
+          <div class="social-card-icon"></div>
           <h4>Facebook Page</h4>
           <p>Pubblica contenuti sulla tua pagina Facebook aziendale. Si collega insieme a Instagram con un click.</p>
           <button class="btn-connect btn-fb" id="btn-fb">Collega Facebook</button>
         </div>
         <div class="social-card" id="card-tt">
-          <div class="social-card-icon">🎵</div>
+          <div class="social-card-icon"></div>
           <h4>TikTok</h4>
           <p>Pubblica video e contenuti brevi sul tuo profilo</p>
           <button class="btn-connect btn-tt" id="btn-tt">Collega TikTok</button>
         </div>
         <div class="social-card">
-          <div class="social-card-icon">💼</div>
+          <div class="social-card-icon"></div>
           <h4>LinkedIn</h4>
           <p>Pubblica aggiornamenti professionali</p>
           <button class="btn-connect btn-li" disabled>Prossimamente</button>
@@ -501,9 +536,9 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
           <div class="plan-name">Starter</div>
           <div class="plan-price">€29 <small>/mese</small></div>
           <ul class="plan-feats">
-            <li>✅ Agente AI con piano editoriale automatico</li><li>✅ 12 post al mese con immagini AI</li>
-            <li>✅ Pubblicazione automatica su Instagram e Facebook</li><li>✅ Tu approvi, l'agente pubblica</li>
-            <li>✅ Report mensile con consigli</li><li>❌ Video Reel e risposte ai commenti</li>
+            <li>Agente AI con piano editoriale automatico</li><li>12 post al mese con immagini AI</li>
+            <li>Pubblicazione automatica su Instagram e Facebook</li><li>Tu approvi, l'agente pubblica</li>
+            <li>Report mensile con consigli</li><li class="no">Video Reel e risposte ai commenti</li>
           </ul>
           <button class="btn-plan btn-plan-primary" id="pb-starter">Passa a Starter →</button>
         </div>
@@ -511,9 +546,9 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
           <div class="plan-name">Pro</div>
           <div class="plan-price">€79 <small>/mese</small></div>
           <ul class="plan-feats">
-            <li>✅ 30 post al mese + caroselli</li><li>✅ 4 video Reel AI al mese</li>
-            <li>✅ Autopilota: pubblica senza approvazione</li><li>✅ Risposte automatiche ai commenti (300/mese)</li>
-            <li>✅ Report settimanale con consigli</li><li>✅ Instagram + Facebook</li>
+            <li>30 post al mese + caroselli</li><li>4 video Reel AI al mese</li>
+            <li>Autopilota: pubblica senza approvazione</li><li>Risposte automatiche ai commenti (300/mese)</li>
+            <li>Report settimanale con consigli</li><li>Instagram + Facebook</li>
           </ul>
           <button class="btn-plan btn-plan-primary" id="pb-pro">Passa a Pro →</button>
         </div>
@@ -521,9 +556,9 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
           <div class="plan-name">Business</div>
           <div class="plan-price">€199 <small>/mese</small></div>
           <ul class="plan-feats">
-            <li>✅ 60 post al mese (fino a 2 al giorno)</li><li>✅ 12 video Reel AI al mese</li>
-            <li>✅ Autopilota completo</li><li>✅ Risposte ai commenti ogni 30 minuti (1500/mese)</li>
-            <li>✅ Report settimanale con consigli</li><li>✅ Supporto prioritario</li>
+            <li>60 post al mese (fino a 2 al giorno)</li><li>12 video Reel AI al mese</li>
+            <li>Autopilota completo</li><li>Risposte ai commenti ogni 30 minuti (1500/mese)</li>
+            <li>Report settimanale con consigli</li><li>Supporto prioritario</li>
           </ul>
           <button class="btn-plan btn-plan-primary" id="pb-business">Passa a Business →</button>
         </div>
@@ -533,7 +568,7 @@ button{cursor:pointer;border:none;background:none;font-family:'Outfit',sans-seri
     <!-- IMPOSTAZIONI -->
     <div class="page" id="page-impostazioni">
       <div class="card-box">
-        <h3>⚙️ Profilo e impostazioni</h3>
+        <h3>Profilo e impostazioni</h3>
         <div class="grid-2">
           <div class="fg"><label>Nome</label><input id="s-name" type="text" placeholder="Il tuo nome"></div>
           <div class="fg"><label>Email</label><input id="s-email" type="email" disabled style="opacity:0.6"></div>
@@ -582,7 +617,7 @@ var userPlan = 'free';
 var posts = [];
 var socialCount = 0;
 
-var SOCIAL_EMOJI = {Instagram:'📸',Facebook:'📘',TikTok:'🎵',LinkedIn:'💼','Instagram + Facebook':'📸','Tutti i social':'🌐'};
+var SOCIAL_EMOJI = {Instagram:'',Facebook:'',TikTok:'',LinkedIn:'','Instagram + Facebook':'','Tutti i social':''};
 var PAGE_TITLES = {agente:'Agente AI',home:'Dashboard',genera:'Genera Post',posts:'I miei post',approvati:'Post approvati',social:'Social collegati',piano:'Piano e fatturazione',impostazioni:'Impostazioni'};
 
 async function init() {
@@ -591,10 +626,10 @@ async function init() {
   user = session.user;
 
   var params = new URLSearchParams(window.location.search);
-  if (params.get('payment') === 'success') toast('Piano attivato con successo! 🎉');
-  if (params.get('connected') === 'instagram') toast('Instagram collegato con successo! 📸✅');
+  if (params.get('payment') === 'success') toast('Piano attivato con successo!');
+  if (params.get('connected') === 'instagram') toast('Instagram collegato con successo!');
   if (params.get('connected') === 'facebook') toast('Facebook collegato! Nessun account Instagram Business trovato. Assicurati di avere un profilo Instagram Business collegato alla tua Pagina Facebook.', 'error');
-  if (params.get('connected') === 'true') toast('Social collegato! ✅');
+  if (params.get('connected') === 'true') toast('Social collegato!');
   if (params.get('error') === 'auth_denied') toast('Collegamento annullato', 'error');
   if (params.get('error') === 'auth_failed') toast('Errore nel collegamento. Riprova.', 'error');
   if (params.get('plan')) doCheckout(params.get('plan'));
@@ -634,7 +669,7 @@ function bindEvents() {
     }
     // modifica
     if (e.target.closest('.pBtn-edit')) {
-      toast('Editor disponibile nel piano Pro 🚀', 'error');
+      toast('Editor disponibile nel piano Pro', 'error');
     }
   });
   document.getElementById('hamburger').addEventListener('click', function() {
@@ -679,7 +714,7 @@ async function loadUser() {
   document.getElementById('uemail').textContent = user.email;
   document.getElementById('s-name').value = name;
   document.getElementById('s-email').value = user.email;
-  document.getElementById('welcome-msg').textContent = 'Ciao, ' + name + '! 👋';
+  document.getElementById('welcome-msg').textContent = 'Ciao, ' + name + '!';
   try {
     var resp = await fetch('/api/user/profile?userId=' + user.id);
     var data = await resp.json();
@@ -693,7 +728,7 @@ async function loadUser() {
         document.getElementById('s-name').value = data.name;
         document.getElementById('uname').textContent = data.name;
         document.getElementById('uav').textContent = data.name[0].toUpperCase();
-        document.getElementById('welcome-msg').textContent = 'Ciao, ' + data.name + '! 👋';
+        document.getElementById('welcome-msg').textContent = 'Ciao, ' + data.name + '!';
       }
       updatePlanUI();
     }
@@ -704,17 +739,17 @@ function updatePlanUI() {
   var badge = document.getElementById('plan-badge');
   var upBtn = document.getElementById('btn-upgrade');
   if (userPlan === 'starter') {
-    badge.textContent = '🌱 Starter'; badge.className = 'plan-badge badge-pro';
-    upBtn.textContent = '⚡ Passa a Pro';
+    badge.textContent = 'Starter'; badge.className = 'plan-badge badge-pro';
+    upBtn.textContent = 'Passa a Pro';
     document.getElementById('pb-starter').className = 'btn-plan btn-plan-current';
     document.getElementById('pb-starter').textContent = '✓ Piano attuale';
   } else if (userPlan === 'pro') {
-    badge.textContent = '⚡ Piano Pro'; badge.className = 'plan-badge badge-pro';
-    upBtn.textContent = '⚡ Piano Pro';
+    badge.textContent = 'Piano Pro'; badge.className = 'plan-badge badge-pro';
+    upBtn.textContent = 'Piano Pro';
     document.getElementById('pb-pro').className = 'btn-plan btn-plan-current';
     document.getElementById('pb-pro').textContent = '✓ Piano attuale';
   } else if (userPlan === 'business') {
-    badge.textContent = '💎 Business'; badge.className = 'plan-badge badge-business';
+    badge.textContent = 'Business'; badge.className = 'plan-badge badge-business';
     upBtn.style.display = 'none';
     document.getElementById('pb-business').className = 'btn-plan btn-plan-current';
     document.getElementById('pb-business').textContent = '✓ Piano attuale';
@@ -736,11 +771,11 @@ async function loadSocialConnections() {
     result.connections.forEach(function(c) {
       socialCount++;
       if (c.platform === 'instagram') {
-        markConnected('card-ig', 'btn-ig', '✅ Instagram collegato' + (c.page_name ? ' (' + c.page_name + ')' : ''));
+        markConnected('card-ig', 'btn-ig', 'Instagram collegato' + (c.page_name ? ' (' + c.page_name + ')' : ''));
         document.getElementById('os-social').classList.add('done');
       }
-      if (c.platform === 'facebook') markConnected('card-fb', 'btn-fb', '✅ Facebook collegato');
-      if (c.platform === 'tiktok') markConnected('card-tt', 'btn-tt', '✅ TikTok collegato');
+      if (c.platform === 'facebook') markConnected('card-fb', 'btn-fb', 'Facebook collegato');
+      if (c.platform === 'tiktok') markConnected('card-tt', 'btn-tt', 'TikTok collegato');
     });
     document.getElementById('s4').textContent = socialCount;
     if (socialCount > 0) document.getElementById('os-social').classList.add('done');
@@ -832,10 +867,10 @@ function updateStats() {
 
 function buildPostCard(post, idx) {
   var st = post.status || 'draft';
-  var stLabel = {draft:'⏳ Bozza',approved:'✅ Approvato',published:'🔵 Pubblicato'}[st] || st;
+  var stLabel = {draft:'Bozza',approved:'Approvato',published:'Pubblicato'}[st] || st;
   var stClass = {draft:'s-draft',approved:'s-approved',published:'s-published'}[st] || '';
-  var typeIcon = post.type === 'carousel' ? ' 🎠' : post.type === 'reel' ? ' 🎬' : '';
-  var emoji = SOCIAL_EMOJI[post.social] || '📱';
+  var typeIcon = post.type === 'carousel' ? '' : post.type === 'reel' ? '' : '';
+  var emoji = SOCIAL_EMOJI[post.social] || '';
   var mediaHtml = '';
   if (post.type === 'carousel' && post.carousel_images && post.carousel_images.length) {
     var imgs = post.carousel_images.map(function(u) {
@@ -850,7 +885,7 @@ function buildPostCard(post, idx) {
     if (post.video_url) {
       videoHtml = '<video src="' + post.video_url + '" controls class="post-video"></video>';
     } else if (post.video_task_id) {
-      videoHtml = '<div class="video-processing" data-task="' + post.video_task_id + '" data-idx="' + idx + '">🎬 Video in elaborazione... <button onclick="checkVideo(this)" style="margin-left:8px;background:var(--purple);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;">Aggiorna</button></div>';
+      videoHtml = '<div class="video-processing" data-task="' + post.video_task_id + '" data-idx="' + idx + '">Video in elaborazione... <button onclick="checkVideo(this)" style="margin-left:8px;background:var(--purple);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;">Aggiorna</button></div>';
     }
   }
   var tagsHtml = (post.hashtags || []).map(function(h) {
@@ -861,7 +896,7 @@ function buildPostCard(post, idx) {
   return '<div class="post-item" data-idx="' + idx + '">' +
     '<div class="post-header">' +
       '<div class="post-social">' + emoji + ' ' + (post.social || '') + typeIcon + '</div>' +
-      '<span class="post-day">📅 ' + (post.day || '') + ' ' + (post.scheduled_time || '') + '</span>' +
+      '<span class="post-day">' + (post.day || '') + ' ' + (post.scheduled_time || '') + '</span>' +
       '<span class="status ' + stClass + '">' + stLabel + '</span>' +
     '</div>' +
     '<div class="post-body">' + mediaHtml + videoHtml +
@@ -870,8 +905,8 @@ function buildPostCard(post, idx) {
     '</div>' +
     '<div class="post-actions">' +
       '<button class="pBtn pBtn-approve"' + approveDisabled + '>✓ Approva</button>' +
-      '<button class="pBtn pBtn-edit">✏️ Modifica</button>' +
-      '<button class="pBtn pBtn-delete">🗑️</button>' +
+      '<button class="pBtn pBtn-edit">Modifica</button>' +
+      '<button class="pBtn pBtn-delete">Elimina</button>' +
     '</div>' +
   '</div>';
 }
@@ -882,7 +917,7 @@ function renderHomePosts() {
   posts.forEach(function(p, i) { if (!p.status || p.status === 'draft') pending.push({p:p, i:i}); });
   var shown = pending.slice(0, 3);
   if (!shown.length) {
-    el.innerHTML = '<div class="empty"><div class="icon">✨</div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia AI per iniziare</p><button class="btn-sm btn-purple" data-page="genera">Genera post gratis</button></div>';
+    el.innerHTML = '<div class="empty"><div class="icon"></div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia AI per iniziare</p><button class="btn-sm btn-purple" data-page="genera">Genera post gratis</button></div>';
     return;
   }
   el.innerHTML = '<div class="posts-list">' + shown.map(function(x){return buildPostCard(x.p, x.i);}).join('') + '</div>';
@@ -891,7 +926,7 @@ function renderHomePosts() {
 function renderAllPosts() {
   var el = document.getElementById('all-posts');
   if (!posts.length) {
-    el.innerHTML = '<div class="empty"><div class="icon">📋</div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia per vedere i post qui</p><button class="btn-sm btn-purple" data-page="genera">Genera post</button></div>';
+    el.innerHTML = '<div class="empty"><div class="icon"></div><h3>Nessun post ancora</h3><p>Genera la tua prima strategia per vedere i post qui</p><button class="btn-sm btn-purple" data-page="genera">Genera post</button></div>';
     return;
   }
   el.innerHTML = '<div class="posts-list">' + posts.map(function(p,i){return buildPostCard(p,i);}).join('') + '</div>';
@@ -902,13 +937,13 @@ function renderApprovedPosts() {
   if (!el) return;
   var approved = posts.filter(function(p){ return p.status === 'approved'; });
   if (!approved.length) {
-    el.innerHTML = '<div class="empty"><div class="icon">✅</div><h3>Nessun post approvato</h3><p>Approva i post dalla sezione "I miei post" per vederli qui pronti alla pubblicazione automatica</p><button class="btn-sm btn-purple" data-page="posts">Vai ai post</button></div>';
+    el.innerHTML = '<div class="empty"><div class="icon"></div><h3>Nessun post approvato</h3><p>Approva i post dalla sezione "I miei post" per vederli qui pronti alla pubblicazione automatica</p><button class="btn-sm btn-purple" data-page="posts">Vai ai post</button></div>';
     return;
   }
   var html = '<div class="posts-list">';
   approved.forEach(function(p) {
-    var emoji = SOCIAL_EMOJI[p.social] || '📱';
-    var typeIcon = p.type === 'carousel' ? ' 🎠' : p.type === 'reel' ? ' 🎬' : '';
+    var emoji = SOCIAL_EMOJI[p.social] || '';
+    var typeIcon = p.type === 'carousel' ? '' : p.type === 'reel' ? '' : '';
     var mediaHtml = '';
     if (p.type === 'carousel' && p.carousel_images && p.carousel_images.length) {
       var imgs = p.carousel_images.map(function(u) { return '<img src="' + u + '" style="width:120px;height:120px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display=\'none\'">'; }).join('');
@@ -921,15 +956,15 @@ function renderApprovedPosts() {
     html += '<div class="post-item" style="border-color:#22c55e">' +
       '<div class="post-header" style="background:#f0fdf4">' +
         '<div class="post-social">' + emoji + ' ' + (p.social||'') + typeIcon + '</div>' +
-        '<span class="post-day">📅 ' + (p.day||'') + ' ' + (p.scheduled_time||'') + '</span>' +
-        '<span class="status s-approved">✅ Approvato</span>' +
+        '<span class="post-day">' + (p.day||'') + ' ' + (p.scheduled_time||'') + '</span>' +
+        '<span class="status s-approved">Approvato</span>' +
       '</div>' +
       '<div class="post-body">' + mediaHtml +
         '<div class="post-text">' + postText + '</div>' +
         '<div class="hashtags">' + tagsHtml + '</div>' +
       '</div>' +
       '<div class="post-actions" style="background:#f0fdf4;justify-content:center">' +
-        '<div style="font-size:0.8rem;color:#16a34a;font-weight:600;text-align:center;padding:0.3rem;width:100%">🚀 Pubblicazione automatica schedulata</div>' +
+        '<div style="font-size:0.8rem;color:#16a34a;font-weight:600;text-align:center;padding:0.3rem;width:100%">Pubblicazione automatica schedulata</div>' +
       '</div>' +
     '</div>';
   });
@@ -953,7 +988,7 @@ async function approvePost(idx) {
 
   // Disabilita il bottone subito per evitare doppio click
   var btn = document.querySelector('.post-item[data-idx="' + idx + '"] .pBtn-approve');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
 
   try {
     var resp = await fetch('/api/posts/save', {
@@ -983,7 +1018,7 @@ async function approvePost(idx) {
     posts[idx].db_id = result.id;
     posts[idx].scheduled_at = scheduledAt;
     renderHomePosts(); renderAllPosts(); renderApprovedPosts(); updateStats();
-    toast('Post approvato! ✅ Verrà pubblicato automaticamente.');
+    toast('Post approvato! Verrà pubblicato automaticamente.');
   } catch(e) {
     console.error('Errore approvazione:', e.message);
     if (btn) { btn.disabled = false; btn.textContent = '✓ Approva'; }
@@ -1015,12 +1050,12 @@ async function doGenerate() {
   var brand = document.getElementById('g-brand').value.trim();
   var desc = document.getElementById('g-desc').value.trim();
   if (!brand || !desc) return toast('Inserisci brand e descrizione', 'error');
-  if (userPlan === 'free' && posts.length >= 10) return toast('Limite raggiunto. Passa a Pro! 🚀', 'error');
+  if (userPlan === 'free' && posts.length >= 10) return toast('Limite raggiunto. Passa a Pro!', 'error');
   var genImages = document.getElementById('gen-images').checked;
   var genVideo = document.getElementById('gen-video').checked;
-  var lmsg = genImages && genVideo ? '✨ Generando post, immagini e video... (1-2 min)' :
-             genImages ? '🖼️ Generando immagini con DALL-E 3...' :
-             genVideo ? '🎬 Generando video con Seedance AI...' : 'L\'AI sta generando la tua strategia...';
+  var lmsg = genImages && genVideo ? 'Generando post, immagini e video... (1-2 min)' :
+             genImages ? 'Generando immagini con DALL-E 3...' :
+             genVideo ? 'Generando video con Seedance AI...' : 'L\'AI sta generando la tua strategia...';
   showLoading(lmsg);
   document.getElementById('btn-gen').disabled = true;
   try {
@@ -1050,7 +1085,7 @@ async function doGenerate() {
     document.getElementById('gen-result').scrollIntoView({behavior:'smooth', block:'nearest'});
     updateStats();
     document.getElementById('os-post').classList.add('done');
-    toast(genImages ? 'Post e immagini pronti! 🖼️✨' : genVideo ? 'Post e video pronti! 🎬✨' : 'Strategia e post generati! ✨');
+    toast(genImages ? 'Post e immagini pronti!' : genVideo ? 'Post e video pronti!' : 'Strategia e post generati!');
   } catch(e) {
     toast('Errore: ' + e.message, 'error');
   }
@@ -1062,12 +1097,12 @@ function renderStrategy(s, brand) {
   var pillars = (s.content_pillars || []).map(function(p){return '<li>'+p+'</li>';}).join('');
   document.getElementById('strategy-output').innerHTML =
     '<div class="strategy-box">' +
-      '<h4>🎯 Strategia per ' + brand + '</h4>' +
+      '<h4>Strategia per ' + brand + '</h4>' +
       '<p>' + s.summary + '</p>' +
       '<div class="strategy-grid">' +
-        '<div class="s-block"><h5>👥 Target</h5><p>' + s.target + '</p></div>' +
-        '<div class="s-block"><h5>⏰ Orari migliori</h5><p>' + s.best_times + '</p></div>' +
-        '<div class="s-block" style="grid-column:span 2"><h5>📌 Content Pillars</h5><ul>' + pillars + '</ul></div>' +
+        '<div class="s-block"><h5>Target</h5><p>' + s.target + '</p></div>' +
+        '<div class="s-block"><h5>Orari migliori</h5><p>' + s.best_times + '</p></div>' +
+        '<div class="s-block" style="grid-column:span 2"><h5>Content Pillars</h5><ul>' + pillars + '</ul></div>' +
       '</div>' +
     '</div>';
 }
@@ -1100,9 +1135,9 @@ async function saveSettings() {
   await sb.auth.updateUser({data: {name: name}});
   document.getElementById('uname').textContent = name;
   document.getElementById('uav').textContent = name[0].toUpperCase();
-  document.getElementById('welcome-msg').textContent = 'Ciao, ' + name + '! 👋';
+  document.getElementById('welcome-msg').textContent = 'Ciao, ' + name + '!';
   if (brand) document.getElementById('os-business').classList.add('done');
-  toast('Impostazioni salvate ✅');
+  toast('Impostazioni salvate');
 }
 
 function showLoading(txt) {
@@ -1123,7 +1158,7 @@ async function checkVideo(btn) {
   var taskId = container.getAttribute('data-task');
   var idx = parseInt(container.getAttribute('data-idx'));
   if (!taskId) return;
-  btn.textContent = '⏳';
+  btn.textContent = '…';
   btn.disabled = true;
   try {
     var resp = await fetch('/api/video/status?taskId=' + taskId);
@@ -1132,7 +1167,7 @@ async function checkVideo(btn) {
       posts[idx].video_url = result.video_url;
       posts[idx].video_status = 'completed';
       renderHomePosts(); renderAllPosts();
-      toast('Video pronto! 🎬');
+      toast('Video pronto!');
     } else {
       btn.textContent = 'Aggiorna';
       btn.disabled = false;
@@ -1150,8 +1185,8 @@ async function checkVideo(btn) {
 // =====================================================================
 var agState = null;
 var AG_DAYS = [['1','Lun'],['2','Mar'],['3','Mer'],['4','Gio'],['5','Ven'],['6','Sab'],['0','Dom']];
-var AG_TYPE = {image:'🖼️ Post', carousel:'🎠 Carosello', reel:'🎬 Reel'};
-var AG_STATUS = {pending_approval:'⏳ Da approvare', scheduled:'🗓️ Programmato', publishing:'📤 In pubblicazione', published:'✅ Pubblicato', failed:'⚠️ Non pubblicato', rejected:'🗑️ Scartato', expired:'⌛ Scaduto'};
+var AG_TYPE = {image:'Post', carousel:'Carosello', reel:'Reel'};
+var AG_STATUS = {pending_approval:'Da approvare', scheduled:'Programmato', publishing:'In pubblicazione', published:'Pubblicato', failed:'Non pubblicato', rejected:'Scartato', expired:'Scaduto'};
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
@@ -1240,10 +1275,10 @@ function agRenderHeader() {
   document.getElementById('ag-dot').className = 'ag-dot' + (active ? '' : ' off');
   document.getElementById('ag-status-title').textContent = !prof ? 'Agente da configurare' : active ? 'Agente attivo' : 'Agente in pausa';
   var conn = agState.connections;
-  var warn = (!conn.instagram && !conn.facebook) ? ' · ⚠️ Collega Instagram o Facebook per pubblicare' : '';
+  var warn = (!conn.instagram && !conn.facebook) ? ' · Collega Instagram o Facebook per pubblicare' : '';
   document.getElementById('ag-status-sub').textContent = 'Piano ' + p.label + (prof && prof.autopilot ? ' · Autopilota' : ' · Approvazione manuale') + warn;
   document.getElementById('ag-toggle').style.display = prof ? '' : 'none';
-  document.getElementById('ag-toggle').textContent = active ? '⏸ Metti in pausa' : '▶ Riattiva';
+  document.getElementById('ag-toggle').textContent = active ? 'Metti in pausa' : '▶ Riattiva';
   agMeter('posts', u.posts || 0, p.postsPerMonth);
   agMeter('videos', u.videos || 0, p.videosPerMonth);
   agMeter('replies', u.replies || 0, p.repliesPerMonth);
@@ -1277,18 +1312,18 @@ function agRenderProfile() {
 function agMediaHtml(p) {
   var badge = '<span class="badge">' + (AG_TYPE[p.type] || p.type) + '</span>';
   if (p.type === 'reel' && p.video_url) return badge + '<video src="' + esc(p.video_url) + '" controls muted playsinline poster="' + esc(p.image_url || '') + '"></video>';
-  if (p.media_status === 'failed') return badge + '<div class="wait">⚠️ Immagine non creata<br>Prova "Nuova immagine"</div>';
-  if (p.type === 'reel' && p.media_status === 'video_processing') return badge + (p.image_url ? '<img src="' + esc(p.image_url) + '" alt="">' : '') + '<div class="wait" style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.85)">🎬 Video in creazione...</div>';
+  if (p.media_status === 'failed') return badge + '<div class="wait">Immagine non creata<br>Prova "Nuova immagine"</div>';
+  if (p.type === 'reel' && p.media_status === 'video_processing') return badge + (p.image_url ? '<img src="' + esc(p.image_url) + '" alt="">' : '') + '<div class="wait" style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.85)">Video in creazione...</div>';
   if (p.image_url) {
     var extra = (p.type === 'carousel' && p.carousel_images && p.carousel_images.length > 1) ? '<span class="badge" style="left:auto;right:8px">+' + (p.carousel_images.length - 1) + '</span>' : '';
     return badge + extra + '<img src="' + esc(p.image_url) + '" alt="">';
   }
-  return badge + '<div class="wait">🎨 Sto creando l\'immagine...</div>';
+  return badge + '<div class="wait">Sto creando l\'immagine...</div>';
 }
 
 function agPostCard(p, editable) {
   var tags = (p.hashtags || []).map(function(h) { return '#' + h; }).join(' ');
-  var socials = (p.socials || []).map(function(s) { return s === 'facebook' ? '📘 Facebook' : '📸 Instagram'; }).join(' + ');
+  var socials = (p.socials || []).map(function(s) { return s === 'facebook' ? 'Facebook' : 'Instagram'; }).join(' + ');
   var h = '<div class="ag-post"><div class="ag-media">' + agMediaHtml(p) + '</div><div class="ag-body">';
   h += '<div class="ag-meta"><span class="status s-' + esc(p.status) + '">' + (AG_STATUS[p.status] || esc(p.status)) + '</span><span>' + socials + '</span>';
   h += '<span>· ' + (p.status === 'published' ? 'pubblicato ' + fmtDate(p.published_at) : fmtDate(p.scheduled_at)) + '</span>';
@@ -1307,8 +1342,8 @@ function agPostCard(p, editable) {
   if (p.status === 'pending_approval' || p.status === 'expired' || p.status === 'failed') {
     h += '<button class="pBtn pBtn-approve" data-agact="approve" data-id="' + p.id + '">✓ Approva</button>';
   }
-  if (p.status === 'scheduled') h += '<button class="pBtn pBtn-edit" data-agact="save" data-id="' + p.id + '">💾 Salva modifiche</button>';
-  if (editable && !p.video_task_id) h += '<button class="pBtn pBtn-edit" data-agact="regen" data-id="' + p.id + '">🎨 Nuova immagine</button>';
+  if (p.status === 'scheduled') h += '<button class="pBtn pBtn-edit" data-agact="save" data-id="' + p.id + '">Salva modifiche</button>';
+  if (editable && !p.video_task_id) h += '<button class="pBtn pBtn-edit" data-agact="regen" data-id="' + p.id + '">Nuova immagine</button>';
   if (['pending_approval','scheduled','expired','failed'].indexOf(p.status) >= 0) h += '<button class="pBtn pBtn-delete" data-agact="reject" data-id="' + p.id + '">✕ Scarta</button>';
   h += '</div></div></div>';
   return h;
@@ -1324,11 +1359,11 @@ function agRenderPosts() {
   document.getElementById('ag-c-published').textContent = published.length;
   var empty = function(icon, title, text) { return '<div class="empty"><div class="icon">' + icon + '</div><h3>' + title + '</h3><p>' + text + '</p></div>'; };
   document.getElementById('agp-approve').innerHTML = approve.length ? approve.map(function(p) { return agPostCard(p, true); }).join('')
-    : empty('✨', 'Niente da approvare', agState.profile && agState.profile.autopilot ? 'Sei in autopilota: i post vanno direttamente in "Programmati".' : 'Quando l\'agente prepara nuovi post li trovi qui.');
+    : empty('', 'Niente da approvare', agState.profile && agState.profile.autopilot ? 'Sei in autopilota: i post vanno direttamente in "Programmati".' : 'Quando l\'agente prepara nuovi post li trovi qui.');
   document.getElementById('agp-scheduled').innerHTML = scheduled.length ? scheduled.map(function(p) { return agPostCard(p, p.status === 'scheduled'); }).join('')
-    : empty('🗓️', 'Nessun post programmato', 'Approva i post o premi "Pianifica ora".');
+    : empty('', 'Nessun post programmato', 'Approva i post o premi "Pianifica ora".');
   document.getElementById('agp-published').innerHTML = published.length ? published.map(function(p) { return agPostCard(p, false); }).join('')
-    : empty('📭', 'Ancora nessun post pubblicato', 'Qui vedrai gli ultimi 30 giorni.');
+    : empty('', 'Ancora nessun post pubblicato', 'Qui vedrai gli ultimi 30 giorni.');
 }
 
 function agRenderComments() {
@@ -1338,15 +1373,15 @@ function agRenderComments() {
   document.getElementById('ag-c-comments').textContent = flagged.length;
   var h = '';
   if (!agState.plan.autoReply) {
-    h = '<div class="empty"><div class="icon">💬</div><h3>Risposte automatiche dal piano Pro</h3><p>L\'agente risponde ai commenti Instagram con il tono del tuo brand.</p><button class="btn-sm btn-purple" data-page="piano">Passa a Pro →</button></div>';
+    h = '<div class="empty"><div class="icon"></div><h3>Risposte automatiche dal piano Pro</h3><p>L\'agente risponde ai commenti Instagram con il tono del tuo brand.</p><button class="btn-sm btn-purple" data-page="piano">Passa a Pro →</button></div>';
   } else {
-    h += '<div class="section-header"><div class="section-title">🙋 Da gestire tu (' + flagged.length + ')</div></div>';
+    h += '<div class="section-header"><div class="section-title">Da gestire tu (' + flagged.length + ')</div></div>';
     h += flagged.length ? flagged.map(function(r) {
       return '<div class="ag-reply"><div class="who">@' + esc(r.username) + '</div><div class="txt">' + esc(r.comment_text) + '</div>' +
         (r.reply_text ? '<div class="ag-err">' + esc(r.reply_text) + '</div>' : '') +
         '<div class="ag-row" style="margin-top:0.5rem"><button class="pBtn pBtn-edit" data-agact="resolve" data-id="' + r.id + '">✓ Fatto, l\'ho gestito io</button></div></div>';
-    }).join('') : '<p style="color:var(--gray);font-size:0.85rem;margin-bottom:1.25rem">Nessun commento in attesa. 👌</p>';
-    h += '<div class="section-header" style="margin-top:1.5rem"><div class="section-title">🤖 Risposte inviate dall\'agente</div></div>';
+    }).join('') : '<p style="color:var(--gray);font-size:0.85rem;margin-bottom:1.25rem">Nessun commento in attesa.</p>';
+    h += '<div class="section-header" style="margin-top:1.5rem"><div class="section-title">Risposte inviate dall\'agente</div></div>';
     h += replied.length ? replied.map(function(r) {
       return '<div class="ag-reply"><div class="who">@' + esc(r.username) + '</div><div class="txt">' + esc(r.comment_text) + '</div><div class="ans">↳ ' + esc(r.reply_text) + '</div></div>';
     }).join('') : '<p style="color:var(--gray);font-size:0.85rem">' + (agState.profile && agState.profile.auto_reply ? 'Ancora nessuna risposta: controllo i commenti ogni ' + (agState.plan.replyEveryMin >= 60 ? (agState.plan.replyEveryMin / 60) + ' ore' : agState.plan.replyEveryMin + ' minuti') + '.' : 'Attiva le risposte automatiche nel Profilo brand.') + '</p>';
@@ -1358,14 +1393,14 @@ function agRenderReport() {
   var r = agState.report;
   var h = '<div class="card-box">';
   if (!r) {
-    h += '<h3>📊 Report</h3><p style="color:var(--gray);font-size:0.86rem;margin-bottom:1rem">Il primo report arriva ' + (agState.plan.report === 'monthly' ? 'il primo lunedì del mese' : 'lunedì mattina') + '. Puoi anche crearlo adesso.</p>';
+    h += '<h3>Report</h3><p style="color:var(--gray);font-size:0.86rem;margin-bottom:1rem">Il primo report arriva ' + (agState.plan.report === 'monthly' ? 'il primo lunedì del mese' : 'lunedì mattina') + '. Puoi anche crearlo adesso.</p>';
   } else {
     var d = r.data || {}, t = d.totals || {};
-    h += '<h3>📊 Report — ' + esc(r.period) + '</h3>';
+    h += '<h3>Report — ' + esc(r.period) + '</h3>';
     if (t.posts) h += '<div class="stats-grid" style="margin-bottom:1rem"><div class="stat-card"><div class="stat-label">Post</div><div class="stat-val">' + t.posts + '</div></div><div class="stat-card"><div class="stat-label">Mi piace</div><div class="stat-val">' + (t.likes || 0) + '</div></div><div class="stat-card"><div class="stat-label">Commenti</div><div class="stat-val">' + (t.comments || 0) + '</div></div><div class="stat-card"><div class="stat-label">Persone raggiunte</div><div class="stat-val">' + (t.reach || 0) + '</div></div></div>';
     h += '<div class="strategy-box"><h4>In sintesi</h4><p>' + esc(d.summary) + '</p></div>';
-    if (d.highlights && d.highlights.length) h += '<div class="s-block" style="margin-bottom:0.75rem"><h5>⭐ Cosa ha funzionato</h5><ul>' + d.highlights.map(function(x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
-    if (d.recommendations && d.recommendations.length) h += '<div class="s-block" style="margin-bottom:1rem"><h5>🎯 Cosa farà l\'agente nei prossimi post</h5><ul>' + d.recommendations.map(function(x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+    if (d.highlights && d.highlights.length) h += '<div class="s-block" style="margin-bottom:0.75rem"><h5>Cosa ha funzionato</h5><ul>' + d.highlights.map(function(x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+    if (d.recommendations && d.recommendations.length) h += '<div class="s-block" style="margin-bottom:1rem"><h5>Cosa farà l\'agente nei prossimi post</h5><ul>' + d.recommendations.map(function(x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
   }
   h += '<button class="btn-sm btn-outline" data-agact="report">↻ Crea report adesso</button></div>';
   document.getElementById('agp-report').innerHTML = h;
@@ -1373,7 +1408,7 @@ function agRenderReport() {
 
 function agRenderActivity() {
   var a = agState.activity || [];
-  document.getElementById('ag-activity').innerHTML = '<h3>🕑 Cosa ha fatto l\'agente</h3>' + (a.length ? a.map(function(x) {
+  document.getElementById('ag-activity').innerHTML = '<h3>Cosa ha fatto l\'agente</h3>' + (a.length ? a.map(function(x) {
     return '<div class="ag-log"><time>' + fmtDate(x.created_at) + '</time><span>' + esc(x.message) + '</span></div>';
   }).join('') : '<p style="color:var(--gray);font-size:0.85rem">Ancora nessuna attività.</p>');
 }
@@ -1404,7 +1439,7 @@ async function agSaveProfile() {
       autopilot: document.getElementById('ag-autopilot').checked,
       auto_reply: document.getElementById('ag-autoreply').checked
     });
-    toast(r.started ? '🤖 Agente avviato! Sta preparando i primi post...' : 'Profilo salvato ✅');
+    toast(r.started ? 'Agente avviato! Sta preparando i primi post...' : 'Profilo salvato');
     await loadAgent();
     if (r.started) { agShowTab('approve'); setTimeout(function() { loadAgent(true); }, 25000); }
   } catch(e) { toast(e.message, 'error'); }
@@ -1412,7 +1447,7 @@ async function agSaveProfile() {
 }
 
 async function agPlanNow() {
-  showLoading('🤖 L\'agente sta scrivendo i post della settimana...');
+  showLoading('L\'agente sta scrivendo i post della settimana...');
   try {
     var r = await agentApi('/api/agent/plan-now', 'POST', {});
     toast(r.message);
@@ -1425,7 +1460,7 @@ async function agToggle() {
   if (!agState || !agState.profile) return;
   try {
     await agentApi('/api/agent/profile', 'POST', {active: !agState.profile.active, keepBrand: true});
-    toast(agState.profile.active ? 'Agente in pausa ⏸' : 'Agente riattivato ▶');
+    toast(agState.profile.active ? 'Agente in pausa' : 'Agente riattivato ▶');
     await loadAgent();
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -1445,17 +1480,17 @@ function agEdits(id) {
 async function agAction(act, id, btn) {
   if (btn) btn.disabled = true;
   try {
-    if (act === 'approve') { await agentApi('/api/agent/posts/' + id + '/approve', 'POST', agEdits(id)); toast('Approvato ✅ Verrà pubblicato all\'orario scelto.'); }
-    else if (act === 'save') { await agentApi('/api/agent/posts/' + id + '/update', 'POST', agEdits(id)); toast('Modifiche salvate ✅'); }
+    if (act === 'approve') { await agentApi('/api/agent/posts/' + id + '/approve', 'POST', agEdits(id)); toast('Approvato Verrà pubblicato all\'orario scelto.'); }
+    else if (act === 'save') { await agentApi('/api/agent/posts/' + id + '/update', 'POST', agEdits(id)); toast('Modifiche salvate'); }
     else if (act === 'reject') { if (!confirm('Scartare questo post?')) { if (btn) btn.disabled = false; return; } await agentApi('/api/agent/posts/' + id + '/reject', 'POST', {}); toast('Post scartato'); }
     else if (act === 'regen') {
       var np = prompt('Descrivi l\'immagine che vuoi (lascia vuoto per farla decidere all\'AI):', '');
       if (np === null) { if (btn) btn.disabled = false; return; }
       await agentApi('/api/agent/posts/' + id + '/regenerate-image', 'POST', {image_prompt: np});
-      toast('🎨 Sto creando una nuova immagine...');
+      toast('Sto creando una nuova immagine...');
     }
     else if (act === 'resolve') { await agentApi('/api/agent/replies/' + id + '/resolve', 'POST', {}); }
-    else if (act === 'report') { showLoading('📊 Sto analizzando i risultati...'); await agentApi('/api/agent/report-now', 'POST', {}); hideLoading(); toast('Report pronto 📊'); }
+    else if (act === 'report') { showLoading('Sto analizzando i risultati...'); await agentApi('/api/agent/report-now', 'POST', {}); hideLoading(); toast('Report pronto'); }
     await loadAgent();
   } catch(e) {
     hideLoading();
