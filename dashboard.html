@@ -250,6 +250,14 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .ag-locked{text-align:center;padding:2.5rem 1.5rem;background:#fff;border-radius:12px;border:1px solid var(--border)}
 .ag-locked h3{font-size:1.1rem;font-weight:600;margin-bottom:0.5rem}
 .ag-locked p{color:var(--gray);font-size:0.88rem;margin-bottom:1.2rem;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.6}
+/* ===== MODIFICA POST ===== */
+.pv-edit{width:100%;border-top:1px solid var(--border);padding-top:0.8rem;margin-top:0.3rem}
+.pv-edit label{display:block;font-size:0.78rem;font-weight:600;color:var(--dark2);margin:0.5rem 0 0.3rem}
+.pv-edit textarea{width:100%;min-height:130px;border:1px solid var(--border-strong);border-radius:8px;padding:0.6rem;font:inherit;font-size:0.86rem;line-height:1.5;resize:vertical}
+.pv-edit input,.pv-edit select{border:1px solid var(--border-strong);border-radius:7px;padding:0.4rem 0.55rem;font:inherit;font-size:0.84rem;background:#fff}
+.pv-row{display:flex;gap:0.5rem}
+.pv-err{font-size:0.82rem;color:var(--red);background:var(--red-bg);border-radius:8px;padding:0.5rem 0.7rem}
+.pBtn-img{background:var(--lavender);border-color:var(--lavender);color:var(--purple)}
 /* ===== FOTO DEL BRAND ===== */
 .ph-box{border:1px dashed var(--border-strong);border-radius:10px;padding:0.85rem;background:var(--off-white)}
 .ph-grid{display:flex;flex-wrap:wrap;gap:0.5rem}
@@ -756,9 +764,13 @@ function bindEvents() {
       return;
     }
     // modifica
-    if (e.target.closest('.pBtn-edit')) {
-      toast('Editor disponibile nel piano Pro', 'error');
-    }
+    var ed = e.target.closest('.pBtn-edit');
+    if (ed) { var it = ed.closest('.post-item'); var ix = idxByUid(it.getAttribute('data-idx')); if (ix >= 0) openEditor(it, posts[ix]); return; }
+    var ib = e.target.closest('.pBtn-img');
+    if (ib) { var it2 = ib.closest('.post-item'); var ix2 = idxByUid(it2.getAttribute('data-idx')); if (ix2 >= 0) createPostImage(posts[ix2], ib); return; }
+    var sv = e.target.closest('.pv-save');
+    if (sv) { var it3 = sv.closest('.post-item'); var ix3 = idxByUid(it3.getAttribute('data-idx')); if (ix3 >= 0) saveEditor(it3, posts[ix3]); return; }
+    if (e.target.closest('.pv-cancel')) { var box = e.target.closest('.pv-edit'); box.hidden = true; box.innerHTML = ''; return; }
   });
   document.getElementById('hamburger').addEventListener('click', function() {
     document.getElementById('sidebar').classList.toggle('open');
@@ -938,6 +950,7 @@ async function loadPosts() {
   try {
     // Carica strategie (post generati)
     var res = await sb.from('strategies').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
+    lastStrategy = (res.data && res.data[0]) || null;
     if (res.data && res.data.length) {
       res.data.forEach(function(s) {
         (s.posts || []).forEach(function(p) {
@@ -957,6 +970,8 @@ async function loadPosts() {
             posts[i].status = dbPost.status;
             posts[i].db_id = dbPost.id;
             posts[i].scheduled_at = dbPost.scheduled_at;
+            posts[i].error = dbPost.error || null;
+            if (dbPost.text) posts[i].text = dbPost.text;
             found = true;
             break;
           }
@@ -978,6 +993,8 @@ async function loadPosts() {
             scheduled_time: dbPost.scheduled_at,
             brand: dbPost.brand,
             status: dbPost.status,
+            scheduled_at: dbPost.scheduled_at,
+            error: dbPost.error || null,
             db_id: dbPost.id
           });
         }
@@ -986,8 +1003,15 @@ async function loadPosts() {
   } catch(e) {
     console.error('loadPosts error:', e);
   }
-  updateStats();
-  renderHomePosts();
+  // pagina Genera: dopo un ricaricamento mostra l'ultima strategia generata
+  if (!genUids.length && lastStrategy) {
+    genUids = posts.filter(function(p) { return p._sid === lastStrategy.id; }).map(function(p) { return p._uid; });
+    if (genUids.length) {
+      try { renderStrategy(lastStrategy.strategy || {}, lastStrategy.brand || ''); } catch (e) {}
+      document.getElementById('gen-result').style.display = 'block';
+    }
+  }
+  rerenderPosts();
   if (posts.length) document.getElementById('os-post').classList.add('done');
 }
 
@@ -1001,6 +1025,7 @@ function updateStats() {
 // ===== ANTEPRIMA POST (come apparirà su Instagram / Facebook) =====
 var _uidSeq = 0;
 var genUids = [];
+var lastStrategy = null;
 function postSocials(post) {
   if (Array.isArray(post.socials) && post.socials.length) return post.socials;
   var raw = String(post.social || 'Instagram');
@@ -1084,14 +1109,18 @@ function buildPostCard(post) {
     : '';
   var preview = '<div class="pv-wrap">' + tabs + previewNets.map(function(n, i) { return block(n, i > 0); }).join('') + '</div>';
 
+  var noImage = !post.image_url && !(post.carousel_images && post.carousel_images.length) && !post.video_url;
+  var imgBtn = (noImage && (st === 'draft' || !post.status)) ? '<button class="pBtn pBtn-img">Crea immagine</button>' : '';
   var actions;
-  if (st === 'approved') {
-    actions = '<div class="pv-note">Verrà pubblicato in automatico all\'orario programmato.</div>' +
-      '<div class="post-actions"><button class="pBtn pBtn-delete">Elimina</button></div>';
+  if (st === 'approved' || st === 'failed') {
+    actions = (st === 'failed'
+        ? '<div class="pv-err">Pubblicazione non riuscita' + (post.error ? ': ' + escH(post.error) : '') + '. Controlla i social collegati e scegli una nuova data con "Modifica".</div>'
+        : '<div class="pv-note">Verrà pubblicato in automatico all\'orario programmato.</div>') +
+      '<div class="post-actions"><button class="pBtn pBtn-edit">Modifica</button><button class="pBtn pBtn-delete">Elimina</button></div>';
   } else if (st === 'published') {
     actions = '<div class="pv-note">Già pubblicato sul profilo.</div>';
   } else {
-    actions = '<div class="post-actions">' +
+    actions = (imgBtn ? '<div class="post-actions">' + imgBtn + '</div>' : '') + '<div class="post-actions">' +
       '<button class="pBtn pBtn-approve">✓ Approva</button>' +
       '<button class="pBtn pBtn-edit">Modifica</button>' +
       '<button class="pBtn pBtn-delete">Elimina</button>' +
@@ -1104,6 +1133,7 @@ function buildPostCard(post) {
       '<div class="pv-meta"><b>' + escH(social) + '</b> · ' + typeLabel + '</div>' +
       (when ? '<div class="pv-when">' + escH(when) + '</div>' : '') +
       actions +
+      '<div class="pv-edit" hidden></div>' +
     '</div>' +
   '</div>';
 }
@@ -1139,7 +1169,8 @@ function renderAllPosts() {
 function renderApprovedPosts() {
   var el = document.getElementById('approved-posts');
   if (!el) return;
-  var approved = posts.filter(function(p) { return p.status === 'approved'; });
+  var approved = posts.filter(function(p) { return p.status === 'approved' || p.status === 'failed' || p.status === 'publishing'; })
+    .sort(function(a, b) { return new Date(a.scheduled_at || 0) - new Date(b.scheduled_at || 0); });
   if (!approved.length) {
     el.innerHTML = '<div class="empty"><div class="icon"></div><h3>Nessun post approvato</h3><p>Approva i post dalla sezione "I miei post" per vederli qui pronti alla pubblicazione automatica</p><button class="btn-sm btn-purple" data-page="posts">Vai ai post</button></div>';
     return;
@@ -1240,6 +1271,78 @@ async function approvePost(idx) {
   }
 }
 
+// ===== MODIFICA POST (testo, giorno e ora) =====
+var DAYS_IT = ['Lunedi','Martedi','Mercoledi','Giovedi','Venerdi','Sabato','Domenica'];
+function toLocalInput(iso) {
+  var d = iso ? new Date(iso) : new Date(Date.now() + 3600000);
+  var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function openEditor(item, post) {
+  var box = item.querySelector('.pv-edit');
+  var st = post.status || 'draft';
+  var when = (st === 'approved' || st === 'failed')
+    ? '<label>Data e ora di pubblicazione</label><input type="datetime-local" class="pv-in-dt" value="' + toLocalInput(post.scheduled_at) + '">'
+    : '<label>Giorno e ora</label><div class="pv-row"><select class="pv-in-day">' + DAYS_IT.map(function(d) { return '<option' + (String(post.day || '').toLowerCase().indexOf(d.toLowerCase().slice(0, 5)) === 0 ? ' selected' : '') + '>' + d + '</option>'; }).join('') + '</select><input type="time" class="pv-in-time" value="' + escH(post.scheduled_time || '11:00') + '"></div>';
+  box.innerHTML = '<label>Testo del post</label><textarea class="pv-in-text">' + escH(post.text || '') + '</textarea>' + when +
+    '<div class="post-actions"><button type="button" class="pBtn pBtn-approve pv-save">Salva</button><button type="button" class="pBtn pv-cancel">Annulla</button></div>';
+  box.hidden = false;
+}
+async function saveEditor(item, post) {
+  var box = item.querySelector('.pv-edit');
+  var newText = box.querySelector('.pv-in-text').value.trim();
+  if (!newText) return toast('Il testo non può essere vuoto', 'error');
+  var st = post.status || 'draft';
+  try {
+    if (st === 'approved' || st === 'failed') {
+      var dt = box.querySelector('.pv-in-dt').value;
+      var iso = dt ? new Date(dt).toISOString() : null;
+      if (iso && new Date(iso) < new Date()) return toast('Scegli una data futura', 'error');
+      var resp = await fetch('/api/posts/update', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ postId: post.db_id, text: newText, scheduled_at: iso }) });
+      var r = await resp.json(); if (!resp.ok || r.error) throw new Error(r.error || 'Errore');
+      if (post._sid) await fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid: post._sid, text: (post.text || '').substring(0, 50), new_text: newText }) });
+      post.text = newText; if (iso) { post.scheduled_at = iso; post.status = 'approved'; post.error = null; }
+    } else {
+      var day = box.querySelector('.pv-in-day').value, time = box.querySelector('.pv-in-time').value;
+      if (post._sid) {
+        var resp2 = await fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid: post._sid, text: (post.text || '').substring(0, 50), new_text: newText, day: day, scheduled_time: time }) });
+        var r2 = await resp2.json(); if (!resp2.ok || r2.error) throw new Error(r2.error || 'Errore');
+      }
+      post.text = newText; post.day = day; post.scheduled_time = time;
+    }
+    rerenderPosts();
+    toast('Modifiche salvate');
+  } catch (e) { toast('Errore: ' + e.message, 'error'); }
+}
+
+// ===== CREA IMMAGINE PER UN POST CHE NE È SENZA =====
+async function createPostImage(post, btn) {
+  btn.disabled = true; btn.textContent = 'Creo l\'immagine… (circa 30 secondi)';
+  var refs = (typeof brandPhotos !== 'undefined' ? brandPhotos : []).map(function(p) { return p.url; }).filter(Boolean);
+  var one = async function(prompt, size) {
+    var resp = await fetch('/api/generate-image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: prompt, brand: post.brand || '', refImages: refs, size: size }) });
+    var r = await resp.json(); if (!resp.ok || !r.url) throw new Error(r.details || r.error || 'Immagine non creata');
+    return r.url;
+  };
+  try {
+    var body = { sid: post._sid, text: (post.text || '').substring(0, 50) };
+    if (post.type === 'carousel') {
+      var slides = (post.carousel_slides && post.carousel_slides.length ? post.carousel_slides : [{}, {}, {}]).slice(0, 3);
+      var urls = await Promise.all(slides.map(function(sl) { return one(sl.image_prompt || post.image_prompt || post.text, '1024x1024'); }));
+      post.carousel_images = urls; post.image_url = urls[0]; body.carousel_images = urls; body.image_url = urls[0];
+    } else {
+      post.image_url = await one(post.image_prompt || post.text, post.type === 'reel' ? '1024x1536' : '1024x1024');
+      body.image_url = post.image_url;
+    }
+    if (post._sid) fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) }).catch(function() {});
+    rerenderPosts();
+    toast('Immagine creata');
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Crea immagine';
+    toast('Errore immagine: ' + e.message, 'error');
+  }
+}
+
 async function deletePost(idx) {
   if (!posts[idx]) return;
   var post = posts[idx];
@@ -1264,6 +1367,27 @@ async function deletePost(idx) {
   rerenderPosts();
   toast('Post eliminato');
 }
+
+// ===== I CAMPI DEL MODULO "GENERA" RESTANO SALVATI =====
+var GEN_FIELDS = ['g-brand', 'g-sector', 'g-desc', 'g-style', 'g-tone', 'g-social'];
+function restoreGenForm() {
+  try {
+    var saved = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}');
+    GEN_FIELDS.forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.value = saved[id]; });
+    ['gen-images', 'gen-video', 'ph-real'].forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.checked = !!saved[id]; });
+  } catch (e) {}
+}
+function saveGenForm() {
+  try {
+    var data = {};
+    GEN_FIELDS.forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.value; });
+    ['gen-images', 'gen-video', 'ph-real'].forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.checked; });
+    localStorage.setItem('inpost_gen_form', JSON.stringify(data));
+  } catch (e) {}
+}
+document.addEventListener('input', function(e) { if (e.target && e.target.closest && e.target.closest('#page-genera')) saveGenForm(); });
+document.addEventListener('change', function(e) { if (e.target && e.target.closest && e.target.closest('#page-genera')) saveGenForm(); });
+restoreGenForm();
 
 // ===== FOTO DEL BRAND =====
 var brandPhotos = []; // { url, thumb }
@@ -1369,7 +1493,8 @@ async function doGenerate() {
     document.getElementById('gen-result').scrollIntoView({behavior:'smooth', block:'nearest'});
     updateStats();
     document.getElementById('os-post').classList.add('done');
-    if (result.free) toast('Post pronti! Ti restano ' + result.free.left + ' post gratuiti questa settimana.');
+    if (result.media_errors && result.media_errors.length) toast('Post pronti, ma alcune immagini non sono state create: ' + result.media_errors[0] + '. Usa "Crea immagine" sul post.', 'error');
+    else if (result.free) toast('Post pronti! Ti restano ' + result.free.left + ' post gratuiti questa settimana.');
     else toast(genImages ? 'Post e immagini pronti!' : genVideo ? 'Post e video pronti!' : 'Strategia e post generati!');
   } catch(e) {
     toast('Errore: ' + e.message, 'error');

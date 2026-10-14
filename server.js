@@ -71,7 +71,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -230,25 +230,28 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
     const doVideo = freeLeft === null && (generateVideo === true || generateVideo === 'true');
     console.log('🖼️ generateImages:', generateImages, '→ doImages:', doImages, '| KEY:', !!process.env.OPENAI_API_KEY);
     // il video parte da un'immagine: per i reel la creiamo anche se "Immagini AI" non è spuntato
+    const mediaErrors = [];
+    if ((doImages || doVideo) && !process.env.OPENAI_API_KEY) mediaErrors.push('Chiave OpenAI (OPENAI_API_KEY) mancante su Railway: immagini non create');
     if ((doImages || doVideo) && process.env.OPENAI_API_KEY) {
-      for (let i = 0; i < data.posts.length; i++) {
-        const post = data.posts[i];
-        if (!doImages && (post.type !== 'reel' || post.image_url)) continue;
+      const styled = (p) => style && style.trim() ? `${p}. Stile e colori: ${style.trim()}` : p;
+      const jobs = data.posts.map((post, i) => async () => {
+        if (!doImages && (post.type !== 'reel' || post.image_url)) return;
         try {
           if (post.type === 'carousel' && post.carousel_slides) {
-            const imgs = [];
-            for (const slide of post.carousel_slides.slice(0, 3)) {
-              const slidePrompt = style && style.trim() ? `${slide.image_prompt}. Stile e colori: ${style.trim()}` : slide.image_prompt;
-              imgs.push(await generateImage(slidePrompt, brand, { refs: photos }));
-            }
-            data.posts[i].carousel_images = imgs;
-            data.posts[i].image_url = imgs[0];
-          } else if (post.image_prompt) {
-            const styledPrompt = style && style.trim() ? `${post.image_prompt}. Stile e colori: ${style.trim()}` : post.image_prompt;
-            data.posts[i].image_url = await generateImage(styledPrompt, brand, { refs: photos, size: post.type === 'reel' ? '1024x1536' : '1024x1024' });
+            const imgs = await Promise.all(post.carousel_slides.slice(0, 3).map(sl => generateImage(styled(sl.image_prompt || post.text), brand, { refs: photos })));
+            data.posts[i].carousel_images = imgs.filter(Boolean);
+            data.posts[i].image_url = data.posts[i].carousel_images[0] || null;
+          } else if (post.image_prompt || post.text) {
+            data.posts[i].image_url = await generateImage(styled(post.image_prompt || post.text), brand, { refs: photos, size: post.type === 'reel' ? '1024x1536' : '1024x1024' });
           }
-        } catch (e) { console.error('Image error post', i, ':', e.message); }
-      }
+        } catch (e) {
+          const msg = (e.response && e.response.data && e.response.data.error && e.response.data.error.message) || e.message;
+          console.error('Image error post', i, ':', msg);
+          mediaErrors.push(msg);
+        }
+      });
+      // 3 immagini alla volta: molto più veloce che una dopo l'altra
+      for (let k = 0; k < jobs.length; k += 3) await Promise.all(jobs.slice(k, k + 3).map(j => j()));
     }
 
     if (doVideo) {
@@ -292,7 +295,7 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
       free = { limit: FREE_WEEKLY_POSTS, left: Math.max(0, FREE_WEEKLY_POSTS - usedNow) };
     }
 
-    res.json({ success: true, data, free, strategy_id: strategyId });
+    res.json({ success: true, data, free, strategy_id: strategyId, media_errors: [...new Set(mediaErrors)].slice(0, 3) });
 
   } catch (error) {
     console.error('Generate error:', error);
@@ -332,7 +335,11 @@ async function generateImage(prompt, brand, opts) {
         method: 'POST', headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }, body: form
       });
       const json = await resp.json();
-      if (!resp.ok) throw new Error((json.error && json.error.message) || 'Errore modifica immagine');
+      if (!resp.ok) {
+        // se la modifica con le foto di riferimento non riesce, generiamo comunque l'immagine senza
+        console.log('⚠️ Immagine con foto di riferimento non riuscita, riprovo senza:', json.error && json.error.message);
+        return generateImage(prompt, brand, { size });
+      }
       r = { data: json };
     } else {
       r = await axios.post(
@@ -377,9 +384,10 @@ async function generateImage(prompt, brand, opts) {
 
 app.post('/api/generate-image', async (req, res) => {
   try {
-    const { prompt, brand, userId } = req.body;
+    const { prompt, brand, userId, refImages, size } = req.body;
     if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'OpenAI non configurato' });
-    const url = await generateImage(prompt, brand || 'Brand');
+    const refs = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 4);
+    const url = await generateImage(prompt, brand || 'Brand', { refs, size: size === '1024x1536' ? '1024x1536' : '1024x1024' });
     res.json({ success: true, url });
   } catch (e) { res.status(500).json({ error: 'Errore immagine', details: e.message }); }
 });
@@ -698,11 +706,28 @@ app.post('/api/media/upload', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== MODIFICA DI UN POST GIÀ APPROVATO (testo e data di pubblicazione) =====
+app.post('/api/posts/update', async (req, res) => {
+  try {
+    const { userId, postId, text, scheduled_at } = req.body;
+    if (!userId || !postId) return res.status(400).json({ error: 'Dati mancanti' });
+    const patch = {};
+    if (typeof text === 'string' && text.trim()) patch.text = text.slice(0, 2200);
+    if (scheduled_at && !isNaN(Date.parse(scheduled_at))) patch.scheduled_at = new Date(scheduled_at).toISOString();
+    if (!Object.keys(patch).length) return res.status(400).json({ error: 'Niente da modificare' });
+    const { error } = await supabase.from('posts').update(patch).eq('id', postId).eq('user_id', userId).in('status', ['approved', 'failed']);
+    if (error) throw error;
+    if (patch.scheduled_at) await supabase.from('posts').update({ status: 'approved', error: null }).eq('id', postId).eq('user_id', userId).eq('status', 'failed');
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== STATO DI UN POST DENTRO LA STRATEGIA (approvato / eliminato) =====
 app.post('/api/posts/state', async (req, res) => {
   try {
-    const { userId, sid, text, status, video_url } = req.body;
-    if (!userId || !sid || (!['approved', 'deleted', 'draft'].includes(status) && !video_url)) return res.status(400).json({ error: 'Dati mancanti' });
+    const { userId, sid, text, status, video_url, image_url, carousel_images, new_text, scheduled_time, day } = req.body;
+    const hasEdit = video_url || image_url || carousel_images || new_text || scheduled_time || day;
+    if (!userId || !sid || (!['approved', 'deleted', 'draft'].includes(status) && !hasEdit)) return res.status(400).json({ error: 'Dati mancanti' });
     const { data: st, error } = await supabase.from('strategies').select('posts').eq('id', sid).eq('user_id', userId).single();
     if (error || !st) return res.status(404).json({ error: 'Strategia non trovata' });
     const list = Array.isArray(st.posts) ? st.posts : [];
@@ -712,6 +737,11 @@ app.post('/api/posts/state', async (req, res) => {
     const patch = {};
     if (status) patch.status = status;
     if (typeof video_url === 'string' && /^https:\/\//.test(video_url)) { patch.video_url = video_url; patch.video_status = 'completed'; }
+    if (typeof image_url === 'string' && /^https:\/\//.test(image_url)) patch.image_url = image_url;
+    if (Array.isArray(carousel_images)) patch.carousel_images = carousel_images.filter(u => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, 10);
+    if (typeof new_text === 'string' && new_text.trim()) patch.text = new_text.slice(0, 2200);
+    if (typeof scheduled_time === 'string' && /^\d{1,2}:\d{2}$/.test(scheduled_time)) patch.scheduled_time = scheduled_time;
+    if (typeof day === 'string' && day.length < 20) patch.day = day;
     list[i] = Object.assign({}, list[i], patch);
     const { error: upErr } = await supabase.from('strategies').update({ posts: list }).eq('id', sid).eq('user_id', userId);
     if (upErr) throw upErr;
