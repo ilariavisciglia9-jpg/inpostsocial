@@ -70,7 +70,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -227,12 +227,14 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
       }
     }
 
+    let strategyId = null;
     if (userId) {
-      await supabase.from('strategies').insert({
+      const { data: saved } = await supabase.from('strategies').insert({
         user_id: userId, brand, sector,
         strategy: data.strategy, posts: data.posts,
         created_at: new Date().toISOString()
-      });
+      }).select('id').single();
+      strategyId = saved && saved.id;
     }
 
     let free = null;
@@ -242,7 +244,7 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
       free = { limit: FREE_WEEKLY_POSTS, left: Math.max(0, FREE_WEEKLY_POSTS - usedNow) };
     }
 
-    res.json({ success: true, data, free });
+    res.json({ success: true, data, free, strategy_id: strategyId });
 
   } catch (error) {
     console.error('Generate error:', error);
@@ -605,6 +607,24 @@ app.post('/api/posts/save', async (req, res) => {
     console.error('Save post error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ===== STATO DI UN POST DENTRO LA STRATEGIA (approvato / eliminato) =====
+app.post('/api/posts/state', async (req, res) => {
+  try {
+    const { userId, sid, text, status } = req.body;
+    if (!userId || !sid || !['approved', 'deleted', 'draft'].includes(status)) return res.status(400).json({ error: 'Dati mancanti' });
+    const { data: st, error } = await supabase.from('strategies').select('posts').eq('id', sid).eq('user_id', userId).single();
+    if (error || !st) return res.status(404).json({ error: 'Strategia non trovata' });
+    const list = Array.isArray(st.posts) ? st.posts : [];
+    const key = String(text || '').substring(0, 50);
+    const i = list.findIndex(p => p && String(p.text || '').substring(0, 50) === key && p.status !== 'deleted');
+    if (i < 0) return res.status(404).json({ error: 'Post non trovato' });
+    list[i] = Object.assign({}, list[i], { status });
+    const { error: upErr } = await supabase.from('strategies').update({ posts: list }).eq('id', sid).eq('user_id', userId);
+    if (upErr) throw upErr;
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== ELIMINA POST =====
