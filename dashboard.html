@@ -1080,7 +1080,7 @@ async function doCheckout(plan) {
       body: JSON.stringify({plan: plan, userId: user.id, email: user.email})
     });
     var result = await resp.json();
-    if (result.error) throw new Error(result.error);
+    if (result.error) throw new Error(result.details || result.error);
     window.location.href = result.url;
   } catch(e) {
     toast('Errore checkout: ' + e.message, 'error');
