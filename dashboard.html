@@ -776,8 +776,10 @@ async function loadSocialConnections() {
     var resp = await fetch('/api/social/status?userId=' + user.id);
     var result = await resp.json();
     console.log('Social status:', result);
+    if (!resp.ok) { toast('Errore lettura social collegati: ' + (result.error || resp.status), 'error'); return; }
     if (!result.connections || !result.connections.length) {
       document.getElementById('s4').textContent = '0';
+      if (new URLSearchParams(window.location.search).get('connected')) toast('Meta ha confermato il collegamento ma non risulta salvato. Controlla i log del server.', 'error');
       return;
     }
     result.connections.forEach(function(c) {
