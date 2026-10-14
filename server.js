@@ -34,6 +34,20 @@ function siteUrl() {
   return u;
 }
 
+// un solo indirizzo per il sito (es. sempre con www): il login di Supabase vale per un dominio alla volta,
+// quindi se l'utente entra da inpostsocial.com e torna da Meta su www.inpostsocial.com risulterebbe scollegato
+app.use((req, res, next) => {
+  try {
+    const canonical = new URL(siteUrl()).host;
+    const host = (req.headers.host || '').toLowerCase();
+    const sameSite = host.replace(/^www\./, '') === canonical.replace(/^www\./, '');
+    if (req.method === 'GET' && sameSite && host !== canonical && !req.path.startsWith('/webhook')) {
+      return res.redirect(301, 'https://' + canonical + req.originalUrl);
+    }
+  } catch (e) { /* FRONTEND_URL non valido: nessun redirect */ }
+  next();
+});
+
 // ===== PROVA GRATUITA: 2 post a settimana =====
 const FREE_WEEKLY_POSTS = 2;
 function freeWeekKey() {
@@ -392,13 +406,17 @@ app.get('/auth/callback', async (req, res) => {
 
     await supabase.from('social_connections').delete().eq('user_id', userId).in('platform', ['facebook', 'instagram']);
 
-    await supabase.from('social_connections').insert({
+    const { error: fbSaveErr } = await supabase.from('social_connections').insert({
       user_id: userId,
       platform: 'facebook',
       access_token: longToken,
       pages: pages,
       connected_at: new Date().toISOString()
     });
+    if (fbSaveErr) {
+      console.error('❌ Salvataggio collegamento Facebook fallito:', fbSaveErr.message);
+      return res.redirect(DASH + '?error=save_failed');
+    }
 
     let igConnected = false;
     for (const page of pages) {
@@ -408,7 +426,7 @@ app.get('/auth/callback', async (req, res) => {
         });
         const igAccount = igRes.data.instagram_business_account;
         if (igAccount && igAccount.id) {
-          await supabase.from('social_connections').insert({
+          const { error: igSaveErr } = await supabase.from('social_connections').insert({
             user_id: userId,
             platform: 'instagram',
             ig_account_id: igAccount.id,
@@ -417,6 +435,7 @@ app.get('/auth/callback', async (req, res) => {
             page_access_token: page.access_token,
             connected_at: new Date().toISOString()
           });
+          if (igSaveErr) throw new Error('salvataggio non riuscito: ' + igSaveErr.message);
           igConnected = true;
           console.log('📸 Instagram collegato:', igAccount.id, 'via pagina:', page.name);
         }

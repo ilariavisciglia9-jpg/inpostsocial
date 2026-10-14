@@ -633,6 +633,7 @@ async function init() {
   if (params.get('connected') === 'true') toast('Social collegato!');
   if (params.get('error') === 'auth_denied') toast('Collegamento annullato', 'error');
   if (params.get('error') === 'auth_failed') toast('Errore nel collegamento. Riprova.', 'error');
+  if (params.get('error') === 'save_failed') toast('Collegamento riuscito su Meta ma non salvato nel database. Contatta l\'assistenza.', 'error');
   if (params.get('plan')) doCheckout(params.get('plan'));
 
   bindEvents();
