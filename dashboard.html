@@ -253,7 +253,12 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 /* ===== ANTEPRIMA POST ===== */
 .posts-list{gap:1rem}
 .pv-card{display:grid;grid-template-columns:minmax(0,380px) 1fr;gap:0;align-items:start;padding:0;overflow:hidden}
-.pv{background:#fff;border-right:1px solid var(--border);font-size:0.86rem;color:#111}
+.pv-wrap{border-right:1px solid var(--border);background:#fff}
+.pv{background:#fff;font-size:0.86rem;color:#111}
+.pv[hidden]{display:none}
+.pv-tabs{display:flex;gap:0.25rem;padding:0.5rem 0.6rem 0;border-bottom:1px solid var(--border)}
+.pv-tab{padding:0.45rem 0.7rem;font-size:0.78rem;font-weight:600;color:var(--gray);border-bottom:2px solid transparent;margin-bottom:-1px}
+.pv-tab.on{color:var(--dark);border-bottom-color:var(--purple)}
 .pv-head{display:flex;align-items:center;gap:0.6rem;padding:0.7rem 0.85rem}
 .pv-head b{display:block;font-size:0.84rem;font-weight:600;line-height:1.2}
 .pv-head small{display:block;font-size:0.72rem;color:var(--gray)}
@@ -296,7 +301,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .pv-side .post-actions{padding:0;border:none;width:100%;margin-top:0.4rem;flex-wrap:wrap}
 @media(max-width:760px){
   .pv-card{grid-template-columns:1fr}
-  .pv{border-right:none;border-bottom:1px solid var(--border)}
+  .pv-wrap{border-right:none;border-bottom:1px solid var(--border)}
 }
 @media(max-width:1100px){
   .stats-grid{grid-template-columns:1fr 1fr}
@@ -943,7 +948,8 @@ async function loadPosts() {
             carousel_images: dbPost.carousel_images,
             video_url: dbPost.video_url,
             video_task_id: dbPost.video_task_id,
-            social: dbPost.platform,
+            social: postSocials({social: dbPost.platform})[0],
+            socials: postSocials({social: dbPost.platform}),
             type: dbPost.type || 'image',
             day: dbPost.day,
             scheduled_time: dbPost.scheduled_at,
@@ -972,6 +978,13 @@ function updateStats() {
 // ===== ANTEPRIMA POST (come apparirà su Instagram / Facebook) =====
 var _uidSeq = 0;
 var genUids = [];
+function postSocials(post) {
+  if (Array.isArray(post.socials) && post.socials.length) return post.socials;
+  var raw = String(post.social || 'Instagram');
+  if (/tutti/i.test(raw)) return ['Instagram', 'Facebook', 'TikTok'];
+  var list = ['Instagram', 'Facebook', 'TikTok', 'LinkedIn'].filter(function(n) { return new RegExp(n, 'i').test(raw); });
+  return list.length ? list : ['Instagram'];
+}
 function withUid(p) { if (!p._uid) p._uid = 'p' + (++_uidSeq); return p; }
 function idxByUid(uid) { for (var i = 0; i < posts.length; i++) if (posts[i]._uid === uid) return i; return -1; }
 function escH(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1011,8 +1024,8 @@ function buildPostCard(post) {
   var stClass = {draft:'s-draft',approved:'s-approved',published:'s-published',failed:'s-failed',publishing:'s-publishing'}[st] || '';
   var typeLabel = {carousel:'Carosello', reel:'Reel', image:'Post'}[post.type] || 'Post';
   if (post.type === 'carousel' && post.carousel_images) typeLabel += ' · ' + post.carousel_images.length + ' immagini';
-  var social = post.social || 'Instagram';
-  var isFb = /^facebook$/i.test(social);
+  var socials = postSocials(post);
+  var social = socials.join(' + ');
   var handle = brandHandle(post.brand);
   var name = escH(post.brand || 'Il tuo brand');
   var initial = (post.brand || 'B').charAt(0).toUpperCase();
@@ -1023,16 +1036,17 @@ function buildPostCard(post) {
     try { when = new Date(post.scheduled_at).toLocaleString('it-IT', {weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}); } catch (e) {}
   }
 
-  var preview;
-  if (isFb) {
-    preview = '<div class="pv pv-fb">' +
+  function block(net, hidden) {
+  var attrs = ' data-net="' + net + '"' + (hidden ? ' hidden' : '');
+  if (net === 'Facebook') {
+    return '<div class="pv pv-fb"' + attrs + '>' +
       '<div class="pv-head"><span class="pv-av">' + initial + '</span><div><b>' + name + '</b><small>Programmato · Pubblico</small></div></div>' +
       '<div class="pv-cap pv-cap-fb">' + text + (tags ? '<span class="pv-tags"> ' + tags + '</span>' : '') + '</div>' +
       pvMedia(post) +
       '<div class="pv-fb-actions"><span>' + PV_ICONS.like + 'Mi piace</span><span>' + PV_ICONS.comment + 'Commenta</span><span>' + PV_ICONS.share + 'Condividi</span></div>' +
     '</div>';
-  } else {
-    preview = '<div class="pv pv-ig">' +
+  }
+    return '<div class="pv pv-ig"' + attrs + '>' +
       '<div class="pv-head"><span class="pv-av">' + initial + '</span><div><b>' + escH(handle) + '</b>' + (post.type === 'reel' ? '<small>Audio originale</small>' : '') + '</div></div>' +
       pvMedia(post) +
       '<div class="pv-ig-actions"><span>' + PV_ICONS.heart + PV_ICONS.comment + PV_ICONS.send + '</span>' + PV_ICONS.save + '</div>' +
@@ -1040,6 +1054,12 @@ function buildPostCard(post) {
       '<button type="button" class="pv-more">altro</button>' +
     '</div>';
   }
+  var previewNets = socials.filter(function(n) { return n === 'Instagram' || n === 'Facebook'; });
+  if (!previewNets.length) previewNets = ['Instagram'];
+  var tabs = previewNets.length > 1
+    ? '<div class="pv-tabs">' + previewNets.map(function(n, i) { return '<button type="button" class="pv-tab' + (i === 0 ? ' on' : '') + '" data-net="' + n + '">Anteprima ' + n + '</button>'; }).join('') + '</div>'
+    : '';
+  var preview = '<div class="pv-wrap">' + tabs + previewNets.map(function(n, i) { return block(n, i > 0); }).join('') + '</div>';
 
   var actions;
   if (st === 'approved') {
@@ -1121,6 +1141,13 @@ document.addEventListener('click', function(e) {
     track.scrollBy({ left: (nav.classList.contains('pv-next') ? 1 : -1) * track.clientWidth, behavior: 'smooth' });
     return;
   }
+  var tab = e.target.closest('.pv-tab');
+  if (tab) {
+    var wrap = tab.closest('.pv-wrap'), net = tab.getAttribute('data-net');
+    wrap.querySelectorAll('.pv-tab').forEach(function(t) { t.classList.toggle('on', t === tab); });
+    wrap.querySelectorAll('.pv[data-net]').forEach(function(v) { v.hidden = v.getAttribute('data-net') !== net; });
+    return;
+  }
   var more = e.target.closest('.pv-more');
   if (more) { more.parentElement.classList.toggle('open'); more.textContent = more.parentElement.classList.contains('open') ? 'meno' : 'altro'; }
 });
@@ -1166,6 +1193,7 @@ async function approvePost(idx) {
           video_url: post.video_url || null,
           video_task_id: post.video_task_id || null,
           social: post.social,
+          socials: postSocials(post),
           type: post.type || 'image',
           day: post.day || null,
           brand: post.brand || null,

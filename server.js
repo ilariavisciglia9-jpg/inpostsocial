@@ -144,7 +144,12 @@ app.post('/api/generate', async (req, res) => {
       }
     }
 
-    const socialsList = Array.isArray(socials) ? socials.join(', ') : (socials || 'Instagram');
+    // social scelti dall'utente: ogni post verrà pubblicato su tutti questi
+    const rawSocial = Array.isArray(socials) ? socials.join(' + ') : String(socials || 'Instagram');
+    let platforms = /tutti/i.test(rawSocial) ? ['Instagram', 'Facebook', 'TikTok']
+      : ['Instagram', 'Facebook', 'TikTok', 'LinkedIn'].filter(n => new RegExp(n, 'i').test(rawSocial));
+    if (!platforms.length) platforms = ['Instagram'];
+    const socialsList = platforms.join(' + ');
 
     const styleInstruction = style && style.trim()
       ? `\nSTILE RICHIESTO DALL'UTENTE (seguilo con precisione, ha priorità sul tono generico sopra): ${style.trim()}\n`
@@ -154,11 +159,11 @@ app.post('/api/generate', async (req, res) => {
 BRAND: ${brand}
 SETTORE: ${sector || 'generale'}
 DESCRIZIONE: ${description}
-SOCIAL: ${socialsList}
+SOCIAL: ogni post verrà pubblicato su ${socialsList}: scrivi testi che funzionino su ${platforms.length > 1 ? 'tutti questi social' : 'questo social'}.
 TONO: ${tone || 'professionale'}
-${styleInstruction}
+${styleInstruction}${style && style.trim() ? `IMMAGINI: ogni "image_prompt" (anche quelli di ogni slide del carosello e della scena del reel) deve descrivere esplicitamente i colori, la palette e lo stile visivo richiesti dall'utente qui sopra.\n` : ''}
 Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
-{"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"Instagram","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"Instagram","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"descrizione video breve 5 secondi stile cinematografico"},{"social":"Facebook","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato per Facebook","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale per Facebook"},{"social":"Instagram","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"Instagram","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
+{"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"descrizione video breve 5 secondi stile cinematografico"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
 
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -177,6 +182,8 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
       return res.status(500).json({ error: 'Errore parsing risposta AI', details: parseErr.message });
     }
 
+    if (Array.isArray(data.posts)) data.posts.forEach(p => { p.socials = platforms.slice(); p.social = platforms[0]; });
+
     if (freeLeft !== null && Array.isArray(data.posts)) {
       // nella prova gratuita teniamo prima i post con immagine singola (niente reel)
       const order = { image: 0, carousel: 1, reel: 2 };
@@ -193,12 +200,13 @@ Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
           if (post.type === 'carousel' && post.carousel_slides) {
             const imgs = [];
             for (const slide of post.carousel_slides.slice(0, 3)) {
-              imgs.push(await generateImage(slide.image_prompt, brand));
+              const slidePrompt = style && style.trim() ? `${slide.image_prompt}. Stile e colori: ${style.trim()}` : slide.image_prompt;
+              imgs.push(await generateImage(slidePrompt, brand));
             }
             data.posts[i].carousel_images = imgs;
             data.posts[i].image_url = imgs[0];
           } else if (post.image_prompt) {
-            const styledPrompt = style && style.trim() ? `${post.image_prompt}. Stile: ${style.trim()}` : post.image_prompt;
+            const styledPrompt = style && style.trim() ? `${post.image_prompt}. Stile e colori: ${style.trim()}` : post.image_prompt;
             data.posts[i].image_url = await generateImage(styledPrompt, brand);
           }
         } catch (e) { console.error('Image error post', i, ':', e.message); }
@@ -587,7 +595,7 @@ app.post('/api/posts/save', async (req, res) => {
     if (!userId || !post) return res.status(400).json({ error: 'userId e post obbligatori' });
     const { data, error } = await supabase.from('posts').insert({
       user_id: userId,
-      platform: (post.social || 'instagram').toLowerCase(),
+      platform: (Array.isArray(post.socials) && post.socials.length ? post.socials : [post.social || 'instagram']).map(x => String(x).toLowerCase()).join(','),
       text: post.text,
       hashtags: post.hashtags,
       image_url: post.image_url || null,
@@ -656,35 +664,66 @@ app.get('/api/video/status', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ===== PUBBLICA SU INSTAGRAM =====
-async function publishToInstagram(igAccountId, pageAccessToken, post) {
-  const caption = post.text + '\n\n' + (post.hashtags || []).map(h => '#' + h).join(' ');
-  if (!post.image_url) throw new Error('Nessuna immagine per il post');
+// ===== PUBBLICAZIONE DEI POST APPROVATI (Instagram e/o Facebook) =====
+// usa le stesse funzioni dell'Agente AI (immagine singola, carosello, reel)
+let agentApi = null;
+async function publishManualPost(post) {
+  if (!agentApi) throw new Error('Servizio di pubblicazione non pronto');
+  const conns = await agentApi.getConnections(post.user_id);
+  const p = Object.assign({}, post, { caption: post.text || '' });
+  // reel: se il video era ancora in elaborazione al momento dell'approvazione, lo recuperiamo ora
+  if (p.type === 'reel' && !p.video_url && p.video_task_id) {
+    try {
+      const model = videoJobs.get(p.video_task_id) || SEEDANCE_MODEL;
+      const st = await fal.queue.status(model, { requestId: p.video_task_id, logs: false });
+      if (st.status === 'COMPLETED') {
+        const result = await fal.queue.result(model, { requestId: p.video_task_id });
+        p.video_url = await agentApi.uploadVideoFromUrl(result.data.video.url);
+        await supabase.from('posts').update({ video_url: p.video_url }).eq('id', post.id);
+      }
+    } catch (e) { console.log('Video non ancora pronto per post', post.id, e.message); }
+  }
+  const targets = String(post.platform || 'instagram').split(',').map(x => x.trim()).filter(Boolean);
+  const done = [], failed = [];
+  let igId = null;
+  for (const t of targets) {
+    try {
+      if (t === 'instagram') {
+        if (!conns.ig) throw new Error('Instagram non collegato');
+        const r = await agentApi.publishInstagram(conns.ig, p);
+        igId = r.id; done.push('Instagram');
+      } else if (t === 'facebook') {
+        if (!conns.fbPage) throw new Error('Pagina Facebook non collegata');
+        await agentApi.publishFacebook(conns.fbPage, p);
+        done.push('Facebook');
+      } else {
+        throw new Error('pubblicazione su ' + t + ' non ancora disponibile');
+      }
+    } catch (e) {
+      const msg = (e.response && e.response.data && e.response.data.error && e.response.data.error.message) || e.message;
+      failed.push(t + ': ' + msg);
+    }
+  }
+  return { done, failed, igId };
+}
 
-  const containerRes = await axios.post(
-    `https://graph.facebook.com/v19.0/${igAccountId}/media`,
-    { image_url: post.image_url, caption, access_token: pageAccessToken }
-  );
-  const creationId = containerRes.data.id;
-
-  const publishRes = await axios.post(
-    `https://graph.facebook.com/v19.0/${igAccountId}/media_publish`,
-    { creation_id: creationId, access_token: pageAccessToken }
-  );
-  return publishRes.data.id;
+async function finishPublish(post, out) {
+  const update = out.done.length
+    ? { status: 'published', published_at: new Date().toISOString(), ig_media_id: out.igId, error: out.failed.length ? out.failed.join(' | ') : null }
+    : { status: 'failed', error: out.failed.join(' | ') || 'Pubblicazione non riuscita' };
+  await supabase.from('posts').update(update).eq('id', post.id);
+  return update;
 }
 
 app.post('/api/publish', async (req, res) => {
   try {
     const { postId, userId } = req.body;
-    const { data: post, error: postErr } = await supabase.from('posts').select('*').eq('id', postId).single();
+    const { data: post, error: postErr } = await supabase.from('posts').select('*').eq('id', postId).eq('user_id', userId).single();
     if (postErr || !post) return res.status(404).json({ error: 'Post non trovato' });
-    const { data: conn, error: connErr } = await supabase.from('social_connections')
-      .select('*').eq('user_id', userId).eq('platform', 'instagram').single();
-    if (connErr || !conn) return res.status(400).json({ error: 'Account Instagram non collegato' });
-    const mediaId = await publishToInstagram(conn.ig_account_id, conn.page_access_token, post);
-    await supabase.from('posts').update({ status: 'published', published_at: new Date().toISOString(), ig_media_id: mediaId }).eq('id', postId);
-    res.json({ success: true, ig_media_id: mediaId });
+    const out = await publishManualPost(post);
+    const upd = await finishPublish(post, out);
+    if (!out.done.length) return res.status(400).json({ error: upd.error });
+    res.json({ success: true, published_on: out.done, errors: out.failed });
   } catch (e) {
     console.error('Publish error:', e.message);
     res.status(500).json({ error: 'Errore pubblicazione', details: e.message });
@@ -698,13 +737,9 @@ cron.schedule('*/15 * * * *', async () => {
     for (const post of posts || []) {
       await supabase.from('posts').update({ status: 'publishing' }).eq('id', post.id);
       try {
-        const { data: conn } = await supabase.from('social_connections')
-          .select('*').eq('user_id', post.user_id).eq('platform', 'instagram').single();
-        if (conn) {
-          const mediaId = await publishToInstagram(conn.ig_account_id, conn.page_access_token, post);
-          await supabase.from('posts').update({ status: 'published', published_at: new Date().toISOString(), ig_media_id: mediaId }).eq('id', post.id);
-          console.log('✅ Published post:', post.id, '→ IG media:', mediaId);
-        }
+        const out = await publishManualPost(post);
+        const upd = await finishPublish(post, out);
+        console.log(upd.status === 'published' ? '✅' : '❌', 'Post', post.id, '→', out.done.join(', ') || upd.error);
       } catch (pubErr) {
         console.error('❌ Publish failed for post', post.id, ':', pubErr.message);
         await supabase.from('posts').update({ status: 'failed', error: pubErr.message }).eq('id', post.id);
@@ -714,7 +749,7 @@ cron.schedule('*/15 * * * *', async () => {
 });
 
 // ===== AGENTE AI AUTONOMO (vedi agent.js) =====
-require('./agent')(app, { supabase, anthropic, fal, generateImage, SEEDANCE_MODEL });
+agentApi = require('./agent')(app, { supabase, anthropic, fal, generateImage, SEEDANCE_MODEL });
 
 // ===== START =====
 app.listen(PORT, () => {

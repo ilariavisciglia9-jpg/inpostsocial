@@ -852,7 +852,7 @@ Scrivi in italiano, semplice, per un imprenditore non esperto. Rispondi SOLO con
 
   console.log(`🤖 Agente AI attivo (modello: ${AGENT_MODEL})`);
 
-  return { PLANS, runPlanner, processMedia, publishDue, runReplies, runReports, planForUser, romeToUtc };
+  return { PLANS, runPlanner, processMedia, publishDue, runReplies, runReports, planForUser, romeToUtc, getConnections, publishInstagram, publishFacebook, uploadVideoFromUrl };
 };
 
 module.exports.PLANS = PLANS;
