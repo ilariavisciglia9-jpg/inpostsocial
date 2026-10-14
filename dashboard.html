@@ -767,7 +767,15 @@ function bindEvents() {
     var ed = e.target.closest('.pBtn-edit');
     if (ed) { var it = ed.closest('.post-item'); var ix = idxByUid(it.getAttribute('data-idx')); if (ix >= 0) openEditor(it, posts[ix]); return; }
     var vb = e.target.closest('.pBtn-vid');
-    if (vb) { var itv = vb.closest('.post-item'); var ixv = idxByUid(itv.getAttribute('data-idx')); if (ixv >= 0) createPostVideo(posts[ixv], vb); return; }
+    if (vb) {
+      var itv = vb.closest('.post-item'); var ixv = idxByUid(itv.getAttribute('data-idx'));
+      if (ixv >= 0) {
+        if (vb.getAttribute('data-redo') && !confirm('Creare una nuova versione del video? Quella attuale verrà sostituita.')) return;
+        if (vb.getAttribute('data-redo')) { posts[ixv].video_url = null; posts[ixv].video_task_id = null; }
+        createPostVideo(posts[ixv], vb);
+      }
+      return;
+    }
     var ib = e.target.closest('.pBtn-img');
     if (ib) { var it2 = ib.closest('.post-item'); var ix2 = idxByUid(it2.getAttribute('data-idx')); if (ix2 >= 0) createPostImage(posts[ix2], ib); return; }
     var sv = e.target.closest('.pv-save');
@@ -1114,7 +1122,8 @@ function buildPostCard(post) {
   var noImage = !post.image_url && !(post.carousel_images && post.carousel_images.length) && !post.video_url;
   var editable = (st === 'draft' || !post.status);
   var imgBtn = (noImage && editable) ? '<button class="pBtn pBtn-img">Crea immagine' + (post.type === 'reel' ? ' e video' : '') + '</button>'
-    : (post.type === 'reel' && post.image_url && !post.video_url && !post.video_task_id && editable) ? '<button class="pBtn pBtn-img pBtn-vid">Crea video</button>' : '';
+    : (post.type === 'reel' && post.image_url && !post.video_url && !post.video_task_id && editable) ? '<button class="pBtn pBtn-img pBtn-vid">Crea video</button>'
+    : (post.type === 'reel' && post.image_url && post.video_url && editable) ? '<button class="pBtn pBtn-img pBtn-vid" data-redo="1">Rifai il video (nuova versione)</button>' : '';
   var actions;
   if (st === 'approved' || st === 'failed') {
     actions = (st === 'failed'

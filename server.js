@@ -22,7 +22,9 @@ function adVideoPrompt(motion, brand, sector, style) {
   return (`${motion || ''} ` +
     `This is a short commercial advertising video for "${brand || 'the brand'}"${sector ? ' (' + sector + ')' : ''}: ` +
     `premium ad look, the product or service is the hero and clearly visible, dynamic but smooth camera movement (slow push-in, orbit or tracking shot), ` +
-    `realistic people and details, natural cinematic lighting, shallow depth of field, vertical 9:16 social media reel, no on-screen text.` +
+    `realistic people and details, natural cinematic lighting, shallow depth of field, vertical 9:16 social media reel. ` +
+    `Subtle, slow and realistic motion: keep faces, hands and products stable and correctly shaped, no morphing, no distortion, no sudden cuts. ` +
+    `Absolutely no text of any kind: no words, letters, captions, subtitles, logos, signs or writing anywhere in the frame. Nobody speaks to the camera.` +
     (style && style.trim() ? ` Visual style and colors: ${style.trim()}.` : '')).substring(0, 2000);
 }
 function falErrorMessage(e) {
@@ -36,7 +38,8 @@ function falErrorMessage(e) {
 }
 async function startAdVideo(imageUrl, motion, brand, sector, style) {
   const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
-    input: { prompt: adVideoPrompt(motion, brand, sector, style), image_url: imageUrl, resolution: '720p', duration: '5', aspect_ratio: '9:16' }
+    // niente audio generato: la voce AI non parla bene l'italiano. La musica si aggiunge su Instagram.
+    input: { prompt: adVideoPrompt(motion, brand, sector, style), image_url: imageUrl, resolution: '720p', duration: '5', aspect_ratio: '9:16', generate_audio: false }
   });
   videoJobs.set(request_id, SEEDANCE_MODEL);
   return request_id;
@@ -191,9 +194,10 @@ SETTORE: ${sector || 'generale'}
 DESCRIZIONE: ${description}
 SOCIAL: ogni post verrà pubblicato su ${socialsList}: scrivi testi che funzionino su ${platforms.length > 1 ? 'tutti questi social' : 'questo social'}.
 TONO: ${tone || 'professionale'}
+LINGUA: scrivi in italiano corretto e naturale, come un copywriter madrelingua: niente traduzioni letterali dall'inglese, niente errori di grammatica, accenti e apostrofi giusti (è, perché, po', un'idea).
 ${styleInstruction}${style && style.trim() ? `IMMAGINI: ogni "image_prompt" (anche quelli di ogni slide del carosello e della scena del reel) deve descrivere esplicitamente i colori, la palette e lo stile visivo richiesti dall'utente qui sopra.\n` : ''}
-REEL: ogni post di tipo "reel" deve parlare di un argomento concreto e specifico di questo settore e di questa attività (un servizio, un prodotto, un lavoro tipico, un dietro le quinte, un consiglio pratico), mai generico. Il suo "image_prompt" descrive la scena di apertura verticale (9:16) con il soggetto del settore ben riconoscibile; il suo "video_prompt" va scritto IN INGLESE (50-90 parole) e descrive cosa succede nei 5 secondi: azione concreta del soggetto, movimento della camera, luce, atmosfera, coerente con l'immagine di apertura.${wantVideo ? ' Includi almeno 2 post di tipo "reel".' : ''}
-IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo scritto nell'immagine.
+REEL: ogni post di tipo "reel" deve parlare di un argomento concreto e specifico di questo settore e di questa attività (un servizio, un prodotto, un lavoro tipico, un dietro le quinte, un consiglio pratico), mai generico. Il suo "image_prompt" descrive la scena di apertura verticale (9:16) con il soggetto del settore ben riconoscibile; il suo "video_prompt" va scritto IN INGLESE (50-90 parole) e descrive cosa succede nei 5 secondi: un'azione semplice e realistica del soggetto (movimenti lenti, niente mani in primo piano che fanno gesti complessi), movimento della camera, luce, atmosfera, coerente con l'immagine di apertura. Nel video non deve comparire nessuna scritta e nessuno deve parlare.${wantVideo ? ' Includi almeno 2 post di tipo "reel".' : ''}
+IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo, scritte, insegne o loghi nell'immagine: i messaggi vanno solo nel testo del post.
 ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)} foto reali del brand. Studiale con attenzione (prodotti, ambienti, persone, colori, stile) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
 {"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel su un tema specifico del settore","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"english description of the 5-second action and camera movement, specific to this business"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
 
@@ -332,7 +336,7 @@ async function generateImage(prompt, brand, opts) {
   const safePrompt = (`Fotografia realistica per i social di "${brand}". ${prompt}. ` +
     `Stile: foto vera scattata con fotocamera professionale, luce naturale, dettagli e texture reali, composizione curata, ` +
     `soggetto principale ben visibile e centrato con margine sui bordi (niente tagliato), nessuna illustrazione o resa da cartone animato, ` +
-    `niente scritte o loghi inventati nell'immagine.` +
+    `ASSOLUTAMENTE nessun testo nell'immagine: niente parole, lettere, scritte, insegne, etichette leggibili, numeri o loghi inventati (l'AI le scrive sbagliate).` +
     (refs.length ? ' Usa le foto di riferimento allegate: mantieni prodotti, ambienti, colori e stile reali del brand.' : '')).substring(0, 3800);
   console.log('🎨 Prompt immagine:', safePrompt.length, 'caratteri', refs.length ? `+ ${refs.length} foto di riferimento` : '');
   try {
