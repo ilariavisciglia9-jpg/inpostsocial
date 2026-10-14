@@ -118,7 +118,7 @@ function freeWeekKey() {
 
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
-const PROTECTED_API = ['/api/generate', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
+const PROTECTED_API = ['/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
   '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
@@ -172,7 +172,7 @@ app.get('/api/config.js', (req, res) => {
 });
 
 // ===== GENERATE =====
-app.post('/api/generate', async (req, res) => {
+async function generateHandler(req, res) {
   try {
     const { brand, description, sector, city, usp, goal, socials, frequency, tone, style, userId, generateImages, generateVideo, refImages, useRealPhotos, textOverlay } = req.body;
     const wantText = textOverlay === true || textOverlay === 'true';
@@ -370,7 +370,32 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
     console.error('Generate error:', error);
     res.status(500).json({ error: 'Errore generazione', details: error.message });
   }
+}
+
+// La generazione con immagini e video può durare minuti: la facciamo "in background"
+// e il browser chiede ogni pochi secondi se è pronta (così nessun timeout interrompe la richiesta).
+const genJobs = new Map();
+app.post('/api/generate', (req, res) => {
+  if (req.query.async !== '1') return generateHandler(req, res);
+  const id = crypto.randomUUID();
+  const job = { userId: req.body.userId, done: false, code: 200, body: null, started: Date.now() };
+  genJobs.set(id, job);
+  const fake = {
+    status(c) { job.code = c; return fake; },
+    json(b) { job.body = b; job.done = true; return fake; }
+  };
+  generateHandler(req, fake).catch(e => { job.code = 500; job.body = { error: 'Errore generazione', details: e.message }; job.done = true; });
+  res.json({ job_id: id });
 });
+app.get('/api/generate/status', (req, res) => {
+  const job = genJobs.get(req.query.id);
+  if (!job || job.userId !== req.query.userId) return res.status(404).json({ error: 'Generazione non trovata (il server potrebbe essere stato riavviato): riprova' });
+  if (!job.done) return res.json({ done: false, seconds: Math.round((Date.now() - job.started) / 1000) });
+  genJobs.delete(req.query.id);
+  res.status(job.code).json(Object.assign({ done: true }, job.body));
+});
+// pulizia dei lavori dimenticati
+setInterval(() => { const lim = Date.now() - 30 * 60000; for (const [k, j] of genJobs) if (j.started < lim) genJobs.delete(k); }, 10 * 60000);
 
 // ===== DALL-E 3 =====
 // opts.size: '1024x1024' (feed/carosello) o '1024x1536' (reel verticale)

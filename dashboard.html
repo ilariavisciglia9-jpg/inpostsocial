@@ -1521,6 +1521,13 @@ document.addEventListener('click', function(e) {
 document.addEventListener('DOMContentLoaded', renderBrandPhotos);
 renderBrandPhotos();
 
+// legge la risposta del server anche quando non è JSON (es. server in riavvio)
+async function readJson(resp) {
+  var txt = await resp.text();
+  try { return JSON.parse(txt); }
+  catch (e) { return { error: resp.status === 502 || resp.status === 503 ? 'Il server si sta aggiornando, riprova tra un minuto' : 'Risposta non valida dal server (codice ' + resp.status + ')' }; }
+}
+
 async function doGenerate() {
   var brand = document.getElementById('g-brand').value.trim();
   var desc = document.getElementById('g-desc').value.trim();
@@ -1535,7 +1542,7 @@ async function doGenerate() {
   showLoading(lmsg);
   document.getElementById('btn-gen').disabled = true;
   try {
-    var resp = await fetch('/api/generate', {
+    var resp = await fetch('/api/generate?async=1', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -1552,8 +1559,21 @@ async function doGenerate() {
         textOverlay: document.getElementById('gen-text').checked
       })
     });
-    var result = await resp.json();
-    if (!result.success) throw new Error(result.error || 'Errore API');
+    var result = await readJson(resp);
+    // la generazione continua sul server: controlliamo ogni 4 secondi finché è pronta (max 12 minuti)
+    if (result.job_id) {
+      var jobId = result.job_id, t0 = Date.now();
+      while (true) {
+        await new Promise(function(r) { setTimeout(r, 4000); });
+        var sr = await fetch('/api/generate/status?id=' + encodeURIComponent(jobId));
+        result = await readJson(sr);
+        if (result.done || !sr.ok) break;
+        var sec = Math.round((Date.now() - t0) / 1000);
+        var lt = document.getElementById('loading-text'); if (lt) lt.textContent = lmsg + ' (' + sec + 's)';
+        if (Date.now() - t0 > 12 * 60000) throw new Error('La generazione sta impiegando troppo, riprova');
+      }
+    }
+    if (!result.success) throw new Error(result.error ? result.error + (result.details ? ': ' + result.details : '') : 'Errore API');
     var strategy = result.data.strategy;
     var newPosts = result.data.posts;
     genUids = [];
