@@ -1640,22 +1640,19 @@ async function createTalkingReel() {
     var lt = document.getElementById('loading-text');
     if (lt) lt.textContent = 'Trascrivo la tua voce e monto il reel… (1-3 minuti)';
     var gf = {}; try { gf = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
-    var r2 = await fetch('/api/reel/talking', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+    var payload = JSON.stringify({
       path: u.path, title: document.getElementById('talk-title').value.trim(),
       brand: document.getElementById('g-brand').value.trim() || gf['g-brand'] || '', sector: document.getElementById('g-sector').value,
       style: document.getElementById('g-style').value.trim(), tone: document.getElementById('g-tone').value, socials: document.getElementById('g-social').value
-    }) });
-    var res = await readJson(r2);
-    if (res.job_id) {
-      var t0 = Date.now();
-      while (true) {
-        await new Promise(function(r) { setTimeout(r, 4000); });
-        var sr = await fetch('/api/generate/status?id=' + encodeURIComponent(res.job_id));
-        res = await readJson(sr);
-        if (res.done || !sr.ok) break;
-        if (lt) lt.textContent = 'Trascrivo la tua voce e monto il reel… (' + Math.round((Date.now() - t0) / 1000) + 's)';
-        if (Date.now() - t0 > 12 * 60000) throw new Error('Sta impiegando troppo, riprova');
-      }
+    });
+    var res;
+    // se il server si riavvia a metà, riprova da solo una volta (il video caricato è ancora lì)
+    for (var attempt = 0; attempt < 2; attempt++) {
+      var r2 = await fetch('/api/reel/talking', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: payload });
+      res = await waitJob(await readJson(r2), 'Trascrivo la tua voce e monto il reel…');
+      if (!res.interrupted) break;
+      if (lt) lt.textContent = 'Il server si è aggiornato: riprendo la preparazione…';
+      await new Promise(function(r) { setTimeout(r, 15000); });
     }
     if (!res.success) throw new Error(res.error || 'Reel non creato');
     var np = withUid(Object.assign({}, res.post, { _sid: res.strategy_id }));

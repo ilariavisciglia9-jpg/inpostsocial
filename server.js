@@ -177,12 +177,17 @@ app.get(/^\/tiktok[A-Za-z0-9_-]+\.txt$/, (req, res, next) => {
   if (!name || req.path !== '/' + name) return next();
   res.type('text/plain').send((process.env.TIKTOK_VERIFY_CONTENT || '').trim());
 });
-app.use(express.static(path.join(__dirname), { dotfiles: 'deny' }));
+app.use(express.static(path.join(__dirname), {
+  dotfiles: 'deny',
+  // le pagine HTML vengono sempre ricontrollate, così dopo un aggiornamento non resta la versione vecchia
+  setHeaders: (res, p) => { if (p.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); }
+}));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/webhook')) return next();
   const html = req.path.includes('dashboard') ? 'dashboard.html'
              : req.path.includes('login') ? 'login.html'
              : 'index.html';
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, html));
 });
 
@@ -448,15 +453,22 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
 // La generazione con immagini e video può durare minuti: la facciamo "in background"
 // e il browser chiede ogni pochi secondi se è pronta (così nessun timeout interrompe la richiesta).
 const genJobs = new Map();
+// il risultato di ogni lavoro viene salvato anche nello storage: se il server si riavvia, non si perde
+function saveJobResult(id, job) {
+  const body = Buffer.from(JSON.stringify({ userId: job.userId, code: job.code, body: job.body }));
+  supabase.storage.from('post-images').upload(`jobs/${id}.json`, body, { contentType: 'application/json', upsert: true })
+    .then(r => { if (r.error) console.log('Risultato lavoro non salvato:', r.error.message); }).catch(() => {});
+}
 function runAsJob(req, res, handler) {
   const id = crypto.randomUUID();
   const job = { userId: req.body.userId, done: false, code: 200, body: null, started: Date.now() };
   genJobs.set(id, job);
+  const finish = () => { job.done = true; saveJobResult(id, job); };
   const fake = {
     status(c) { job.code = c; return fake; },
-    json(b) { job.body = b; job.done = true; return fake; }
+    json(b) { job.body = b; finish(); return fake; }
   };
-  Promise.resolve().then(() => handler(req, fake)).catch(e => { job.code = 500; job.body = { error: e.message }; job.done = true; });
+  Promise.resolve().then(() => handler(req, fake)).catch(e => { job.code = 500; job.body = { error: e.message }; finish(); });
   res.json({ job_id: id });
 }
 app.post('/api/generate', (req, res) => {
@@ -466,14 +478,26 @@ app.post('/api/generate', (req, res) => {
   genJobs.set(id, job);
   const fake = {
     status(c) { job.code = c; return fake; },
-    json(b) { job.body = b; job.done = true; return fake; }
+    json(b) { job.body = b; job.done = true; saveJobResult(id, job); return fake; }
   };
-  generateHandler(req, fake).catch(e => { job.code = 500; job.body = { error: 'Errore generazione', details: e.message }; job.done = true; });
+  generateHandler(req, fake).catch(e => { job.code = 500; job.body = { error: 'Errore generazione', details: e.message }; job.done = true; saveJobResult(id, job); });
   res.json({ job_id: id });
 });
-app.get('/api/generate/status', (req, res) => {
+app.get('/api/generate/status', async (req, res) => {
   const job = genJobs.get(req.query.id);
-  if (!job || job.userId !== req.query.userId) return res.status(404).json({ error: 'Generazione non trovata (il server potrebbe essere stato riavviato): riprova' });
+  if (!job || job.userId !== req.query.userId) {
+    // non è in memoria: forse è finito prima di un riavvio del server
+    if (/^[0-9a-f-]{36}$/.test(String(req.query.id || ''))) {
+      try {
+        const { data } = await supabase.storage.from('post-images').download(`jobs/${req.query.id}.json`);
+        if (data) {
+          const saved = JSON.parse(await data.text());
+          if (saved.userId === req.query.userId) return res.status(saved.code || 200).json(Object.assign({ done: true }, saved.body));
+        }
+      } catch (e) { /* non trovato */ }
+    }
+    return res.status(404).json({ error: 'Lavoro interrotto: il server si è aggiornato o riavviato mentre preparavamo il contenuto. Riprova.', interrupted: true });
+  }
   if (!job.done) return res.json({ done: false, seconds: Math.round((Date.now() - job.started) / 1000) });
   genJobs.delete(req.query.id);
   res.status(job.code).json(Object.assign({ done: true }, job.body));
