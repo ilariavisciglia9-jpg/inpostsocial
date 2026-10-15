@@ -57,6 +57,19 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .topbar h1{font-size:1.05rem;font-weight:600;white-space:nowrap}
 .btn-upgrade{background:var(--dark);color:#fff;padding:0.45rem 0.95rem;border-radius:7px;font-size:0.8rem;font-weight:600;transition:background 0.15s;white-space:nowrap}
 .btn-upgrade:hover{background:#2A2A33}
+.credit-pill{display:inline-flex;align-items:center;gap:6px;padding:0.42rem 0.8rem;border-radius:999px;border:1px solid var(--border);background:#fff;font-size:0.8rem;font-weight:600;color:var(--dark);cursor:pointer;margin-left:auto;margin-right:10px;white-space:nowrap}
+.credit-pill b{color:var(--purple)}
+.credit-pill.low{border-color:#F3C5CD;background:var(--red-bg)}
+.plan-credits{display:inline-block;background:var(--purple-light,#EFEBFF);color:var(--purple);font-weight:700;font-size:0.8rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.9rem}
+.credits-box{margin-top:2rem}
+.pack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1rem 0 1.5rem}
+.pack-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.2rem;display:flex;flex-direction:column;gap:0.4rem}
+.pack-card .pk-c{font-size:1.5rem;font-weight:700}
+.pack-card .pk-p{color:var(--gray);font-size:0.85rem;margin-bottom:0.6rem}
+.cost-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0.4rem 1.5rem;font-size:0.85rem;color:var(--gray);background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem}
+.cost-list b{color:var(--dark)}
+.moves{font-size:0.82rem;color:var(--gray);margin-top:1rem}
+.moves div{display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid var(--border)}
 .content{padding:2rem;max-width:1180px}
 .page{display:none}
 .page.active{display:block}
@@ -416,6 +429,7 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
 <main class="main">
   <div class="topbar">
     <h1 id="page-title">Dashboard</h1>
+    <button type="button" class="credit-pill" id="credit-pill" title="I tuoi crediti" style="display:none">⚡ <b id="credit-num">0</b> crediti</button>
     <button class="btn-upgrade" id="btn-upgrade">Passa a Pro</button>
   </div>
   <div class="content">
@@ -594,7 +608,7 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
           </label>
           <label class="media-opt"><input type="checkbox" id="gen-video"> Video Reel (Seedance AI)</label>
         </div>
-        <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Prova gratuita: puoi generare <b>2 post a settimana</b> con immagini AI. I video Reel sono inclusi nei piani a pagamento.</p>
+        <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Piano gratuito: <b>2 post a settimana</b> con immagini AI. Per generare di più (anche reel e Avatar AI) usa i crediti: li trovi in "Piano e fatturazione".</p>
         <button class="btn-gen" id="btn-gen">Genera strategia e post AI</button>
       </div>
       <!-- REEL CON LA TUA VOCE -->
@@ -719,6 +733,7 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
         <div class="plan-card" id="pc-starter">
           <div class="plan-name">Starter</div>
           <div class="plan-price">€50 <small>/mese</small></div>
+          <div class="plan-credits">⚡ 50 crediti inclusi ogni mese</div>
           <ul class="plan-feats">
             <li>Agente AI con piano editoriale automatico</li><li>12 post al mese con immagini AI</li>
             <li>Pubblicazione automatica su Instagram e Facebook</li><li>Tu approvi, l'agente pubblica</li>
@@ -729,6 +744,7 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
         <div class="plan-card" id="pc-pro">
           <div class="plan-name">Pro</div>
           <div class="plan-price">€95 <small>/mese</small></div>
+          <div class="plan-credits">⚡ 95 crediti inclusi ogni mese</div>
           <ul class="plan-feats">
             <li>30 post al mese + caroselli</li><li>4 video Reel AI al mese</li>
             <li>Autopilota: pubblica senza approvazione</li><li>Risposte automatiche ai commenti (300/mese)</li>
@@ -739,6 +755,7 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
         <div class="plan-card" id="pc-business">
           <div class="plan-name">Business</div>
           <div class="plan-price">€200 <small>/mese</small></div>
+          <div class="plan-credits">⚡ 200 crediti inclusi ogni mese</div>
           <ul class="plan-feats">
             <li>60 post al mese (fino a 2 al giorno)</li><li>12 video Reel AI al mese</li>
             <li>Autopilota completo</li><li>Risposte ai commenti ogni 30 minuti (1500/mese)</li>
@@ -746,6 +763,26 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
           </ul>
           <button class="btn-plan btn-plan-primary" id="pb-business">Passa a Business →</button>
         </div>
+      </div>
+
+      <div class="credits-box" id="credits-box">
+        <h3 style="font-size:1.05rem;margin-bottom:0.3rem">Crediti <span style="color:var(--gray);font-weight:500;font-size:0.9rem">— saldo attuale: <b id="credit-num2" style="color:var(--purple)">0</b></span></h3>
+        <p style="color:var(--gray);font-size:0.86rem">Ogni generazione usa crediti. I piani ne includono ogni mese; se finiscono puoi ricaricarli quando vuoi. I crediti acquistati non scadono.</p>
+        <div class="pack-grid">
+          <div class="pack-card"><div class="pk-c">⚡ 20 crediti</div><div class="pk-p">20 € · 1 € a credito</div><button class="btn-plan btn-plan-primary" data-pack="p20">Acquista</button></div>
+          <div class="pack-card"><div class="pk-c">⚡ 50 crediti</div><div class="pk-p">45 € · risparmi 10%</div><button class="btn-plan btn-plan-primary" data-pack="p50">Acquista</button></div>
+          <div class="pack-card"><div class="pk-c">⚡ 120 crediti</div><div class="pk-p">99 € · risparmi 17%</div><button class="btn-plan btn-plan-primary" data-pack="p120">Acquista</button></div>
+        </div>
+        <h4 style="font-size:0.92rem;margin-bottom:0.5rem">Quanto costa ogni generazione</h4>
+        <div class="cost-list">
+          <div>Post con immagine: <b>1 credito</b> (alta qualità: 2)</div>
+          <div>Carosello da 5 immagini: <b>3 crediti</b> (alta qualità: 6)</div>
+          <div>Reel con la tua voce: <b>1 credito</b></div>
+          <div>Reel AI 5 s: <b>3</b> · 8 s: <b>4</b> · 10 s: <b>5</b> · 15 s: <b>8 crediti</b></div>
+          <div>Reel Avatar AI fino a 30 s: <b>8 crediti</b> (fino a 60 s: 15)</div>
+          <div>Solo testi, strategia, anteprima voce avatar: <b>gratis</b></div>
+        </div>
+        <div class="moves" id="credit-moves"></div>
       </div>
     </div>
 
@@ -793,7 +830,16 @@ window.fetch = async function(url, opts) {
     var s = (await sb.auth.getSession()).data.session;
     if (s) opts.headers = Object.assign({}, opts.headers || {}, {'Authorization': 'Bearer ' + s.access_token});
   }
-  return _fetch(url, opts);
+  var resp = await _fetch(url, opts);
+  if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+    if (resp.status === 402) {
+      // crediti finiti: avvisiamo e apriamo la pagina per ricaricarli
+      setTimeout(function() { try { goTo('piano'); var cb = document.getElementById('credits-box'); if (cb) cb.scrollIntoView({ behavior: 'smooth' }); } catch (e) {} }, 1200);
+    } else if (resp.ok && /^\/api\/(generate|reel|avatar|generate-image|generate-video)/.test(url) && opts && opts.method === 'POST') {
+      setTimeout(function() { if (typeof refreshCredits === 'function') refreshCredits(); }, 1500);
+    }
+  }
+  return resp;
 };
 
 var user = null;
@@ -836,7 +882,8 @@ async function init() {
   loadBrandPhotos();
 
   var params = new URLSearchParams(window.location.search);
-  if (params.get('payment') === 'success') toast('Piano attivato con successo!');
+  if (params.get('payment') === 'success') toast('Piano attivato con successo! I crediti del piano arrivano entro qualche secondo.');
+  if (params.get('credits') === 'success') toast('Pagamento riuscito: i crediti arrivano entro qualche secondo.');
   if (params.get('connected') === 'instagram') toast('Instagram collegato con successo!');
   if (params.get('connected') === 'facebook') toast('Facebook collegato! Nessun account Instagram Business trovato. Assicurati di avere un profilo Instagram Business collegato alla tua Pagina Facebook.', 'error');
   if (params.get('connected') === 'true') toast('Social collegato!');
@@ -851,6 +898,7 @@ async function init() {
   await loadPosts();
   await loadSocialConnections();
   loadAvatar();
+  refreshCredits();
 }
 
 function bindEvents() {
@@ -961,6 +1009,7 @@ async function loadUser() {
     if (data && !data.error) {
       userPlan = data.plan || 'free';
       userTrial = data.trial || null;
+      showCredits(data.credits, data.unlimited);
       // Owner ha sempre piano business gratis
       if (user.email === 'info@inpostsocial.com') userPlan = 'business';
       if (data.brand) { document.getElementById('s-brand').value = data.brand; document.getElementById('os-business').classList.add('done'); }
@@ -975,6 +1024,45 @@ async function loadUser() {
     }
   } catch(e) { console.log('Profile load error:', e); }
 }
+
+// ===== CREDITI =====
+var userCredits = 0, creditsUnlimited = false;
+function showCredits(n, unlimited) {
+  userCredits = n || 0; creditsUnlimited = !!unlimited;
+  var pill = document.getElementById('credit-pill');
+  if (pill) {
+    pill.style.display = '';
+    document.getElementById('credit-num').textContent = creditsUnlimited ? '∞' : userCredits;
+    pill.classList.toggle('low', !creditsUnlimited && userCredits < 3);
+  }
+  var n2 = document.getElementById('credit-num2'); if (n2) n2.textContent = creditsUnlimited ? 'illimitati' : userCredits;
+}
+async function refreshCredits() {
+  try {
+    var r = await fetch('/api/credits?userId=' + user.id);
+    var j = await r.json();
+    if (!r.ok) return;
+    showCredits(j.credits, j.unlimited);
+    var box = document.getElementById('credit-moves');
+    if (box) box.innerHTML = (j.moves || []).length ? '<b style="color:var(--dark)">Ultimi movimenti</b>' + j.moves.map(function(m) {
+      return '<div><span>' + escH(m.reason || '') + ' · ' + new Date(m.created_at).toLocaleDateString('it-IT') + '</span><span style="font-weight:600;color:' + (m.delta > 0 ? '#1E8E4E' : 'var(--dark)') + '">' + (m.delta > 0 ? '+' : '') + m.delta + '</span></div>';
+    }).join('') : '';
+  } catch (e) {}
+}
+async function buyCredits(pack, btn) {
+  btn.disabled = true; var t = btn.textContent; btn.textContent = 'Apertura pagamento…';
+  try {
+    var r = await fetch('/api/credits/checkout', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ pack: pack }) });
+    var j = await r.json();
+    if (!r.ok || !j.url) throw new Error(j.error || 'Pagamento non disponibile');
+    window.location.href = j.url;
+  } catch (e) { toast('Errore: ' + e.message, 'error'); btn.disabled = false; btn.textContent = t; }
+}
+document.addEventListener('click', function(e) {
+  var b = e.target.closest && e.target.closest('[data-pack]');
+  if (b) buyCredits(b.getAttribute('data-pack'), b);
+  if (e.target.closest && e.target.closest('#credit-pill')) { goTo('piano'); setTimeout(function() { var cb = document.getElementById('credits-box'); if (cb) cb.scrollIntoView({ behavior: 'smooth' }); }, 100); }
+});
 
 function updatePlanUI() {
   var badge = document.getElementById('plan-badge');
@@ -1790,7 +1878,7 @@ async function waitJob(res, label) {
     await new Promise(function(r) { setTimeout(r, 5000); });
     var sr = await fetch('/api/generate/status?id=' + encodeURIComponent(res.job_id));
     var out = await readJson(sr);
-    if (out.done || !sr.ok) return out;
+    if (out.done || !sr.ok) { refreshCredits(); return out; }
     if (lt) lt.textContent = label + ' (' + Math.round((Date.now() - t0) / 1000) + 's)';
     if (Date.now() - t0 > 20 * 60000) throw new Error('Sta impiegando troppo, riprova');
   }
@@ -2070,8 +2158,9 @@ async function doGenerate() {
     updateStats();
     document.getElementById('os-post').classList.add('done');
     if (result.media_errors && result.media_errors.length) toast('Post pronti, ma alcune immagini non sono state create: ' + result.media_errors[0] + '. Usa "Crea immagine" sul post.', 'error');
-    else if (result.free && result.free.trial) { toast('Post pronti! Prova gratuita: ti restano ' + result.free.left + ' immagini e ' + result.free.reels_left + ' reel AI.'); loadUser(); }
-    else if (result.free) toast('Post pronti! Ti restano ' + result.free.left + ' post gratuiti questa settimana.');
+    else if (result.free && result.free.trial) { toast('Post pronti! Prova gratuita: ti restano ' + result.free.left + ' immagini e ' + result.free.reels_left + ' reel AI' + (result.free.credits_spent ? ' (usati ' + result.free.credits_spent + ' crediti)' : '') + '.'); loadUser(); }
+    else if (result.free && result.free.credits_spent) { toast('Post pronti! Usati ' + result.free.credits_spent + ' crediti, te ne restano ' + result.free.credits + '.' + (result.free.dropped ? ' ' + result.free.dropped + ' post non creati: crediti finiti.' : '')); refreshCredits(); }
+    else if (result.free) { toast('Post pronti! Crediti disponibili: ' + result.free.credits + '.'); refreshCredits(); }
     else toast(genImages ? 'Post e immagini pronti!' : genVideo ? 'Post e video pronti!' : 'Strategia e post generati!');
   } catch(e) {
     toast('Errore: ' + e.message, 'error');
