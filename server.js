@@ -146,7 +146,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay', '/api/posts/permalink', '/api/reel/upload-url', '/api/reel/talking', '/api/avatar', '/api/avatar/delete', '/api/reel/avatar', '/api/reel/avatar/script', '/api/reel/avatar/voice', '/api/reel/avatar/render'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/posts/reschedule', '/api/image/overlay', '/api/posts/permalink', '/api/reel/upload-url', '/api/reel/talking', '/api/avatar', '/api/avatar/delete', '/api/reel/avatar', '/api/reel/avatar/script', '/api/reel/avatar/voice', '/api/reel/avatar/render'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -937,6 +937,26 @@ app.post('/api/image/overlay', async (req, res) => {
     if (!title || !String(title).trim()) return res.json({ success: true, url: rawUrl });
     const url = await overlayAndUpload(rawUrl, title, subtitle, accentFromStyle(style));
     res.json({ success: true, url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== RIPROGRAMMA UN POST GIÀ PUBBLICATO: nuova uscita con gli stessi contenuti =====
+app.post('/api/posts/reschedule', async (req, res) => {
+  try {
+    const { userId, postId, scheduled_at, text } = req.body;
+    if (!userId || !postId || !scheduled_at || isNaN(Date.parse(scheduled_at))) return res.status(400).json({ error: 'Dati mancanti' });
+    if (new Date(scheduled_at) < new Date(Date.now() - 60000)) return res.status(400).json({ error: 'Scegli una data futura' });
+    const { data: orig, error } = await supabase.from('posts').select('*').eq('id', postId).eq('user_id', userId).single();
+    if (error || !orig) return res.status(404).json({ error: 'Post non trovato' });
+    const copy = {
+      user_id: userId, platform: orig.platform, text: (typeof text === 'string' && text.trim()) ? text.slice(0, 2200) : orig.text,
+      hashtags: orig.hashtags, image_url: orig.image_url, carousel_images: orig.carousel_images, video_url: orig.video_url,
+      video_task_id: orig.video_task_id, status: 'approved', scheduled_at: new Date(scheduled_at).toISOString(),
+      day: orig.day, type: orig.type, brand: orig.brand, created_at: new Date().toISOString()
+    };
+    const { data: ins, error: insErr } = await supabase.from('posts').insert(copy).select('id').single();
+    if (insErr) throw insErr;
+    res.json({ success: true, id: ins.id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

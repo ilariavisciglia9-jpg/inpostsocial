@@ -847,6 +847,10 @@ function bindEvents() {
     if (e.target.closest('.pv-cancel')) { var bx0 = e.target.closest('.pv-edit'); bx0.hidden = true; bx0.innerHTML = ''; return; }
     var pubNow = e.target.closest('.pBtn-pubnow');
     if (pubNow) { var itp = pubNow.closest('.post-item'); var ixp = idxByUid(itp.getAttribute('data-idx')); if (ixp >= 0) publishNow(posts[ixp], pubNow); return; }
+    var rp = e.target.closest('.pBtn-repub');
+    if (rp) { var itr = rp.closest('.post-item'); var ixr = idxByUid(itr.getAttribute('data-idx')); if (ixr >= 0) openRepublish(itr, posts[ixr]); return; }
+    var rps = e.target.closest('.pv-repub-save');
+    if (rps) { var itr2 = rps.closest('.post-item'); var ixr2 = idxByUid(itr2.getAttribute('data-idx')); if (ixr2 >= 0) saveRepublish(itr2, posts[ixr2], rps); return; }
     var see = e.target.closest('.pBtn-see');
     if (see) { var its = see.closest('.post-item'); var ixs = idxByUid(its.getAttribute('data-idx')); if (ixs >= 0) openPublished(posts[ixs], see); return; }
     var approve = e.target.closest('.pBtn-approve');
@@ -1077,7 +1081,9 @@ async function loadPosts() {
         // Cerca il post corrispondente nell'array locale per testo
         var found = false;
         for (var i = 0; i < posts.length; i++) {
-          if (posts[i].text && dbPost.text && posts[i].text.substring(0,50) === dbPost.text.substring(0,50)) {
+          // un post ripubblicato ha più righe con lo stesso testo: ognuna va abbinata una volta sola
+          if (!posts[i]._dbMatched && posts[i].text && dbPost.text && posts[i].text.substring(0,50) === dbPost.text.substring(0,50)) {
+            posts[i]._dbMatched = true;
             posts[i].status = dbPost.status;
             posts[i].db_id = dbPost.id;
             posts[i].scheduled_at = dbPost.scheduled_at;
@@ -1237,7 +1243,7 @@ function buildPostCard(post) {
   } else if (st === 'published') {
     var pubWhen = post.published_at ? new Date(post.published_at).toLocaleString('it-IT', {day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}) : '';
     actions = '<div class="pv-ok">Pubblicato' + (pubWhen ? ' il ' + pubWhen : '') + '.' + (post.error ? ' Avviso: ' + escH(post.error) : '') + '</div>' +
-      (post.db_id ? '<div class="post-actions"><button class="pBtn pBtn-see">Vedi il post pubblicato ↗</button></div>' : '');
+      (post.db_id ? '<div class="post-actions"><button class="pBtn pBtn-see">Vedi il post pubblicato ↗</button><button class="pBtn pBtn-dark pBtn-repub">Riprogramma</button></div>' : '');
   } else {
     actions = (imgBtn ? '<div class="post-actions">' + imgBtn + '</div>' : '') + '<div class="post-actions">' +
       '<button class="pBtn pBtn-approve">✓ Approva</button>' +
@@ -1483,6 +1489,36 @@ async function verifySaved(post, newText) {
     }
     return true;
   } catch (e) { return true; }
+}
+
+// ===== RIPROGRAMMA UN POST GIÀ PUBBLICATO (crea una nuova uscita, l'originale resta) =====
+function openRepublish(item, post) {
+  var box = item.querySelector('.pv-edit');
+  var d = new Date(Date.now() + 24 * 3600000); d.setMinutes(0, 0, 0);
+  box.innerHTML = '<label>Nuova data e ora di pubblicazione</label><input type="datetime-local" class="pv-in-dt" min="' + toLocalInput(new Date().toISOString()) + '" value="' + toLocalInput(d.toISOString()) + '">' +
+    '<label>Testo (puoi aggiornarlo per la nuova uscita)</label><textarea class="pv-in-text">' + escH(String(post.text || '').replace(/\n\n🤖[^\n]*$/, function(m) { return m; })) + '</textarea>' +
+    '<div class="post-actions"><button type="button" class="pBtn pBtn-dark pv-repub-save">Programma di nuovo</button><button type="button" class="pBtn pv-cancel">Annulla</button></div>';
+  box.hidden = false;
+}
+async function saveRepublish(item, post, btn) {
+  var box = item.querySelector('.pv-edit');
+  var dtv = box.querySelector('.pv-in-dt').value, txt = box.querySelector('.pv-in-text').value.trim();
+  if (!dtv) return toast('Scegli data e ora', 'error');
+  var dd = new Date(dtv);
+  if (dd < new Date()) return toast('Scegli una data futura', 'error');
+  if (!txt) return toast('Il testo non può essere vuoto', 'error');
+  btn.disabled = true;
+  try {
+    var resp = await fetch('/api/posts/reschedule', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ postId: post.db_id, scheduled_at: dd.toISOString(), text: txt }) });
+    var r = await readJson(resp);
+    if (!resp.ok || !r.id) throw new Error(r.error || 'Non riprogrammato');
+    var copy = withUid(Object.assign({}, post, { _uid: null, db_id: r.id, status: 'approved', scheduled_at: dd.toISOString(), published_at: null, ig_media_id: null, error: null, text: txt, _dbMatched: true }));
+    copy._uid = null; withUid(copy);
+    posts.unshift(copy);
+    box.hidden = true; box.innerHTML = '';
+    rerenderPosts();
+    toast('Programmato di nuovo per ' + fmtWhen(dd).toLowerCase());
+  } catch (e) { toast('Errore: ' + e.message, 'error'); btn.disabled = false; }
 }
 
 // ===== PUBBLICA SUBITO (per provare che la pubblicazione funziona) =====
