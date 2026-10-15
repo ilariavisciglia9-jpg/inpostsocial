@@ -923,7 +923,7 @@ async function init() {
     document.getElementById('owner-box').hidden = false;
     document.getElementById('btn-test-alert').onclick = async function() {
       try { var r = await fetch('/api/admin/test-alert', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' }); var j = await r.json();
-        if (!r.ok) throw new Error(j.error || 'Errore'); toast('Email di prova inviata: controlla la posta (anche spam)'); } catch (e) { toast('Errore: ' + e.message, 'error'); }
+        if (!r.ok) throw new Error(j.error || 'Errore'); toast('Email di prova inviata a ' + j.to + ': controlla la posta (anche spam e Promozioni)'); } catch (e) { toast('Errore: ' + e.message, 'error'); }
     };
   }
 }

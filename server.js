@@ -83,7 +83,12 @@ async function notifyOwner(key, subject, text) {
       subject: '⚠️ InPostSocial: ' + subject,
       html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5"><p><b>${subject}</b></p><p>${text}</p><p style="color:#777;font-size:13px">I clienti in questo momento ricevono un errore quando generano. Ricarica il credito e tutto riprende da solo.</p></div>`
     }, { headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY }, timeout: 15000 });
-  } catch (e) { console.error('Email di avviso non inviata:', e.response?.data || e.message); }
+    return { ok: true };
+  } catch (e) {
+    const m = (e.response && e.response.data && (e.response.data.message || JSON.stringify(e.response.data))) || e.message;
+    console.error('Email di avviso non inviata:', m);
+    return { ok: false, error: m };
+  }
 }
 const ALERTS = {
   fal: () => notifyOwner('fal', 'credito fal.ai esaurito (video, voce, avatar)', 'Ricarica su <a href="https://fal.ai/dashboard/billing">fal.ai → Billing</a>. Consiglio: attiva la ricarica automatica.'),
@@ -1074,8 +1079,9 @@ app.post('/api/admin/test-alert', async (req, res) => {
   if (!isOwnerEmail(req.authEmail)) return res.status(403).json({ error: 'Solo per la proprietaria' });
   if (!process.env.RESEND_API_KEY) return res.status(400).json({ error: 'Manca RESEND_API_KEY su Railway' });
   lastAlerts.delete('test');
-  await notifyOwner('test', 'email di prova', 'Se leggi questa email, gli avvisi funzionano.');
-  res.json({ success: true });
+  const r = await notifyOwner('test', 'email di prova', 'Se leggi questa email, gli avvisi funzionano.');
+  if (!r || !r.ok) return res.status(400).json({ error: 'Resend ha risposto: ' + ((r && r.error) || 'errore sconosciuto') });
+  res.json({ success: true, to: process.env.ALERT_EMAIL || 'ilaria.visciglia9@gmail.com' });
 });
 
 // pacchetti di crediti: pagamento singolo (il prezzo è definito qui, non serve creare prodotti su Stripe)
