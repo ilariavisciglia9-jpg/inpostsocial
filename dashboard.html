@@ -341,7 +341,7 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
 .pv-side{padding:1.25rem;display:flex;flex-direction:column;gap:0.6rem;align-items:flex-start}
 .pv-meta{font-size:0.86rem;color:var(--dark2)}
 .pv-meta b{font-weight:600;color:var(--dark)}
-.pv-when{font-size:0.82rem;color:var(--gray);text-transform:capitalize}
+.pv-when{font-size:0.82rem;color:var(--gray)}
 .pv-note{font-size:0.82rem;color:var(--green);background:var(--green-bg);border-radius:8px;padding:0.5rem 0.7rem}
 .pv-side .post-actions{padding:0;border:none;width:100%;margin-top:0.4rem;flex-wrap:wrap}
 @media(max-width:760px){
@@ -1177,10 +1177,8 @@ function buildPostCard(post) {
   var initial = (post.brand || 'B').charAt(0).toUpperCase();
   var text = escH(post.text || '').replace(/\n/g, '<br>');
   var tags = (post.hashtags || []).map(function(h) { return '#' + escH(String(h).replace(/^#/, '')); }).join(' ');
-  var when = (post.day || '') + (post.scheduled_time ? ' · ' + post.scheduled_time : '');
-  if (post.scheduled_at && st === 'approved') {
-    try { when = new Date(post.scheduled_at).toLocaleString('it-IT', {weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}); } catch (e) {}
-  }
+  var when = '';
+  try { if (st !== 'published') when = (st === 'draft' || !post.status ? 'Uscita prevista: ' + fmtWhen(postWhen(post)).toLowerCase() : 'Programmato per ' + fmtWhen(postWhen(post)).toLowerCase()); } catch (e) { when = (post.day || '') + (post.scheduled_time ? ' · ' + post.scheduled_time : ''); }
 
   function block(net, hidden) {
   var attrs = ' data-net="' + net + '"' + (hidden ? ' hidden' : '');
@@ -1327,15 +1325,10 @@ async function approvePost(idx) {
   if (!posts[idx]) return;
   var post = posts[idx];
 
-  // Calcola scheduled_at
-  var scheduledAt = new Date().toISOString();
-  if (post.scheduled_time) {
-    var parts = (post.scheduled_time + '').split(':');
-    var d = new Date();
-    d.setHours(parseInt(parts[0]) || 10, parseInt(parts[1]) || 0, 0, 0);
-    if (d <= new Date()) d.setDate(d.getDate() + 1);
-    scheduledAt = d.toISOString();
-  }
+  // data di pubblicazione: quella scelta con "Modifica" oppure il giorno e l'ora proposti
+  var whenD = postWhen(post);
+  if (whenD <= new Date()) whenD = new Date(Date.now() + 15 * 60000);
+  var scheduledAt = whenD.toISOString();
 
   // Disabilita il bottone subito per evitare doppio click
   var btns = document.querySelectorAll('.post-item[data-idx="' + post._uid + '"] .pBtn-approve');
@@ -1382,6 +1375,20 @@ async function approvePost(idx) {
 
 // ===== MODIFICA POST (testo, giorno e ora) =====
 var DAYS_IT = ['Lunedi','Martedi','Mercoledi','Giovedi','Venerdi','Sabato','Domenica'];
+// data e ora di pubblicazione di un post: quella scelta, oppure il prossimo giorno indicato dall'AI all'orario indicato
+function postWhen(post) {
+  if (post.scheduled_at && !isNaN(Date.parse(post.scheduled_at))) return new Date(post.scheduled_at);
+  var map = {lun:1, mar:2, mer:3, gio:4, ven:5, sab:6, dom:0};
+  var key = String(post.day || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 3);
+  var parts = String(post.scheduled_time || '11:00').split(':');
+  var d = new Date(); d.setSeconds(0, 0);
+  d.setHours(parseInt(parts[0], 10) || 11, parseInt(parts[1], 10) || 0);
+  if (key in map) { var diff = (map[key] - d.getDay() + 7) % 7; d.setDate(d.getDate() + diff); }
+  if (d <= new Date()) d.setDate(d.getDate() + (key in map ? 7 : 1));
+  return d;
+}
+function dayNameIt(d) { return ['Domenica','Lunedi','Martedi','Mercoledi','Giovedi','Venerdi','Sabato'][d.getDay()]; }
+function fmtWhen(d) { var t = d.toLocaleString('it-IT', {weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}); return t.charAt(0).toUpperCase() + t.slice(1); }
 function toLocalInput(iso) {
   var d = iso ? new Date(iso) : new Date(Date.now() + 3600000);
   var pad = function(n) { return (n < 10 ? '0' : '') + n; };
@@ -1390,9 +1397,7 @@ function toLocalInput(iso) {
 function openEditor(item, post) {
   var box = item.querySelector('.pv-edit');
   var st = post.status || 'draft';
-  var when = (st === 'approved' || st === 'failed')
-    ? '<label>Data e ora di pubblicazione</label><input type="datetime-local" class="pv-in-dt" value="' + toLocalInput(post.scheduled_at) + '">'
-    : '<label>Giorno e ora</label><div class="pv-row"><select class="pv-in-day">' + DAYS_IT.map(function(d) { return '<option' + (String(post.day || '').toLowerCase().indexOf(d.toLowerCase().slice(0, 5)) === 0 ? ' selected' : '') + '>' + d + '</option>'; }).join('') + '</select><input type="time" class="pv-in-time" value="' + escH(post.scheduled_time || '11:00') + '"></div>';
+  var when = '<label>Data e ora di pubblicazione</label><input type="datetime-local" class="pv-in-dt" min="' + toLocalInput(new Date().toISOString()) + '" value="' + toLocalInput(postWhen(post).toISOString()) + '">';
   var ovl = (post.image_raw_url && post.type !== 'carousel' && post.type !== 'reel')
     ? '<label>Scritta sull\'immagine (titolo)</label><input type="text" class="pv-in-ot" maxlength="60" value="' + escH(post.overlay_title || '') + '" placeholder="Lascia vuoto per togliere la scritta">' +
       '<label>Riga sotto il titolo (facoltativa)</label><input type="text" class="pv-in-os" maxlength="90" value="' + escH(post.overlay_subtitle || '') + '">'
@@ -1428,12 +1433,17 @@ async function saveEditor(item, post) {
       if (post._sid) await fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid: post._sid, text: (post.text || '').substring(0, 50), new_text: newText }) });
       post.text = newText; if (iso) { post.scheduled_at = iso; post.status = 'approved'; post.error = null; }
     } else {
-      var day = box.querySelector('.pv-in-day').value, time = box.querySelector('.pv-in-time').value;
+      var dtv = box.querySelector('.pv-in-dt').value;
+      if (!dtv) return toast('Scegli data e ora', 'error');
+      var dd = new Date(dtv);
+      if (dd < new Date()) return toast('Scegli una data futura', 'error');
+      var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+      var day = dayNameIt(dd), time = pad(dd.getHours()) + ':' + pad(dd.getMinutes());
       if (post._sid) {
-        var resp2 = await fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid: post._sid, text: (post.text || '').substring(0, 50), new_text: newText, day: day, scheduled_time: time }) });
+        var resp2 = await fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid: post._sid, text: (post.text || '').substring(0, 50), new_text: newText, day: day, scheduled_time: time, scheduled_at: dd.toISOString() }) });
         var r2 = await resp2.json(); if (!resp2.ok || r2.error) throw new Error(r2.error || 'Errore');
       }
-      post.text = newText; post.day = day; post.scheduled_time = time;
+      post.text = newText; post.day = day; post.scheduled_time = time; post.scheduled_at = dd.toISOString();
     }
     // controllo: rileggiamo dal database per essere sicuri che la modifica sia salvata davvero
     var ok = await verifySaved(post, newText);

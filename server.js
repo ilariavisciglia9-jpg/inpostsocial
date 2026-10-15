@@ -959,8 +959,8 @@ app.post('/api/posts/update', async (req, res) => {
 // ===== STATO DI UN POST DENTRO LA STRATEGIA (approvato / eliminato) =====
 app.post('/api/posts/state', async (req, res) => {
   try {
-    const { userId, sid, text, status, video_url, video_task_id, image_url, carousel_images, new_text, scheduled_time, day, overlay_title, overlay_subtitle } = req.body;
-    const hasEdit = video_url || video_task_id || image_url || carousel_images || new_text || scheduled_time || day || overlay_title !== undefined;
+    const { userId, sid, text, status, video_url, video_task_id, image_url, carousel_images, new_text, scheduled_time, day, overlay_title, overlay_subtitle, scheduled_at } = req.body;
+    const hasEdit = video_url || video_task_id || image_url || carousel_images || new_text || scheduled_time || day || scheduled_at || overlay_title !== undefined;
     if (!userId || !sid || (!['approved', 'deleted', 'draft'].includes(status) && !hasEdit)) return res.status(400).json({ error: 'Dati mancanti' });
     const { data: st, error } = await supabase.from('strategies').select('posts').eq('id', sid).eq('user_id', userId).single();
     if (error || !st) return res.status(404).json({ error: 'Strategia non trovata' });
@@ -978,6 +978,7 @@ app.post('/api/posts/state', async (req, res) => {
     if (typeof new_text === 'string' && new_text.trim()) patch.text = new_text.slice(0, 2200);
     if (typeof scheduled_time === 'string' && /^\d{1,2}:\d{2}$/.test(scheduled_time)) patch.scheduled_time = scheduled_time;
     if (typeof day === 'string' && day.length < 20) patch.day = day;
+    if (scheduled_at && !isNaN(Date.parse(scheduled_at))) patch.scheduled_at = new Date(scheduled_at).toISOString();
     if (typeof overlay_title === 'string') patch.overlay_title = overlay_title.slice(0, 90);
     if (typeof overlay_subtitle === 'string') patch.overlay_subtitle = overlay_subtitle.slice(0, 140);
     list[i] = Object.assign({}, list[i], patch);
