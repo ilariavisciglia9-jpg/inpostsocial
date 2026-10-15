@@ -862,10 +862,29 @@ app.get('/api/social/status', async (req, res) => {
 // ===== USER =====
 app.post('/api/user/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    const name = String(req.body.name || '').trim().slice(0, 120);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email non valida' });
+    if (password.length < 8) return res.status(400).json({ error: 'La password deve avere almeno 8 caratteri' });
+    // account creato già confermato: non serve l'email di conferma (che spesso non arriva)
     const { data, error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } });
-    if (error) throw error;
-    await supabase.from('users').insert({ id: data.user.id, email, name, plan: 'free', posts_this_week: 0, created_at: new Date().toISOString() });
+    if (error) {
+      if (/already|registered|exists/i.test(error.message)) {
+        // account rimasto "non confermato" da un tentativo precedente: lo confermiamo con la nuova password
+        const { data: list } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        const ex = ((list && list.users) || []).find(u => String(u.email || '').toLowerCase() === email);
+        if (ex && !ex.email_confirmed_at) {
+          const { error: e2 } = await supabase.auth.admin.updateUserById(ex.id, { password, email_confirm: true, user_metadata: { name } });
+          if (e2) throw e2;
+          await supabase.from('users').upsert({ id: ex.id, email, name, plan: 'free', posts_this_week: 0 }, { onConflict: 'id' });
+          return res.json({ success: true, userId: ex.id });
+        }
+        return res.status(409).json({ error: 'Esiste già un account con questa email: usa "Accedi" (o "Password dimenticata").' });
+      }
+      throw error;
+    }
+    await supabase.from('users').upsert({ id: data.user.id, email, name, plan: 'free', posts_this_week: 0, created_at: new Date().toISOString() }, { onConflict: 'id' });
     res.json({ success: true, userId: data.user.id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

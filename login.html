@@ -166,6 +166,7 @@ function switchTab(tab) {
 function showMsg(id, msg, type) {
   const el = document.getElementById(id);
   el.textContent = msg; el.className = 'msg ' + type; el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function handleLogin() {
@@ -176,7 +177,7 @@ async function handleLogin() {
   btn.disabled = true; btn.textContent = 'Accesso in corso...';
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
-    showMsg('login-msg', 'Email o password non corretti. Riprova.', 'error');
+    showMsg('login-msg', itErr(error.message), 'error');
     btn.disabled = false; btn.textContent = 'Accedi →';
   } else {
     if (urlPlan) await goToCheckout(urlPlan, data.user);
@@ -192,33 +193,34 @@ async function handleRegister() {
   if (password.length < 8) return showMsg('reg-msg', 'Password minimo 8 caratteri', 'error');
   const btn = document.getElementById('btn-register');
   btn.disabled = true; btn.textContent = 'Creazione account...';
-  const { data, error } = await sb.auth.signUp({
-    email, password,
-    options: { data: { name }, emailRedirectTo: window.location.origin + '/dashboard.html' }
-  });
-  if (error) {
-    showMsg('reg-msg', error.message, 'error');
-    btn.disabled = false; btn.textContent = urlPlan ? 'Continua al pagamento →' : 'Crea account gratuito →';
-    return;
-  }
-  // Crea record utente nel DB
   try {
-    await fetch('/api/user/register', {
+    // 1) il server crea l'account già confermato
+    const resp = await fetch('/api/user/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, name, password })
     });
-  } catch(e) {}
-
-  if (data.session) {
-    // Email non richiede conferma, già loggato
+    const r = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(r.error || 'Registrazione non riuscita, riprova.');
+    // 2) accesso immediato
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(itErr(error.message));
     if (urlPlan) await goToCheckout(urlPlan, data.user);
     else window.location.href = '/dashboard.html';
-  } else {
-    // Email di conferma inviata
-    showMsg('reg-msg', '✅ Account creato! Controlla la tua email per confermare, poi accedi.', 'success');
+  } catch (e) {
+    showMsg('reg-msg', e.message, 'error');
     btn.disabled = false; btn.textContent = urlPlan ? 'Continua al pagamento →' : 'Crea account gratuito →';
   }
+}
+
+// messaggi di Supabase tradotti in italiano
+function itErr(m) {
+  m = String(m || '');
+  if (/invalid login credentials/i.test(m)) return 'Email o password non corretti. Riprova.';
+  if (/email not confirmed/i.test(m)) return 'Email non ancora confermata: controlla la posta (anche spam) oppure usa "Password dimenticata".';
+  if (/rate limit|too many/i.test(m)) return 'Troppi tentativi: riprova tra qualche minuto.';
+  if (/network|fetch/i.test(m)) return 'Connessione assente, riprova.';
+  return m;
 }
 
 async function handleGoogle() {
