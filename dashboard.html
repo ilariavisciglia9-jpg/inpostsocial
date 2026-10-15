@@ -812,6 +812,7 @@ function migrateLocalData() {
   } catch (e) {}
 }
 var userPlan = 'free';
+var userTrial = null; // settimana di prova: { days_left, left:{posts,reels,avatars}, limits }
 var posts = [];
 var socialCount = 0;
 
@@ -959,6 +960,7 @@ async function loadUser() {
     var data = await resp.json();
     if (data && !data.error) {
       userPlan = data.plan || 'free';
+      userTrial = data.trial || null;
       // Owner ha sempre piano business gratis
       if (user.email === 'info@inpostsocial.com') userPlan = 'business';
       if (data.brand) { document.getElementById('s-brand').value = data.brand; document.getElementById('os-business').classList.add('done'); }
@@ -993,9 +995,14 @@ function updatePlanUI() {
     document.getElementById('pb-business').className = 'btn-plan btn-plan-current';
     document.getElementById('pb-business').textContent = '✓ Piano attuale';
   } else {
-    badge.textContent = 'Piano Gratuito'; badge.className = 'plan-badge badge-free';
+    badge.textContent = userTrial ? 'Prova gratuita · ' + userTrial.days_left + (userTrial.days_left === 1 ? ' giorno' : ' giorni') : 'Piano Gratuito';
+    badge.className = 'plan-badge badge-free';
   }
   var fn = document.getElementById('free-note');
+  if (fn && userTrial) {
+    var L = userTrial.left;
+    fn.innerHTML = '<b>Settimana di prova gratuita</b> (ancora ' + userTrial.days_left + (userTrial.days_left === 1 ? ' giorno' : ' giorni') + '): ti restano <b>' + L.posts + ' immagini</b>, <b>' + L.reels + ' reel AI</b> da 10 secondi e <b>' + L.avatars + ' reel Avatar AI</b> (max 30 secondi). I reel con la tua voce sono inclusi.';
+  }
   if (fn) fn.style.display = userPlan === 'free' ? 'block' : 'none';
 }
 
@@ -2063,6 +2070,7 @@ async function doGenerate() {
     updateStats();
     document.getElementById('os-post').classList.add('done');
     if (result.media_errors && result.media_errors.length) toast('Post pronti, ma alcune immagini non sono state create: ' + result.media_errors[0] + '. Usa "Crea immagine" sul post.', 'error');
+    else if (result.free && result.free.trial) { toast('Post pronti! Prova gratuita: ti restano ' + result.free.left + ' immagini e ' + result.free.reels_left + ' reel AI.'); loadUser(); }
     else if (result.free) toast('Post pronti! Ti restano ' + result.free.left + ' post gratuiti questa settimana.');
     else toast(genImages ? 'Post e immagini pronti!' : genVideo ? 'Post e video pronti!' : 'Strategia e post generati!');
   } catch(e) {

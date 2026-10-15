@@ -143,6 +143,47 @@ function freeWeekKey() {
   return `free-${y}-W${w}`;
 }
 
+// ===== SETTIMANA DI PROVA GRATUITA (per ogni account) =====
+// Ogni account ha 7 giorni di prova dalla registrazione (per chi era già iscritto: da TRIAL_START).
+// Durante la prova: 15 immagini/post, 2 reel AI da 10 secondi, 2 reel Avatar AI (max 30 s), reel con la tua voce.
+// Finita la prova si torna al piano gratuito (2 post a settimana).
+// Contatori in agent_usage, riga month='trial': posts = immagini, videos = reel AI, replies = reel avatar.
+const TRIAL_DAYS = 7;
+const TRIAL_START = Date.parse(process.env.TRIAL_START || '2026-10-15T00:00:00+02:00');
+const TRIAL_LIMITS = { posts: 15, reels: 2, avatars: 2 };
+const TRIAL_REEL_SECONDS = 10;
+const TRIAL_AVATAR_MAX_SECONDS = 30;
+async function getAccess(userId, authEmail) {
+  if (!userId) return { kind: 'free' };
+  if (isOwnerEmail(authEmail)) return { kind: 'owner' };
+  const { data: u } = await supabase.from('users').select('plan,email,created_at').eq('id', userId).maybeSingle();
+  if (u && isOwnerEmail(u.email)) return { kind: 'owner' };
+  if (u && ['starter', 'pro', 'business'].includes(u.plan)) return { kind: 'paid', plan: u.plan };
+  let created = u && u.created_at ? Date.parse(u.created_at) : NaN;
+  if (isNaN(created)) {
+    try { const { data } = await supabase.auth.admin.getUserById(userId); created = Date.parse(data && data.user && data.user.created_at); } catch (e) {}
+  }
+  if (isNaN(created)) created = Date.now();
+  const start = Math.max(created, TRIAL_START);
+  const ends = start + TRIAL_DAYS * 86400000;
+  if (Date.now() >= ends) return { kind: 'free' };
+  const { data: us } = await supabase.from('agent_usage').select('posts,videos,replies').eq('user_id', userId).eq('month', 'trial').maybeSingle();
+  const used = { posts: (us && us.posts) || 0, reels: (us && us.videos) || 0, avatars: (us && us.replies) || 0 };
+  return {
+    kind: 'trial', ends_at: new Date(ends).toISOString(), days_left: Math.max(1, Math.ceil((ends - Date.now()) / 86400000)),
+    used, left: { posts: Math.max(0, TRIAL_LIMITS.posts - used.posts), reels: Math.max(0, TRIAL_LIMITS.reels - used.reels), avatars: Math.max(0, TRIAL_LIMITS.avatars - used.avatars) },
+    limits: TRIAL_LIMITS
+  };
+}
+async function bumpTrial(userId, field, n) {
+  const col = { posts: 'posts', reels: 'videos', avatars: 'replies' }[field];
+  const { data: us } = await supabase.from('agent_usage').select('posts,videos,replies').eq('user_id', userId).eq('month', 'trial').maybeSingle();
+  const row = { user_id: userId, month: 'trial', posts: (us && us.posts) || 0, videos: (us && us.videos) || 0, replies: (us && us.replies) || 0 };
+  row[col] += n;
+  await supabase.from('agent_usage').upsert(row, { onConflict: 'user_id,month' });
+}
+const isFull = (acc) => acc.kind === 'owner' || acc.kind === 'paid';
+
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
@@ -227,24 +268,27 @@ async function generateHandler(req, res) {
     const personPhotos = photoList.filter(p => p.kind === 'person').map(p => p.url); // volto: mai rielaborato dall'AI
     const realPhotos = (useRealPhotos === true || useRealPhotos === 'true') && photos.length > 0;
     const wantVideo = generateVideo === true || generateVideo === 'true';
-    const vidSec = videoSeconds(req.body.videoDuration);
+    let vidSec = videoSeconds(req.body.videoDuration);
     if (!brand || !description) return res.status(400).json({ error: 'Brand e descrizione obbligatori' });
 
     // piano gratuito: massimo FREE_WEEKLY_POSTS post a settimana, senza video
-    let freeLeft = null, freeUsed = 0;
+    let freeLeft = null, freeUsed = 0, trialReelsLeft = 0;
     const freeKey = freeWeekKey();
-    if (userId) {
-      const { data: user } = await supabase.from('users').select('plan,email').eq('id', userId).single();
-      const isOwner = isOwnerEmail(req.authEmail) || (user && isOwnerEmail(user.email));
-      if (!isOwner && (!user || !user.plan || user.plan === 'free')) {
-        const { data: usage } = await supabase.from('agent_usage').select('posts').eq('user_id', userId).eq('month', freeKey).maybeSingle();
-        freeUsed = (usage && usage.posts) || 0;
-        freeLeft = FREE_WEEKLY_POSTS - freeUsed;
-        if (freeLeft <= 0) {
-          return res.status(403).json({ error: `Hai già usato i ${FREE_WEEKLY_POSTS} post gratuiti di questa settimana. Si ricaricano lunedì, oppure scegli un piano per generarne di più.`, upgrade: true });
-        }
+    const access = await getAccess(userId, req.authEmail);
+    if (userId && access.kind === 'trial') {
+      // settimana di prova: contatori di questo account
+      freeLeft = access.left.posts;
+      trialReelsLeft = access.left.reels;
+      if (freeLeft <= 0) return res.status(403).json({ error: `Hai usato tutte le ${TRIAL_LIMITS.posts} immagini della settimana di prova. Scegli un piano per continuare a generare.`, upgrade: true });
+    } else if (userId && access.kind === 'free') {
+      const { data: usage } = await supabase.from('agent_usage').select('posts').eq('user_id', userId).eq('month', freeKey).maybeSingle();
+      freeUsed = (usage && usage.posts) || 0;
+      freeLeft = FREE_WEEKLY_POSTS - freeUsed;
+      if (freeLeft <= 0) {
+        return res.status(403).json({ error: `Hai già usato i ${FREE_WEEKLY_POSTS} post gratuiti di questa settimana. Si ricaricano lunedì, oppure scegli un piano per generarne di più.`, upgrade: true });
       }
     }
+    if (access.kind === 'trial') vidSec = Math.min(vidSec, TRIAL_REEL_SECONDS);
 
     // social scelti dall'utente: ogni post verrà pubblicato su tutti questi
     const rawSocial = Array.isArray(socials) ? socials.join(' + ') : String(socials || 'Instagram');
@@ -313,7 +357,9 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
 
     if (Array.isArray(data.posts)) data.posts.forEach(p => { p.socials = platforms.slice(); p.social = platforms[0]; });
 
-    if (freeLeft !== null && Array.isArray(data.posts)) {
+    if (freeLeft !== null && Array.isArray(data.posts) && access.kind === 'trial') {
+      data.posts = data.posts.slice(0, freeLeft);
+    } else if (freeLeft !== null && Array.isArray(data.posts)) {
       // nella prova gratuita teniamo prima i post con immagine singola (niente reel)
       const order = { image: 0, carousel: 1, reel: 2 };
       data.posts = data.posts.slice().sort((a, b) => (order[a.type] ?? 1) - (order[b.type] ?? 1)).slice(0, freeLeft);
@@ -353,7 +399,7 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
     }
 
     const doImages = (generateImages === true || generateImages === 'true');
-    const doVideo = freeLeft === null && (generateVideo === true || generateVideo === 'true');
+    const doVideo = (freeLeft === null || (access.kind === 'trial' && trialReelsLeft > 0)) && (generateVideo === true || generateVideo === 'true');
     console.log('🖼️ generateImages:', generateImages, '→ doImages:', doImages, '| KEY:', !!process.env.OPENAI_API_KEY);
     // il video parte da un'immagine: per i reel la creiamo anche se "Immagini AI" non è spuntato
     const mediaErrors = [];
@@ -412,6 +458,10 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
         const post = data.posts[i];
         if (post.type !== 'reel') continue;
         if (!post.image_url) { mediaErrors.push('Video non creato: manca l\'immagine di partenza del reel (usa "Crea immagine", poi partirà il video)'); continue; }
+        if (access.kind === 'trial') {
+          if (trialReelsLeft <= 0) { mediaErrors.push(`Hai usato i ${TRIAL_LIMITS.reels} reel AI della settimana di prova: questo reel resta con l'immagine`); continue; }
+          trialReelsLeft--; await bumpTrial(userId, 'reels', 1);
+        }
         try {
           data.posts[i].video_task_id = await startAdVideo(post.image_url, post.video_prompt || post.text, brand, sector, style, vidSec, !!post.person_photo);
           data.posts[i].video_seconds = vidSec;
@@ -436,7 +486,11 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
     }
 
     let free = null;
-    if (freeLeft !== null) {
+    if (access.kind === 'trial') {
+      await bumpTrial(userId, 'posts', data.posts.length);
+      const a2 = await getAccess(userId, req.authEmail);
+      free = { trial: true, limit: TRIAL_LIMITS.posts, left: a2.left ? a2.left.posts : 0, reels_left: a2.left ? a2.left.reels : 0, days_left: a2.days_left };
+    } else if (freeLeft !== null) {
       const usedNow = freeUsed + data.posts.length;
       await supabase.from('agent_usage').upsert({ user_id: userId, month: freeKey, posts: usedNow }, { onConflict: 'user_id,month' });
       free = { limit: FREE_WEEKLY_POSTS, left: Math.max(0, FREE_WEEKLY_POSTS - usedNow) };
@@ -612,6 +666,11 @@ app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt, brand, userId, refImages, size, quality } = req.body;
     if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'OpenAI non configurato' });
+    const acc = await getAccess(userId, req.authEmail);
+    if (acc.kind === 'trial') {
+      if (acc.left.posts <= 0) return res.status(403).json({ error: `Hai usato tutte le ${TRIAL_LIMITS.posts} immagini della settimana di prova`, upgrade: true });
+      await bumpTrial(userId, 'posts', 1);
+    } else if (acc.kind === 'free') return res.status(403).json({ error: 'Rigenerare le immagini è incluso nei piani a pagamento', upgrade: true });
     const refs = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 4);
     const url = await generateImage(prompt, brand || 'Brand', { refs, quality, size: size === '1024x1536' ? '1024x1536' : '1024x1024' });
     res.json({ success: true, url });
@@ -633,9 +692,17 @@ app.post('/api/generate-carousel', async (req, res) => {
 
 app.post('/api/generate-video', async (req, res) => {
   try {
-    const { prompt, imageUrl, userId, brand, sector, style, duration, person } = req.body;
+    const { prompt, imageUrl, userId, brand, sector, style, person } = req.body;
+    let { duration } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl obbligatoria' });
+    const acc = await getAccess(userId, req.authEmail);
+    if (acc.kind === 'free') return res.status(403).json({ error: 'I reel AI sono inclusi nei piani a pagamento', upgrade: true });
+    if (acc.kind === 'trial') {
+      if (acc.left.reels <= 0) return res.status(403).json({ error: `Hai usato i ${TRIAL_LIMITS.reels} reel AI della settimana di prova`, upgrade: true });
+      duration = Math.min(videoSeconds(duration), TRIAL_REEL_SECONDS);
+    }
     const request_id = await startAdVideo(imageUrl, prompt, brand, sector, style, duration, person === true);
+    if (acc.kind === 'trial') await bumpTrial(userId, 'reels', 1);
     res.json({ success: true, task_id: request_id, status: 'processing' });
   } catch (e) { res.status(500).json({ error: falErrorMessage(e) }); }
 });
@@ -866,6 +933,8 @@ app.get('/api/user/profile', async (req, res) => {
     const { data, error } = await supabase.from('users').select('plan,brand,sector,name,email').eq('id', userId).single();
     if (error || !data) return res.json({ plan: isOwnerEmail(req.authEmail) ? 'business' : 'free', brand: '', sector: '', name: '', email: req.authEmail || '' });
     if (isOwnerEmail(data.email) || isOwnerEmail(req.authEmail)) data.plan = 'business';
+    const acc = await getAccess(userId, req.authEmail);
+    if (acc.kind === 'trial') data.trial = { days_left: acc.days_left, ends_at: acc.ends_at, left: acc.left, limits: acc.limits };
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -1263,7 +1332,7 @@ async function userIsPaid(userId, authEmail) {
 app.post('/api/reel/upload-url', async (req, res) => {
   try {
     const { userId, ext } = req.body;
-    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'I reel con la tua voce sono inclusi nei piani a pagamento' });
+    if ((await getAccess(userId, req.authEmail)).kind === 'free') return res.status(403).json({ error: 'I reel con la tua voce sono inclusi nei piani a pagamento e nella settimana di prova', upgrade: true });
     const e = ['mp4', 'mov', 'webm', 'm4v'].includes(String(ext || '').toLowerCase()) ? String(ext).toLowerCase() : 'mp4';
     const filePath = `uploads/${userId}/videos/${crypto.randomUUID()}.${e}`;
     const { data, error } = await supabase.storage.from('post-images').createSignedUploadUrl(filePath);
@@ -1277,7 +1346,7 @@ async function talkingReelHandler(req, res) {
   const tmp = [];
   try {
     const { userId, path: vPath, brand, sector, style, tone, socials, title: wantedTitle } = req.body;
-    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'I reel con la tua voce sono inclusi nei piani a pagamento' });
+    if ((await getAccess(userId, req.authEmail)).kind === 'free') return res.status(403).json({ error: 'I reel con la tua voce sono inclusi nei piani a pagamento e nella settimana di prova', upgrade: true });
     if (!vPath || !String(vPath).startsWith(`uploads/${userId}/videos/`)) return res.status(400).json({ error: 'Video non valido' });
     if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'Chiave OpenAI mancante: serve per trascrivere la voce' });
 
@@ -1388,7 +1457,9 @@ async function avatarSetupHandler(req, res) {
   const tmp = [];
   try {
     const { userId, path: vPath, consent } = req.body;
-    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'L\'avatar è incluso nei piani a pagamento' });
+    { const acc = await getAccess(userId, req.authEmail);
+      if (acc.kind === 'free') return res.status(403).json({ error: 'I reel Avatar AI sono inclusi nei piani a pagamento', upgrade: true });
+      if (acc.kind === 'trial' && acc.left.avatars <= 0) return res.status(403).json({ error: `Hai usato i ${TRIAL_LIMITS.avatars} reel Avatar AI della settimana di prova`, upgrade: true }); }
     if (consent !== true) return res.status(400).json({ error: 'Serve la conferma del consenso all\'uso del volto e della voce' });
     if (!vPath || !String(vPath).startsWith(`uploads/${userId}/videos/`)) return res.status(400).json({ error: 'Video non valido' });
     const { data: blob, error: dlErr } = await supabase.storage.from('post-images').download(vPath);
@@ -1437,7 +1508,7 @@ async function avatarReelHandler(req, res) {
   const tmp = [];
   try {
     const { userId, topic, length, brand, description, sector, tone, style, socials, aiLabel } = req.body;
-    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'I reel con il tuo avatar sono inclusi nei piani a pagamento' });
+    if (!isFull(await getAccess(userId, req.authEmail))) return res.status(403).json({ error: 'Usa "Avatar AI" per creare il reel', upgrade: true });
     const av = await getAvatar(userId);
     if (!av) return res.status(400).json({ error: 'Prima crea il tuo avatar caricando un video in cui parli' });
     if (!process.env.FAL_KEY) return res.status(400).json({ error: 'Chiave FAL_KEY mancante su Railway' });
@@ -1573,7 +1644,9 @@ async function avatarPhotoUrl(av) {
 async function avatarScriptHandler(req, res) {
   try {
     const { userId, topic, length, brand, description, sector, tone, style } = req.body;
-    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'I reel con il tuo avatar sono inclusi nei piani a pagamento' });
+    { const acc = await getAccess(userId, req.authEmail);
+      if (acc.kind === 'free') return res.status(403).json({ error: 'I reel Avatar AI sono inclusi nei piani a pagamento', upgrade: true });
+      if (acc.kind === 'trial' && acc.left.avatars <= 0) return res.status(403).json({ error: `Hai usato i ${TRIAL_LIMITS.avatars} reel Avatar AI della settimana di prova`, upgrade: true }); }
     const av = await getAvatar(userId);
     if (!av) return res.status(400).json({ error: 'Prima crea il tuo avatar caricando un video in cui parli' });
     const medium = length === 'medium';
@@ -1614,7 +1687,9 @@ async function avatarRenderHandler(req, res) {
   const tmp = [];
   try {
     const { userId, script, title, text, hashtags, objective, why, broll, audio_url, brand, sector, style, socials, aiLabel } = req.body;
-    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'I reel con il tuo avatar sono inclusi nei piani a pagamento' });
+    const accR = await getAccess(userId, req.authEmail);
+    if (accR.kind === 'free') return res.status(403).json({ error: 'I reel Avatar AI sono inclusi nei piani a pagamento', upgrade: true });
+    if (accR.kind === 'trial' && accR.left.avatars <= 0) return res.status(403).json({ error: `Hai usato i ${TRIAL_LIMITS.avatars} reel Avatar AI della settimana di prova`, upgrade: true });
     const av = await getAvatar(userId);
     if (!av) return res.status(400).json({ error: 'Avatar non trovato' });
     if (!audio_url || !String(audio_url).includes('/storage/v1/object/public/post-images/posts/voice-')) return res.status(400).json({ error: 'Prima prepara testo e voce' });
@@ -1624,6 +1699,10 @@ async function avatarRenderHandler(req, res) {
     const audioPath = talking.tmpFile('.mp3'); tmp.push(audioPath); await fsp.writeFile(audioPath, Buffer.from(a.data));
     const D = await talking.probeDuration(audioPath);
     if (!D || D > 60) throw new Error('La voce dura ' + Math.round(D) + ' secondi: accorcia il testo (massimo 60 secondi)');
+    if (accR.kind === 'trial') {
+      if (D > TRIAL_AVATAR_MAX_SECONDS + 1) throw new Error(`Nella settimana di prova il reel avatar può durare al massimo ${TRIAL_AVATAR_MAX_SECONDS} secondi (ora ${Math.round(D)}): accorcia il testo e rigenera la voce`);
+      await bumpTrial(userId, 'avatars', 1);
+    }
     const photo = await avatarPhotoUrl(av);
 
     // avatar che parla (gesti e espressioni naturali) e, in parallelo, le immagini di approfondimento
