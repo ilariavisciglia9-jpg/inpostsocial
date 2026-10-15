@@ -803,6 +803,11 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
 
     <!-- IMPOSTAZIONI -->
     <div class="page" id="page-impostazioni">
+      <div class="card-box" id="owner-box" hidden>
+        <h3>Avvisi credito AI (solo tu)</h3>
+        <p style="color:var(--gray);font-size:0.86rem;margin-bottom:0.8rem">Ricevi un'email quando finisce il credito di OpenAI, fal.ai o Anthropic. Serve RESEND_API_KEY su Railway.</p>
+        <button type="button" class="pBtn pBtn-dark" id="btn-test-alert">Invia email di prova</button>
+      </div>
       <div class="card-box">
         <h3>Profilo e impostazioni</h3>
         <div class="grid-2">
@@ -914,6 +919,13 @@ async function init() {
   await loadSocialConnections();
   loadAvatar();
   refreshCredits();
+  if (['info@inpostsocial.com', 'ilaria.visciglia9@gmail.com'].indexOf(String(user.email || '').toLowerCase()) >= 0) {
+    document.getElementById('owner-box').hidden = false;
+    document.getElementById('btn-test-alert').onclick = async function() {
+      try { var r = await fetch('/api/admin/test-alert', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' }); var j = await r.json();
+        if (!r.ok) throw new Error(j.error || 'Errore'); toast('Email di prova inviata: controlla la posta (anche spam)'); } catch (e) { toast('Errore: ' + e.message, 'error'); }
+    };
+  }
 }
 
 function bindEvents() {
