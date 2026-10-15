@@ -653,6 +653,77 @@ app.get('/api/video-status/:taskId', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Errore stato video', details: e.message }); }
 });
 
+// ===== INSTAGRAM DIRETTO (Instagram Login, senza passare da Facebook) =====
+// Serve un profilo Instagram professionale (Business o Creator). Variabili su Railway:
+// INSTAGRAM_APP_ID e INSTAGRAM_APP_SECRET (Meta for Developers → app → Instagram → Configurazione API con login di Instagram)
+const IG_GRAPH = 'https://graph.instagram.com/v21.0';
+app.get('/auth/instagram', (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.redirect(`${siteUrl()}/dashboard.html?error=no_user`);
+  if (!process.env.INSTAGRAM_APP_ID) return res.redirect(`${siteUrl()}/dashboard.html?error=ig_not_configured`);
+  const scope = ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'].join(',');
+  const state = Buffer.from(JSON.stringify({ userId })).toString('base64url');
+  const url = 'https://www.instagram.com/oauth/authorize?' + new URLSearchParams({
+    client_id: process.env.INSTAGRAM_APP_ID, redirect_uri: siteUrl() + '/auth/instagram/callback',
+    response_type: 'code', scope, state, enable_fb_login: '0', force_reauth: 'true'
+  }).toString();
+  res.redirect(url);
+});
+
+app.get('/auth/instagram/callback', async (req, res) => {
+  const DASH = siteUrl() + '/dashboard.html';
+  try {
+    const { code, state, error } = req.query;
+    if (error || !code) return res.redirect(DASH + '?error=auth_denied');
+    const { userId } = JSON.parse(Buffer.from(String(state), 'base64url').toString());
+    if (!userId) return res.redirect(DASH + '?error=no_user');
+    const form = new URLSearchParams({
+      client_id: process.env.INSTAGRAM_APP_ID, client_secret: process.env.INSTAGRAM_APP_SECRET,
+      grant_type: 'authorization_code', redirect_uri: siteUrl() + '/auth/instagram/callback',
+      code: String(code).replace(/#_$/, '')
+    });
+    const t1 = await axios.post('https://api.instagram.com/oauth/access_token', form.toString(), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    const d1 = (t1.data && Array.isArray(t1.data.data)) ? t1.data.data[0] : t1.data;
+    const t2 = await axios.get('https://graph.instagram.com/access_token', {
+      params: { grant_type: 'ig_exchange_token', client_secret: process.env.INSTAGRAM_APP_SECRET, access_token: d1.access_token }
+    });
+    const token = t2.data.access_token;
+    const me = await axios.get(`${IG_GRAPH}/me`, { params: { fields: 'user_id,username,account_type', access_token: token } });
+    const igId = String(me.data.user_id || me.data.id || d1.user_id);
+    await supabase.from('social_connections').delete().eq('user_id', userId).eq('platform', 'instagram');
+    const { error: saveErr } = await supabase.from('social_connections').insert({
+      user_id: userId, platform: 'instagram', ig_account_id: igId, page_name: me.data.username ? '@' + me.data.username : null,
+      access_token: token, page_access_token: token,
+      pages: { via: 'instagram', expires_at: new Date(Date.now() + (t2.data.expires_in || 5184000) * 1000).toISOString() },
+      connected_at: new Date().toISOString()
+    });
+    if (saveErr) { console.error('❌ Salvataggio Instagram fallito:', saveErr.message); return res.redirect(DASH + '?error=save_failed'); }
+    console.log('📸 Instagram collegato direttamente:', igId, me.data.username);
+    res.redirect(DASH + '?connected=instagram');
+  } catch (e) {
+    console.error('❌ Instagram OAuth error:', e.response?.data || e.message);
+    res.redirect(DASH + '?error=auth_failed');
+  }
+});
+
+// i token di Instagram diretto durano 60 giorni: li rinnoviamo ogni giorno (Instagram lo consente dopo 24 ore)
+async function refreshInstagramTokens() {
+  try {
+    const { data } = await supabase.from('social_connections').select('id,access_token,pages,connected_at').eq('platform', 'instagram').is('page_id', null);
+    for (const r of data || []) {
+      if (!r.pages || r.pages.via !== 'instagram' || !r.access_token) continue;
+      if (Date.now() - new Date(r.connected_at).getTime() < 86400000) continue;
+      try {
+        const t = await axios.get('https://graph.instagram.com/refresh_access_token', { params: { grant_type: 'ig_refresh_token', access_token: r.access_token } });
+        await supabase.from('social_connections').update({
+          access_token: t.data.access_token, page_access_token: t.data.access_token,
+          pages: Object.assign({}, r.pages, { expires_at: new Date(Date.now() + (t.data.expires_in || 5184000) * 1000).toISOString() })
+        }).eq('id', r.id);
+      } catch (e) { console.log('Rinnovo token Instagram non riuscito:', r.id, e.response?.data?.error?.message || e.message); }
+    }
+  } catch (e) { console.log('refreshInstagramTokens:', e.message); }
+}
+
 // ===== META OAUTH =====
 app.get('/auth/meta', (req, res) => {
   const { userId } = req.query;
@@ -712,7 +783,8 @@ app.get('/auth/callback', async (req, res) => {
     const pages = pagesRes.data.data || [];
     console.log('📄 Pagine trovate:', pages.length);
 
-    await supabase.from('social_connections').delete().eq('user_id', userId).in('platform', ['facebook', 'instagram']);
+    await supabase.from('social_connections').delete().eq('user_id', userId).eq('platform', 'facebook');
+    await supabase.from('social_connections').delete().eq('user_id', userId).eq('platform', 'instagram').not('page_id', 'is', null);
 
     const { error: fbSaveErr } = await supabase.from('social_connections').insert({
       user_id: userId,
@@ -734,6 +806,7 @@ app.get('/auth/callback', async (req, res) => {
         });
         const igAccount = igRes.data.instagram_business_account;
         if (igAccount && igAccount.id) {
+          await supabase.from('social_connections').delete().eq('user_id', userId).eq('platform', 'instagram').eq('ig_account_id', igAccount.id);
           const { error: igSaveErr } = await supabase.from('social_connections').insert({
             user_id: userId,
             platform: 'instagram',
@@ -832,7 +905,7 @@ app.post('/api/social/disconnect', async (req, res) => {
   try {
     const { userId, platform } = req.body;
     if (!userId) return res.status(400).json({ error: 'userId mancante' });
-    const platforms = platform === 'tiktok' ? ['tiktok'] : ['facebook', 'instagram'];
+    const platforms = platform === 'tiktok' ? ['tiktok'] : platform === 'instagram' ? ['instagram'] : ['facebook', 'instagram'];
     if (platforms.includes('facebook')) {
       // revoca anche l'autorizzazione lato Meta, così al prossimo collegamento si può scegliere un altro account
       const { data: fb } = await supabase.from('social_connections').select('access_token').eq('user_id', userId).eq('platform', 'facebook').maybeSingle();
@@ -852,10 +925,12 @@ app.get('/api/social/status', async (req, res) => {
   try {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId mancante' });
-    const { data, error } = await supabase.from('social_connections').select('platform,page_name,connected_at').eq('user_id', userId);
+    const { data, error } = await supabase.from('social_connections').select('platform,page_name,connected_at,page_id,pages').eq('user_id', userId);
     if (error) return res.status(500).json({ error: error.message });
     // i token di accesso restano solo sul server
-    res.json({ count: data.length, connections: data });
+    const conns = data.map(c => ({ platform: c.platform, page_name: c.page_name, connected_at: c.connected_at,
+      via: (c.platform === 'instagram' && !c.page_id && c.pages && c.pages.via === 'instagram') ? 'instagram' : 'facebook' }));
+    res.json({ count: conns.length, connections: conns });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1139,7 +1214,7 @@ app.get('/api/posts/permalink', async (req, res) => {
     if (post.ig_media_id) {
       const conns = await agentApi.getConnections(userId);
       if (conns.ig) {
-        const m = await axios.get(`https://graph.facebook.com/v19.0/${post.ig_media_id}`, { params: { fields: 'permalink', access_token: conns.ig.token } });
+        const m = await axios.get(`${conns.ig.graph || 'https://graph.facebook.com/v19.0'}/${post.ig_media_id}`, { params: { fields: 'permalink', access_token: conns.ig.token } });
         if (m.data.permalink) return res.json({ permalink: m.data.permalink });
       }
     }
@@ -1602,6 +1677,8 @@ app.post('/api/reel/avatar/render', (req, res) => runAsJob(req, res, avatarRende
 
 
 // ===== SCHEDULER =====
+cron.schedule('20 4 * * *', refreshInstagramTokens);
+
 cron.schedule('*/15 * * * *', async () => {
   try {
     const { data: posts } = await supabase.from('posts').select('*').eq('status', 'approved').lte('scheduled_at', new Date().toISOString());
@@ -1631,4 +1708,5 @@ app.listen(PORT, () => {
   console.log(`📊 Supabase: ${process.env.SUPABASE_URL ? '✅' : '❌'}`);
   console.log(`💳 Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅' : '❌'}`);
   console.log(`📘 Meta: ${process.env.META_APP_ID ? '✅' : '❌'}`);
+  console.log(`📸 Instagram diretto: ${process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET ? '✅' : '❌ (manca INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET)'}`);
 });

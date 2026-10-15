@@ -18,6 +18,8 @@ const crypto = require('crypto');
 
 const TZ = 'Europe/Rome';
 const GRAPH = 'https://graph.facebook.com/v19.0';
+// Instagram collegato direttamente (senza Facebook): stesse chiamate, ma su graph.instagram.com
+const IG_GRAPH = 'https://graph.instagram.com/v21.0';
 const AGENT_MODEL = process.env.AGENT_MODEL || 'claude-haiku-4-5-20251001';
 
 // ===== I 3 PIANI =====
@@ -135,7 +137,8 @@ module.exports = function setupAgent(app, deps) {
     else if (fbRow && Array.isArray(fbRow.pages) && fbRow.pages[0]) {
       fbPage = { id: fbRow.pages[0].id, token: fbRow.pages[0].access_token };
     }
-    return { ig: ig ? { id: ig.ig_account_id, token: ig.page_access_token } : null, fbPage };
+    const igDirect = ig && ig.pages && !Array.isArray(ig.pages) && ig.pages.via === 'instagram';
+    return { ig: ig ? { id: ig.ig_account_id, token: ig.page_access_token || ig.access_token, graph: igDirect ? IG_GRAPH : GRAPH, direct: !!igDirect } : null, fbPage };
   }
 
   function buildCaption(post) {
@@ -397,9 +400,9 @@ Rispondi SOLO con JSON valido:
   // ===================================================================
   // 3. PUBBLICAZIONE — Instagram e Facebook
   // ===================================================================
-  async function waitIgContainer(id, token, tries) {
+  async function waitIgContainer(id, token, tries, graph) {
     for (let i = 0; i < (tries || 36); i++) {
-      const r = await axios.get(`${GRAPH}/${id}`, { params: { fields: 'status_code', access_token: token } });
+      const r = await axios.get(`${graph || GRAPH}/${id}`, { params: { fields: 'status_code', access_token: token } });
       if (r.data.status_code === 'FINISHED') return;
       if (r.data.status_code === 'ERROR' || r.data.status_code === 'EXPIRED') throw new Error('Instagram ha rifiutato il file (' + r.data.status_code + ')');
       await sleep(5000);
@@ -411,28 +414,28 @@ Rispondi SOLO con JSON valido:
     const caption = buildCaption(post);
     let creationId;
     if (post.type === 'reel' && post.video_url) {
-      const c = await axios.post(`${GRAPH}/${ig.id}/media`, { media_type: 'REELS', video_url: post.video_url, caption, share_to_feed: true, access_token: ig.token });
+      const c = await axios.post(`${ig.graph || GRAPH}/${ig.id}/media`, { media_type: 'REELS', video_url: post.video_url, caption, share_to_feed: true, access_token: ig.token });
       creationId = c.data.id;
-      await waitIgContainer(creationId, ig.token);
+      await waitIgContainer(creationId, ig.token, 36, ig.graph);
     } else if (post.type === 'carousel' && (post.carousel_images || []).length >= 2) {
       const children = [];
       for (const url of post.carousel_images.slice(0, 10)) {
-        const c = await axios.post(`${GRAPH}/${ig.id}/media`, { image_url: url, is_carousel_item: true, access_token: ig.token });
+        const c = await axios.post(`${ig.graph || GRAPH}/${ig.id}/media`, { image_url: url, is_carousel_item: true, access_token: ig.token });
         children.push(c.data.id);
       }
-      const c = await axios.post(`${GRAPH}/${ig.id}/media`, { media_type: 'CAROUSEL', children: children.join(','), caption, access_token: ig.token });
+      const c = await axios.post(`${ig.graph || GRAPH}/${ig.id}/media`, { media_type: 'CAROUSEL', children: children.join(','), caption, access_token: ig.token });
       creationId = c.data.id;
-      await waitIgContainer(creationId, ig.token, 12);
+      await waitIgContainer(creationId, ig.token, 12, ig.graph);
     } else {
       if (!post.image_url) throw new Error('Nessuna immagine');
-      const c = await axios.post(`${GRAPH}/${ig.id}/media`, { image_url: post.image_url, caption, access_token: ig.token });
+      const c = await axios.post(`${ig.graph || GRAPH}/${ig.id}/media`, { image_url: post.image_url, caption, access_token: ig.token });
       creationId = c.data.id;
-      await waitIgContainer(creationId, ig.token, 12);
+      await waitIgContainer(creationId, ig.token, 12, ig.graph);
     }
-    const p = await axios.post(`${GRAPH}/${ig.id}/media_publish`, { creation_id: creationId, access_token: ig.token });
+    const p = await axios.post(`${ig.graph || GRAPH}/${ig.id}/media_publish`, { creation_id: creationId, access_token: ig.token });
     let permalink = null;
     try {
-      const m = await axios.get(`${GRAPH}/${p.data.id}`, { params: { fields: 'permalink', access_token: ig.token } });
+      const m = await axios.get(`${ig.graph || GRAPH}/${p.data.id}`, { params: { fields: 'permalink', access_token: ig.token } });
       permalink = m.data.permalink;
     } catch (e) { /* non indispensabile */ }
     return { id: p.data.id, permalink };
@@ -534,15 +537,15 @@ Rispondi SOLO con JSON valido:
     const { ig } = await getConnections(userId);
     if (!ig) return 0;
 
-    const me = await axios.get(`${GRAPH}/${ig.id}`, { params: { fields: 'username', access_token: ig.token } });
+    const me = await axios.get(`${ig.graph || GRAPH}/${ig.id}`, { params: { fields: 'username', access_token: ig.token } });
     const myUsername = me.data.username;
-    const media = await axios.get(`${GRAPH}/${ig.id}/media`, { params: { fields: 'id,caption,timestamp', limit: 8, access_token: ig.token } });
+    const media = await axios.get(`${ig.graph || GRAPH}/${ig.id}/media`, { params: { fields: 'id,caption,timestamp', limit: 8, access_token: ig.token } });
     const weekAgo = Date.now() - 7 * 86400000;
 
     const comments = [];
     for (const m of media.data.data || []) {
       if (new Date(m.timestamp).getTime() < weekAgo - 21 * 86400000) continue;
-      const c = await axios.get(`${GRAPH}/${m.id}/comments`, { params: { fields: 'id,text,username,timestamp', limit: 50, access_token: ig.token } });
+      const c = await axios.get(`${ig.graph || GRAPH}/${m.id}/comments`, { params: { fields: 'id,text,username,timestamp', limit: 50, access_token: ig.token } });
       for (const cm of c.data.data || []) {
         if (cm.username === myUsername) continue;
         if (new Date(cm.timestamp).getTime() < weekAgo) continue;
@@ -579,7 +582,7 @@ Rispondi SOLO con JSON valido: {"items":[{"id":"...","action":"reply|flag|skip",
       const row = { user_id: userId, comment_id: c.id, media_id: c.media_id, username: c.username, comment_text: c.text, reply_text: null, status: action === 'reply' ? 'replied' : action === 'skip' ? 'skipped' : 'flagged' };
       if (action === 'reply' && d.reply && left > 0) {
         try {
-          await axios.post(`${GRAPH}/${c.id}/replies`, { message: d.reply, access_token: ig.token });
+          await axios.post(`${ig.graph || GRAPH}/${c.id}/replies`, { message: d.reply, access_token: ig.token });
           row.reply_text = d.reply; sent++; left--;
         } catch (e) { row.status = 'flagged'; row.reply_text = 'Errore invio: ' + apiErr(e); }
       } else if (action === 'reply') row.status = 'flagged';
@@ -629,11 +632,11 @@ Rispondi SOLO con JSON valido: {"items":[{"id":"...","action":"reply|flag|skip",
       const s = { id: p.id, type: p.type, caption: String(p.caption || '').slice(0, 140), published_at: p.published_at, permalink: p.permalink, likes: null, comments: null, reach: null, saved: null };
       if (ig && p.ig_media_id) {
         try {
-          const m = await axios.get(`${GRAPH}/${p.ig_media_id}`, { params: { fields: 'like_count,comments_count', access_token: ig.token } });
+          const m = await axios.get(`${ig.graph || GRAPH}/${p.ig_media_id}`, { params: { fields: 'like_count,comments_count', access_token: ig.token } });
           s.likes = m.data.like_count; s.comments = m.data.comments_count;
         } catch (e) { /* post rimosso o permesso mancante */ }
         try {
-          const ins = await axios.get(`${GRAPH}/${p.ig_media_id}/insights`, { params: { metric: 'reach,saved', access_token: ig.token } });
+          const ins = await axios.get(`${ig.graph || GRAPH}/${p.ig_media_id}/insights`, { params: { metric: 'reach,saved', access_token: ig.token } });
           for (const it of ins.data.data || []) s[it.name] = it.values && it.values[0] ? it.values[0].value : null;
         } catch (e) { /* insights non disponibili */ }
       }

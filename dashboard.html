@@ -153,6 +153,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .btn-li{background:var(--off-white);color:var(--gray-light);border-color:var(--border);cursor:not-allowed}
 .btn-connected{background:var(--green-bg);color:var(--green);border-color:#C9F0D8;cursor:default}
 .btn-unlink{margin-top:0.5rem;width:100%;padding:0.45rem;border-radius:7px;font-size:0.78rem;font-weight:600;background:#fff;color:var(--red);border:1px solid var(--border-strong);cursor:pointer}
+.btn-ig-alt{margin-top:8px;background:none;border:none;color:var(--gray);font-size:0.8rem;text-decoration:underline;cursor:pointer;padding:4px 0;font-family:inherit}
 .btn-unlink:hover{background:var(--red-bg);border-color:#F3C5CD}
 
 /* ===== PLANS ===== */
@@ -685,14 +686,15 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
       <div class="social-grid">
         <div class="social-card" id="card-ig">
           <div class="social-card-icon"></div>
-          <h4>Instagram Business</h4>
-          <p>Pubblica post, reel e caroselli. Il collegamento avviene tramite il tuo account Facebook — è la procedura standard richiesta da Meta.</p>
+          <h4>Instagram</h4>
+          <p>Pubblica post, reel e caroselli. Accedi direttamente con Instagram, senza Facebook. Serve un profilo professionale (Business o Creator).</p>
           <button class="btn-connect btn-ig" id="btn-ig">Collega Instagram</button>
+          <button type="button" class="btn-ig-alt" id="btn-ig-fb">oppure collega tramite Facebook</button>
         </div>
         <div class="social-card" id="card-fb">
           <div class="social-card-icon"></div>
           <h4>Facebook Page</h4>
-          <p>Pubblica contenuti sulla tua pagina Facebook aziendale. Si collega insieme a Instagram con un click.</p>
+          <p>Pubblica contenuti sulla tua pagina Facebook aziendale. Se il tuo Instagram è collegato alla pagina, si collega anche quello.</p>
           <button class="btn-connect btn-fb" id="btn-fb">Collega Facebook</button>
         </div>
         <div class="social-card" id="card-tt">
@@ -838,6 +840,7 @@ async function init() {
   if (params.get('connected') === 'facebook') toast('Facebook collegato! Nessun account Instagram Business trovato. Assicurati di avere un profilo Instagram Business collegato alla tua Pagina Facebook.', 'error');
   if (params.get('connected') === 'true') toast('Social collegato!');
   if (params.get('error') === 'auth_denied') toast('Collegamento annullato', 'error');
+  if (params.get('error') === 'ig_not_configured') toast('Collegamento diretto a Instagram non ancora attivo: usa "oppure collega tramite Facebook".', 'error');
   if (params.get('error') === 'auth_failed') toast('Errore nel collegamento. Riprova.', 'error');
   if (params.get('error') === 'save_failed') toast('Collegamento riuscito su Meta ma non salvato nel database. Contatta l\'assistenza.', 'error');
   if (params.get('plan')) doCheckout(params.get('plan'));
@@ -921,7 +924,8 @@ function bindEvents() {
   document.getElementById('pb-pro').addEventListener('click', function() { doCheckout('pro'); });
   bindAgentEvents();
   document.getElementById('pb-business').addEventListener('click', function() { doCheckout('business'); });
-  document.getElementById('btn-ig').addEventListener('click', function() { connectMeta(); });
+  document.getElementById('btn-ig').addEventListener('click', function() { connectInstagram(); });
+  document.getElementById('btn-ig-fb').addEventListener('click', function() { connectMeta(); });
   document.getElementById('btn-fb').addEventListener('click', function() { connectMeta(); });
   document.getElementById('btn-tt').addEventListener('click', function() { connectTikTok(); });
 }
@@ -995,8 +999,10 @@ function updatePlanUI() {
   if (fn) fn.style.display = userPlan === 'free' ? 'block' : 'none';
 }
 
+var igVia = null;
 async function loadSocialConnections() {
-  socialCount = 0;
+  socialCount = 0; igVia = null;
+  var altB = document.getElementById('btn-ig-fb'); if (altB) altB.style.display = '';
   try {
     var resp = await fetch('/api/social/status?userId=' + user.id);
     var result = await resp.json();
@@ -1010,7 +1016,9 @@ async function loadSocialConnections() {
     result.connections.forEach(function(c) {
       socialCount++;
       if (c.platform === 'instagram') {
+        igVia = c.via || 'facebook';
         markConnected('card-ig', 'btn-ig', 'Instagram collegato' + (c.page_name ? ' (' + c.page_name + ')' : ''));
+        var alt = document.getElementById('btn-ig-fb'); if (alt) alt.style.display = 'none';
         document.getElementById('os-social').classList.add('done');
       }
       if (c.platform === 'facebook') markConnected('card-fb', 'btn-fb', 'Facebook collegato');
@@ -1030,7 +1038,7 @@ function markConnected(cardId, btnId, label) {
     var un = document.createElement('button');
     un.className = 'btn-unlink';
     un.textContent = 'Scollega account';
-    un.addEventListener('click', function() { disconnectSocial(btnId === 'btn-tt' ? 'tiktok' : 'meta'); });
+    un.addEventListener('click', function() { disconnectSocial(btnId === 'btn-tt' ? 'tiktok' : (btnId === 'btn-ig' && igVia === 'instagram') ? 'instagram' : 'meta'); });
     card.appendChild(un);
   }
   card.classList.add('connected');
@@ -1051,23 +1059,30 @@ function resetConnected(cardId, btnId) {
 }
 
 async function disconnectSocial(which) {
-  var msg = which === 'tiktok' ? 'Vuoi scollegare TikTok?' : 'Vuoi scollegare Instagram e Facebook? L\'agente non potrà più pubblicare finché non li ricolleghi.';
+  var msg = which === 'tiktok' ? 'Vuoi scollegare TikTok?' : which === 'instagram' ? 'Vuoi scollegare Instagram?' : 'Vuoi scollegare Instagram e Facebook? L\'agente non potrà più pubblicare finché non li ricolleghi.';
   if (!confirm(msg)) return;
   showLoading('Scollegamento in corso...');
   try {
     var resp = await fetch('/api/social/disconnect', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ platform: which === 'tiktok' ? 'tiktok' : 'meta' })
+      body: JSON.stringify({ platform: which })
     });
     var r = await resp.json();
     if (!resp.ok || !r.success) throw new Error(r.error || 'Errore');
     if (which === 'tiktok') resetConnected('card-tt', 'btn-tt');
+    else if (which === 'instagram') resetConnected('card-ig', 'btn-ig');
     else { resetConnected('card-ig', 'btn-ig'); resetConnected('card-fb', 'btn-fb'); }
     document.getElementById('os-social').classList.remove('done');
     await loadSocialConnections();
     toast('Account scollegato');
   } catch (e) { toast('Errore: ' + e.message, 'error'); }
   hideLoading();
+}
+
+function connectInstagram() {
+  if (!user) return;
+  showLoading('Reindirizzamento a Instagram...');
+  window.location.href = '/auth/instagram?userId=' + user.id;
 }
 
 function connectMeta() {
