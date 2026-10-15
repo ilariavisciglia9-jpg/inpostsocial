@@ -706,6 +706,31 @@ app.get('/auth/instagram/callback', async (req, res) => {
   }
 });
 
+// Meta avvisa quando un utente rimuove l'app da Instagram o chiede di cancellare i dati (signed_request firmato)
+function igSignedRequest(sr) {
+  const [sig, payload] = String(sr || '').split('.');
+  if (!sig || !payload || !process.env.INSTAGRAM_APP_SECRET) return null;
+  const expected = crypto.createHmac('sha256', process.env.INSTAGRAM_APP_SECRET).update(payload).digest('base64url');
+  if (expected !== sig.replace(/=+$/, '')) return null;
+  try { return JSON.parse(Buffer.from(payload, 'base64url').toString()); } catch (e) { return null; }
+}
+async function igRemoveConnection(igUserId) {
+  if (igUserId) await supabase.from('social_connections').delete().eq('platform', 'instagram').eq('ig_account_id', String(igUserId));
+}
+app.post('/auth/instagram/deauthorize', express.urlencoded({ extended: false }), async (req, res) => {
+  const data = igSignedRequest(req.body && req.body.signed_request);
+  if (!data) return res.status(400).json({ error: 'Richiesta non valida' });
+  await igRemoveConnection(data.user_id);
+  res.json({ success: true });
+});
+app.post('/auth/instagram/data-deletion', express.urlencoded({ extended: false }), async (req, res) => {
+  const data = igSignedRequest(req.body && req.body.signed_request);
+  if (!data) return res.status(400).json({ error: 'Richiesta non valida' });
+  await igRemoveConnection(data.user_id);
+  const code = 'IG' + Date.now().toString(36).toUpperCase();
+  res.json({ url: siteUrl() + '/elimina-dati.html?code=' + code, confirmation_code: code });
+});
+
 // i token di Instagram diretto durano 60 giorni: li rinnoviamo ogni giorno (Instagram lo consente dopo 24 ore)
 async function refreshInstagramTokens() {
   try {
