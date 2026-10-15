@@ -940,7 +940,7 @@ app.post('/api/image/overlay', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ===== RIPROGRAMMA UN POST GIÀ PUBBLICATO: nuova uscita con gli stessi contenuti =====
+// ===== RIPROGRAMMA UN POST GIÀ PUBBLICATO: torna in programmazione con la nuova data =====
 app.post('/api/posts/reschedule', async (req, res) => {
   try {
     const { userId, postId, scheduled_at, text } = req.body;
@@ -948,14 +948,11 @@ app.post('/api/posts/reschedule', async (req, res) => {
     if (new Date(scheduled_at) < new Date(Date.now() - 60000)) return res.status(400).json({ error: 'Scegli una data futura' });
     const { data: orig, error } = await supabase.from('posts').select('*').eq('id', postId).eq('user_id', userId).single();
     if (error || !orig) return res.status(404).json({ error: 'Post non trovato' });
-    const copy = {
-      user_id: userId, platform: orig.platform, text: (typeof text === 'string' && text.trim()) ? text.slice(0, 2200) : orig.text,
-      hashtags: orig.hashtags, image_url: orig.image_url, carousel_images: orig.carousel_images, video_url: orig.video_url,
-      video_task_id: orig.video_task_id, status: 'approved', scheduled_at: new Date(scheduled_at).toISOString(),
-      day: orig.day, type: orig.type, brand: orig.brand, created_at: new Date().toISOString()
-    };
-    const { data: ins, error: insErr } = await supabase.from('posts').insert(copy).select('id').single();
-    if (insErr) throw insErr;
+    // si riprogramma lo stesso post: torna "approvato" con la nuova data e lo scheduler lo ripubblica
+    const upd = { status: 'approved', scheduled_at: new Date(scheduled_at).toISOString(), error: null };
+    if (typeof text === 'string' && text.trim()) upd.text = text.slice(0, 2200);
+    const { data: ins, error: updErr } = await supabase.from('posts').update(upd).eq('id', orig.id).eq('user_id', userId).select('id,status,scheduled_at').single();
+    if (updErr || !ins) throw (updErr || new Error('Aggiornamento non riuscito'));
     res.json({ success: true, id: ins.id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

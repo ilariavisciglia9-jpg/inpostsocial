@@ -1491,7 +1491,7 @@ async function verifySaved(post, newText) {
   } catch (e) { return true; }
 }
 
-// ===== RIPROGRAMMA UN POST GIÀ PUBBLICATO (crea una nuova uscita, l'originale resta) =====
+// ===== RIPROGRAMMA UN POST GIÀ PUBBLICATO (torna in programmazione con la nuova data) =====
 function openRepublish(item, post) {
   var box = item.querySelector('.pv-edit');
   var d = new Date(Date.now() + 24 * 3600000); d.setMinutes(0, 0, 0);
@@ -1512,9 +1512,8 @@ async function saveRepublish(item, post, btn) {
     var resp = await fetch('/api/posts/reschedule', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ postId: post.db_id, scheduled_at: dd.toISOString(), text: txt }) });
     var r = await readJson(resp);
     if (!resp.ok || !r.id) throw new Error(r.error || 'Non riprogrammato');
-    var copy = withUid(Object.assign({}, post, { _uid: null, db_id: r.id, status: 'approved', scheduled_at: dd.toISOString(), published_at: null, ig_media_id: null, error: null, text: txt, _dbMatched: true }));
-    copy._uid = null; withUid(copy);
-    posts.unshift(copy);
+    if (post._sid) await fetch('/api/posts/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ sid: post._sid, text: (post.text || '').substring(0, 50), new_text: txt, status: 'approved', scheduled_at: dd.toISOString() }) }).catch(function() {});
+    post.status = 'approved'; post.scheduled_at = dd.toISOString(); post.error = null; post.text = txt;
     box.hidden = true; box.innerHTML = '';
     rerenderPosts();
     toast('Programmato di nuovo per ' + fmtWhen(dd).toLowerCase());
