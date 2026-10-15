@@ -555,6 +555,9 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
           <div class="media-label">AI Media</div>
           <label class="media-opt"><input type="checkbox" id="gen-images"> Immagini AI realistiche</label>
           <label class="media-opt"><input type="checkbox" id="gen-text" checked> Scritte sulle immagini (italiano corretto)</label>
+          <label class="media-opt vid-dur">Qualità immagini
+            <select id="gen-quality"><option value="medium">Standard</option><option value="high">Alta (più dettagliate, costo maggiore)</option></select>
+          </label>
           <label class="media-opt vid-dur">Durata video
             <select id="gen-duration"><option value="5">5 secondi</option><option value="8">8 secondi</option><option value="10">10 secondi</option><option value="15">15 secondi</option></select>
           </label>
@@ -1421,17 +1424,18 @@ async function openPublished(post, btn) {
 
 // ===== CREA IMMAGINE PER UN POST CHE NE È SENZA =====
 async function createPostImage(post, btn) {
-  btn.disabled = true; btn.textContent = 'Creo l\'immagine… (circa 30 secondi)';
+  btn.disabled = true; btn.textContent = post.type === 'carousel' ? 'Creo le 5 slide… (2-3 minuti)' : 'Creo l\'immagine… (circa 30 secondi)';
   var refs = (typeof brandPhotos !== 'undefined' ? brandPhotos : []).map(function(p) { return p.url; }).filter(Boolean);
   var one = async function(prompt, size) {
-    var resp = await fetch('/api/generate-image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: prompt, brand: post.brand || '', refImages: refs, size: size }) });
+    var gq = {}; try { gq = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+    var resp = await fetch('/api/generate-image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: prompt, brand: post.brand || '', refImages: refs, size: size, quality: gq['gen-quality'] || 'medium' }) });
     var r = await resp.json(); if (!resp.ok || !r.url) throw new Error(r.details || r.error || 'Immagine non creata');
     return r.url;
   };
   try {
     var body = { sid: post._sid, text: (post.text || '').substring(0, 50) };
     if (post.type === 'carousel') {
-      var slides = (post.carousel_slides && post.carousel_slides.length ? post.carousel_slides : [{}, {}, {}]).slice(0, 3);
+      var slides = (post.carousel_slides && post.carousel_slides.length ? post.carousel_slides : [{}, {}, {}, {}, {}]).slice(0, 5);
       var urls = [];
       for (var k = 0; k < slides.length; k++) urls.push(await one(slides[k].image_prompt || post.image_prompt || post.text, '1024x1024'));
       post.carousel_images = urls; post.image_url = urls[0]; body.carousel_images = urls; body.image_url = urls[0];
@@ -1516,7 +1520,7 @@ async function deletePost(idx) {
 }
 
 // ===== I CAMPI DEL MODULO "GENERA" RESTANO SALVATI =====
-var GEN_FIELDS = ['g-brand', 'g-sector', 'g-desc', 'g-style', 'g-tone', 'g-social', 'gen-duration'];
+var GEN_FIELDS = ['g-brand', 'g-sector', 'g-desc', 'g-style', 'g-tone', 'g-social', 'gen-duration', 'gen-quality'];
 function restoreGenForm() {
   try {
     var saved = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}');
@@ -1631,7 +1635,8 @@ async function doGenerate() {
         refImages: brandPhotos.map(function(p) { return p.url; }).filter(Boolean),
         useRealPhotos: useReal,
         textOverlay: document.getElementById('gen-text').checked,
-        videoDuration: document.getElementById('gen-duration').value
+        videoDuration: document.getElementById('gen-duration').value,
+        imageQuality: document.getElementById('gen-quality').value
       })
     });
     var result = await readJson(resp);

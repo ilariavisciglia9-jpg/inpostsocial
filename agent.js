@@ -257,7 +257,7 @@ Regole:
 - image_prompt in inglese, dettagliato, senza testo scritto nell'immagine.
 
 Rispondi SOLO con JSON valido:
-{"posts":[{"slot":1,"caption":"...","hashtags":["..."],"image_prompt":"...","carousel_prompts":["slide1","slide2","slide3"],"video_prompt":"..."}]}
+{"posts":[{"slot":1,"caption":"...","hashtags":["..."],"image_prompt":"...","carousel_prompts":["slide1","slide2","slide3","slide4","slide5"],"video_prompt":"..."}]}
 (carousel_prompts solo per i caroselli, video_prompt solo per i reel: movimento di camera e azione in inglese)`;
 
     const result = await askClaude(prompt, 6000);
@@ -275,7 +275,7 @@ Rispondi SOLO con JSON valido:
         caption: g.caption,
         hashtags: Array.isArray(g.hashtags) ? g.hashtags.slice(0, 15) : [],
         image_prompt: g.image_prompt || g.caption.slice(0, 300),
-        carousel_prompts: s.type === 'carousel' ? (g.carousel_prompts || []).slice(0, 3) : null,
+        carousel_prompts: s.type === 'carousel' ? (g.carousel_prompts || []).slice(0, 5) : null,
         video_prompt: s.type === 'reel' ? (g.video_prompt || 'slow cinematic camera movement') : null,
         media_status: 'pending',
         status: autopilot ? 'scheduled' : 'pending_approval',
@@ -340,7 +340,7 @@ Rispondi SOLO con JSON valido:
           const upd = {};
 
           if (post.type === 'carousel') {
-            const prompts = (post.carousel_prompts && post.carousel_prompts.length ? post.carousel_prompts : [post.image_prompt]).slice(0, 3);
+            const prompts = (post.carousel_prompts && post.carousel_prompts.length ? post.carousel_prompts : [post.image_prompt]).slice(0, 5);
             const imgs = (post.carousel_images || []).slice();
             for (let i = imgs.length; i < prompts.length; i++) imgs.push(await generateImage(styled(prompts[i]), brand));
             upd.carousel_images = imgs;
