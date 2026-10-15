@@ -258,6 +258,9 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .pv-row{display:flex;gap:0.5rem}
 .pv-err{font-size:0.82rem;color:var(--red);background:var(--red-bg);border-radius:8px;padding:0.5rem 0.7rem}
 .pBtn-img{background:var(--lavender);border-color:var(--lavender);color:var(--purple)}
+.pBtn-dark{background:var(--dark);border-color:var(--dark);color:#fff}
+.pBtn-dark:hover{background:#2A2A33}
+.pv-ok{font-size:0.82rem;color:var(--blue);background:var(--blue-bg);border-radius:8px;padding:0.5rem 0.7rem}
 /* ===== FOTO DEL BRAND ===== */
 .ph-box{border:1px dashed var(--border-strong);border-radius:10px;padding:0.85rem;background:var(--off-white)}
 .ph-grid{display:flex;flex-wrap:wrap;gap:0.5rem}
@@ -579,7 +582,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
     <!-- POST APPROVATI -->
     <div class="page" id="page-approvati">
       <div class="section-header">
-        <div class="section-title">Post approvati — pronti alla pubblicazione</div>
+        <div class="section-title">Programmazione e pubblicati</div>
       </div>
       <p style="color:var(--gray);font-size:0.85rem;margin-bottom:1.25rem">Questi post sono stati approvati e verranno pubblicati automaticamente all'orario schedulato sul tuo profilo social.</p>
       <div id="approved-posts"></div>
@@ -749,6 +752,14 @@ function bindEvents() {
       return;
     }
     // approva
+    // pulsanti dell'editor: vanno gestiti prima di "Approva"
+    var sv0 = e.target.closest('.pv-save');
+    if (sv0) { var it0 = sv0.closest('.post-item'); var ix0 = idxByUid(it0.getAttribute('data-idx')); if (ix0 >= 0) saveEditor(it0, posts[ix0]); return; }
+    if (e.target.closest('.pv-cancel')) { var bx0 = e.target.closest('.pv-edit'); bx0.hidden = true; bx0.innerHTML = ''; return; }
+    var pubNow = e.target.closest('.pBtn-pubnow');
+    if (pubNow) { var itp = pubNow.closest('.post-item'); var ixp = idxByUid(itp.getAttribute('data-idx')); if (ixp >= 0) publishNow(posts[ixp], pubNow); return; }
+    var see = e.target.closest('.pBtn-see');
+    if (see) { var its = see.closest('.post-item'); var ixs = idxByUid(its.getAttribute('data-idx')); if (ixs >= 0) openPublished(posts[ixs], see); return; }
     var approve = e.target.closest('.pBtn-approve');
     if (approve && !approve.disabled) {
       var postItem = approve.closest('.post-item');
@@ -982,6 +993,8 @@ async function loadPosts() {
             posts[i].db_id = dbPost.id;
             posts[i].scheduled_at = dbPost.scheduled_at;
             posts[i].error = dbPost.error || null;
+            posts[i].published_at = dbPost.published_at || null;
+            posts[i].ig_media_id = dbPost.ig_media_id || null;
             if (dbPost.text) posts[i].text = dbPost.text;
             found = true;
             break;
@@ -1006,6 +1019,8 @@ async function loadPosts() {
             status: dbPost.status,
             scheduled_at: dbPost.scheduled_at,
             error: dbPost.error || null,
+            published_at: dbPost.published_at || null,
+            ig_media_id: dbPost.ig_media_id || null,
             db_id: dbPost.id
           });
         }
@@ -1127,12 +1142,15 @@ function buildPostCard(post) {
     : (post.type === 'reel' && post.image_url && post.video_url && editable) ? '<button class="pBtn pBtn-img pBtn-vid" data-redo="1">Rifai il video (nuova versione)</button>' : '';
   var actions;
   if (st === 'approved' || st === 'failed') {
+    var pubBtn = '<button class="pBtn pBtn-pubnow">Pubblica ora</button>';
     actions = (st === 'failed'
         ? '<div class="pv-err">Pubblicazione non riuscita' + (post.error ? ': ' + escH(post.error) : '') + '. Controlla i social collegati e scegli una nuova data con "Modifica".</div>'
         : '<div class="pv-note">Verrà pubblicato in automatico all\'orario programmato.</div>') +
-      '<div class="post-actions"><button class="pBtn pBtn-edit">Modifica</button><button class="pBtn pBtn-delete">Elimina</button></div>';
+      '<div class="post-actions"><button class="pBtn pBtn-edit">Modifica</button>' + pubBtn + '<button class="pBtn pBtn-delete">Elimina</button></div>';
   } else if (st === 'published') {
-    actions = '<div class="pv-note">Già pubblicato sul profilo.</div>';
+    var pubWhen = post.published_at ? new Date(post.published_at).toLocaleString('it-IT', {day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}) : '';
+    actions = '<div class="pv-ok">Pubblicato' + (pubWhen ? ' il ' + pubWhen : '') + '.' + (post.error ? ' Avviso: ' + escH(post.error) : '') + '</div>' +
+      (post.db_id ? '<div class="post-actions"><button class="pBtn pBtn-see">Vedi il post pubblicato ↗</button></div>' : '');
   } else {
     actions = (imgBtn ? '<div class="post-actions">' + imgBtn + '</div>' : '') + '<div class="post-actions">' +
       '<button class="pBtn pBtn-approve">✓ Approva</button>' +
@@ -1183,8 +1201,12 @@ function renderAllPosts() {
 function renderApprovedPosts() {
   var el = document.getElementById('approved-posts');
   if (!el) return;
-  var approved = posts.filter(function(p) { return p.status === 'approved' || p.status === 'failed' || p.status === 'publishing'; })
-    .sort(function(a, b) { return new Date(a.scheduled_at || 0) - new Date(b.scheduled_at || 0); });
+  var approved = posts.filter(function(p) { return ['approved', 'failed', 'publishing', 'published'].indexOf(p.status) >= 0; })
+    .sort(function(a, b) {
+      var pa = a.status === 'published' ? 1 : 0, pb = b.status === 'published' ? 1 : 0;
+      if (pa !== pb) return pa - pb; // prima quelli in coda, poi i pubblicati
+      return pa ? new Date(b.published_at || 0) - new Date(a.published_at || 0) : new Date(a.scheduled_at || 0) - new Date(b.scheduled_at || 0);
+    });
   if (!approved.length) {
     el.innerHTML = '<div class="empty"><div class="icon"></div><h3>Nessun post approvato</h3><p>Approva i post dalla sezione "I miei post" per vederli qui pronti alla pubblicazione automatica</p><button class="btn-sm btn-purple" data-page="posts">Vai ai post</button></div>';
     return;
@@ -1303,7 +1325,7 @@ function openEditor(item, post) {
       '<label>Riga sotto il titolo (facoltativa)</label><input type="text" class="pv-in-os" maxlength="90" value="' + escH(post.overlay_subtitle || '') + '">'
     : '';
   box.innerHTML = '<label>Testo del post</label><textarea class="pv-in-text">' + escH(post.text || '') + '</textarea>' + ovl + when +
-    '<div class="post-actions"><button type="button" class="pBtn pBtn-approve pv-save">Salva</button><button type="button" class="pBtn pv-cancel">Annulla</button></div>';
+    '<div class="post-actions"><button type="button" class="pBtn pBtn-dark pv-save">Salva modifiche</button><button type="button" class="pBtn pv-cancel">Annulla</button></div>';
   box.hidden = false;
 }
 async function saveEditor(item, post) {
@@ -1340,9 +1362,57 @@ async function saveEditor(item, post) {
       }
       post.text = newText; post.day = day; post.scheduled_time = time;
     }
+    // controllo: rileggiamo dal database per essere sicuri che la modifica sia salvata davvero
+    var ok = await verifySaved(post, newText);
     rerenderPosts();
-    toast('Modifiche salvate');
+    if (ok) toast('Modifiche salvate e verificate'); else toast('Attenzione: la modifica non risulta salvata nel database. Ricarica la pagina e riprova.', 'error');
   } catch (e) { toast('Errore: ' + e.message, 'error'); }
+}
+
+async function verifySaved(post, newText) {
+  try {
+    var key = newText.substring(0, 50);
+    if (post.db_id) {
+      var a = await sb.from('posts').select('text').eq('id', post.db_id).single();
+      if (!a.data || String(a.data.text || '').substring(0, 50) !== key) return false;
+    }
+    if (post._sid) {
+      var b = await sb.from('strategies').select('posts').eq('id', post._sid).single();
+      var list = (b.data && b.data.posts) || [];
+      if (!list.some(function(p) { return String(p.text || '').substring(0, 50) === key; })) return false;
+    }
+    return true;
+  } catch (e) { return true; }
+}
+
+// ===== PUBBLICA SUBITO (per provare che la pubblicazione funziona) =====
+async function publishNow(post, btn) {
+  if (!post.db_id) return toast('Prima approva il post', 'error');
+  if (!confirm('Pubblicare adesso questo post sui social collegati?')) return;
+  btn.disabled = true; btn.textContent = 'Pubblicazione in corso… (fino a 1-2 minuti)';
+  try {
+    var resp = await fetch('/api/publish', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ postId: post.db_id }) });
+    var r = await readJson(resp);
+    if (!resp.ok || !r.success) throw new Error(r.details || r.error || 'Pubblicazione non riuscita');
+    post.status = 'published'; post.published_at = new Date().toISOString(); post.ig_media_id = r.ig_media_id || null;
+    post.published_on = r.published_on; post.error = (r.errors && r.errors.length) ? r.errors.join(' | ') : null;
+    rerenderPosts();
+    toast('Pubblicato su ' + r.published_on.join(' e ') + (post.error ? ' (errori: ' + post.error + ')' : ''));
+  } catch (e) {
+    post.status = 'failed'; post.error = e.message;
+    rerenderPosts();
+    toast('Non pubblicato: ' + e.message, 'error');
+  }
+}
+async function openPublished(post, btn) {
+  btn.disabled = true;
+  try {
+    var resp = await fetch('/api/posts/permalink?postId=' + encodeURIComponent(post.db_id));
+    var r = await readJson(resp);
+    if (r.permalink) window.open(r.permalink, '_blank', 'noopener');
+    else toast(r.error || 'Link non disponibile: controlla direttamente il profilo', 'error');
+  } catch (e) { toast('Link non disponibile', 'error'); }
+  btn.disabled = false;
 }
 
 // ===== CREA IMMAGINE PER UN POST CHE NE È SENZA =====

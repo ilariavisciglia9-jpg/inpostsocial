@@ -119,7 +119,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay', '/api/posts/permalink'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -975,10 +975,32 @@ app.post('/api/publish', async (req, res) => {
     const out = await publishManualPost(post);
     const upd = await finishPublish(post, out);
     if (!out.done.length) return res.status(400).json({ error: upd.error });
-    res.json({ success: true, published_on: out.done, errors: out.failed });
+    res.json({ success: true, published_on: out.done, errors: out.failed, ig_media_id: out.igId });
   } catch (e) {
     console.error('Publish error:', e.message);
     res.status(500).json({ error: 'Errore pubblicazione', details: e.message });
+  }
+});
+
+// ===== LINK DEL POST PUBBLICATO (per controllare che sia online) =====
+app.get('/api/posts/permalink', async (req, res) => {
+  try {
+    const { userId, postId } = req.query;
+    const { data: post } = await supabase.from('posts').select('ig_media_id,platform,status').eq('id', postId).eq('user_id', userId).single();
+    if (!post || post.status !== 'published') return res.json({ permalink: null, error: 'Il post non risulta ancora pubblicato' });
+    if (post.ig_media_id) {
+      const conns = await agentApi.getConnections(userId);
+      if (conns.ig) {
+        const m = await axios.get(`https://graph.facebook.com/v19.0/${post.ig_media_id}`, { params: { fields: 'permalink', access_token: conns.ig.token } });
+        if (m.data.permalink) return res.json({ permalink: m.data.permalink });
+      }
+    }
+    // pubblicato solo su Facebook: apriamo la pagina
+    const conns = await agentApi.getConnections(userId);
+    if (conns.fbPage) return res.json({ permalink: `https://www.facebook.com/${conns.fbPage.id}` });
+    res.json({ permalink: null, error: 'Link non disponibile: controlla direttamente il profilo' });
+  } catch (e) {
+    res.json({ permalink: null, error: 'Link non disponibile: ' + ((e.response && e.response.data && e.response.data.error && e.response.data.error.message) || e.message) });
   }
 });
 
