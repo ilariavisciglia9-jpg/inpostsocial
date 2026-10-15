@@ -60,7 +60,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .credit-pill{display:inline-flex;align-items:center;gap:6px;padding:0.42rem 0.8rem;border-radius:999px;border:1px solid var(--border);background:#fff;font-size:0.8rem;font-weight:600;color:var(--dark);cursor:pointer;margin-left:auto;margin-right:10px;white-space:nowrap}
 .credit-pill b{color:var(--purple)}
 .credit-pill.low{border-color:#F3C5CD;background:var(--red-bg)}
-.plan-credits{display:inline-block;background:var(--purple-light,#EFEBFF);color:var(--purple);font-weight:700;font-size:0.8rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.9rem}
+.plan-credits{display:inline-block;background:var(--lavender,#EFEBFF);color:var(--purple);font-weight:700;font-size:0.8rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.9rem}
 .credits-box{margin-top:2rem}
 .pack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1rem 0 1.5rem}
 .pack-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.2rem;display:flex;flex-direction:column;gap:0.4rem}
@@ -170,7 +170,14 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .btn-unlink:hover{background:var(--red-bg);border-color:#F3C5CD}
 
 /* ===== PLANS ===== */
-.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.plan-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+@media(max-width:1200px){.plan-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.plan-grid{grid-template-columns:1fr}}
+.plan-card.is-current{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple)}
+.my-plan{display:flex;flex-wrap:wrap;align-items:center;gap:0.6rem 1.5rem;background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem}
+.my-plan .mp-name{font-size:1.05rem;font-weight:700}
+.my-plan .mp-item{font-size:0.85rem;color:var(--gray)}
+.my-plan .mp-item b{color:var(--dark)}
 .plan-card{background:#fff;border-radius:12px;border:1px solid var(--border);padding:1.5rem;position:relative;display:flex;flex-direction:column}
 .plan-card.active-plan{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple)}
 .current-label{position:absolute;top:-10px;left:1.5rem;background:var(--purple);color:#fff;font-size:0.68rem;font-weight:600;padding:0.18rem 0.55rem;border-radius:6px;white-space:nowrap}
@@ -728,8 +735,27 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
 
     <!-- PIANO -->
     <div class="page" id="page-piano">
+      <div class="my-plan" id="my-plan">
+        <div><div class="mp-item">Il tuo piano</div><div class="mp-name" id="mp-name">Gratuito</div></div>
+        <div class="mp-item" id="mp-credits">Crediti disponibili: <b>0</b></div>
+        <div class="mp-item" id="mp-extra"></div>
+      </div>
       <p style="color:var(--gray);margin-bottom:1.5rem;font-size:0.88rem">Scegli il piano più adatto alle tue esigenze.</p>
       <div class="plan-grid">
+        <div class="plan-card" id="pc-free">
+          <div class="plan-name">Gratuito</div>
+          <div class="plan-price">€0 <small>/mese</small></div>
+          <div class="plan-credits">🎁 Prova di 7 giorni inclusa</div>
+          <ul class="plan-feats">
+            <li>Prima settimana: 15 immagini AI, 2 reel AI da 10 s e 2 reel Avatar AI (max 30 s)</li>
+            <li>Poi: 2 post a settimana con immagine AI</li>
+            <li>Strategia e testi dei post illimitati</li>
+            <li>Pubblicazione su Instagram e Facebook</li>
+            <li>Crediti ricaricabili quando vuoi per generare di più</li>
+            <li class="no">Agente AI automatico e risposte ai commenti</li>
+          </ul>
+          <button class="btn-plan btn-plan-current" id="pb-free" disabled>Piano base</button>
+        </div>
         <div class="plan-card" id="pc-starter">
           <div class="plan-name">Starter</div>
           <div class="plan-price">€50 <small>/mese</small></div>
@@ -1036,6 +1062,7 @@ function showCredits(n, unlimited) {
     pill.classList.toggle('low', !creditsUnlimited && userCredits < 3);
   }
   var n2 = document.getElementById('credit-num2'); if (n2) n2.textContent = creditsUnlimited ? 'illimitati' : userCredits;
+  renderMyPlan();
 }
 async function refreshCredits() {
   try {
@@ -1092,6 +1119,23 @@ function updatePlanUI() {
     fn.innerHTML = '<b>Settimana di prova gratuita</b> (ancora ' + userTrial.days_left + (userTrial.days_left === 1 ? ' giorno' : ' giorni') + '): ti restano <b>' + L.posts + ' immagini</b>, <b>' + L.reels + ' reel AI</b> da 10 secondi e <b>' + L.avatars + ' reel Avatar AI</b> (max 30 secondi). I reel con la tua voce sono inclusi.';
   }
   if (fn) fn.style.display = userPlan === 'free' ? 'block' : 'none';
+  renderMyPlan();
+}
+
+// riquadro "Il tuo piano" in Piano e fatturazione
+var PLAN_LABELS = { free: 'Gratuito', starter: 'Starter', pro: 'Pro', business: 'Business' };
+var PLAN_MONTHLY = { starter: 50, pro: 95, business: 200 };
+function renderMyPlan() {
+  var nm = document.getElementById('mp-name'); if (!nm) return;
+  nm.textContent = (PLAN_LABELS[userPlan] || 'Gratuito') + (userPlan === 'free' && userTrial ? ' · prova gratuita attiva' : '');
+  document.getElementById('mp-credits').innerHTML = 'Crediti disponibili: <b>' + (creditsUnlimited ? 'illimitati' : userCredits) + '</b>';
+  var ex = '';
+  if (PLAN_MONTHLY[userPlan]) ex = 'Crediti inclusi: <b>' + PLAN_MONTHLY[userPlan] + ' ogni mese</b>';
+  else if (userTrial) ex = 'Prova: ancora <b>' + userTrial.days_left + (userTrial.days_left === 1 ? ' giorno' : ' giorni') + '</b> · restano <b>' + userTrial.left.posts + ' immagini</b>, <b>' + userTrial.left.reels + ' reel AI</b>, <b>' + userTrial.left.avatars + ' reel Avatar AI</b>';
+  else ex = 'Inclusi: <b>2 post a settimana</b> con immagine · per altro usa i crediti';
+  document.getElementById('mp-extra').innerHTML = ex;
+  ['free', 'starter', 'pro', 'business'].forEach(function(k) { var c = document.getElementById('pc-' + k); if (c) c.classList.toggle('is-current', k === (userPlan || 'free')); });
+  var pf = document.getElementById('pb-free'); if (pf) pf.textContent = userPlan === 'free' ? '✓ Piano attuale' : 'Piano base';
 }
 
 var igVia = null;
