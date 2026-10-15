@@ -144,7 +144,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay', '/api/posts/permalink', '/api/reel/upload-url', '/api/reel/talking'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay', '/api/posts/permalink', '/api/reel/upload-url', '/api/reel/talking', '/api/avatar', '/api/avatar/delete', '/api/reel/avatar'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -1191,6 +1191,177 @@ Scrivi in italiano corretto e naturale. Rispondi SOLO con JSON:
   }
 }
 app.post('/api/reel/talking', (req, res) => runAsJob(req, res, talkingReelHandler));
+
+// ===== AVATAR: IL TUO VOLTO E LA TUA VOCE PER REEL CREATI DALL'AI =====
+// Il cliente carica una volta un video in cui parla. Da lì: volto (video di base) e timbro di voce (campione).
+// Poi l'AI inventa l'argomento, scrive il testo, lo legge con la sua voce, sincronizza le labbra e monta il reel.
+const TTS_MODEL = 'fal-ai/chatterbox/text-to-speech/multilingual';
+const LIPSYNC_MODEL = 'fal-ai/sync-lipsync/v2';
+
+async function getAvatar(userId) {
+  const { data: items } = await supabase.storage.from('post-images').list(`uploads/${userId}`, { limit: 100 });
+  const dir = (items || []).find(i => /^avatar-[0-9a-f-]{36}$/.test(i.name));
+  if (!dir) return null;
+  const base = `uploads/${userId}/${dir.name}`;
+  const pub = (f) => supabase.storage.from('post-images').getPublicUrl(`${base}/${f}`).data.publicUrl;
+  return { dir: base, video_url: pub('source.mp4'), voice_url: pub('voice.wav'), created_at: dir.created_at || dir.updated_at || null };
+}
+async function removeAvatar(userId) {
+  const av = await getAvatar(userId);
+  if (av) await supabase.storage.from('post-images').remove(['source.mp4', 'voice.wav', 'meta.json'].map(f => `${av.dir}/${f}`));
+}
+
+app.get('/api/avatar', async (req, res) => {
+  try {
+    const av = await getAvatar(req.query.userId);
+    res.json(av ? { exists: true, video_url: av.video_url, created_at: av.created_at } : { exists: false });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/avatar/delete', async (req, res) => {
+  try { await removeAvatar(req.body.userId); res.json({ success: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+async function avatarSetupHandler(req, res) {
+  const tmp = [];
+  try {
+    const { userId, path: vPath, consent } = req.body;
+    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'L\'avatar è incluso nei piani a pagamento' });
+    if (consent !== true) return res.status(400).json({ error: 'Serve la conferma del consenso all\'uso del volto e della voce' });
+    if (!vPath || !String(vPath).startsWith(`uploads/${userId}/videos/`)) return res.status(400).json({ error: 'Video non valido' });
+    const { data: blob, error: dlErr } = await supabase.storage.from('post-images').download(vPath);
+    if (dlErr || !blob) throw new Error('Video non trovato');
+    const inPath = talking.tmpFile(path.extname(vPath) || '.mp4'); tmp.push(inPath);
+    await fsp.writeFile(inPath, Buffer.from(await blob.arrayBuffer()));
+    const dur = await talking.probeDuration(inPath);
+    if (dur && dur < 10) return res.status(400).json({ error: 'Il video è troppo corto: servono almeno 10 secondi in cui parli guardando la camera' });
+    const source = await talking.renderReel(inPath, null, 60, { noAudio: true, crf: '20' }); tmp.push(source);
+    const voice = await talking.extractVoiceRef(inPath, dur > 14 ? 1.5 : 0.5); tmp.push(voice);
+    await removeAvatar(userId);
+    const base = `uploads/${userId}/avatar-${crypto.randomUUID()}`;
+    const up = async (name, file, type) => {
+      const { error } = await supabase.storage.from('post-images').upload(`${base}/${name}`, typeof file === 'string' ? await fsp.readFile(file) : file, { contentType: type, upsert: true });
+      if (error) throw new Error('Salvataggio avatar: ' + error.message);
+    };
+    await up('source.mp4', source, 'video/mp4');
+    await up('voice.wav', voice, 'audio/wav');
+    await up('meta.json', Buffer.from(JSON.stringify({ consent: true, consent_at: new Date().toISOString(), email: req.authEmail || null, seconds: Math.round(dur || 0) })), 'application/json');
+    supabase.storage.from('post-images').remove([vPath]).catch(() => {});
+    const av = await getAvatar(userId);
+    res.json({ success: true, video_url: av && av.video_url });
+  } catch (e) {
+    console.error('Avatar:', e.message);
+    res.status(500).json({ error: e.message });
+  } finally { for (const f of tmp) fsp.unlink(f).catch(() => {}); }
+}
+app.post('/api/avatar', (req, res) => runAsJob(req, res, avatarSetupHandler));
+
+// testo -> frasi da max ~280 caratteri (limite della sintesi vocale)
+function splitForTts(text) {
+  const sentences = String(text || '').replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*/g) || [];
+  const out = [];
+  let cur = '';
+  for (let s of sentences) {
+    s = s.trim(); if (!s) continue;
+    while (s.length > 280) { const cut = s.lastIndexOf(' ', 270); out.push(s.slice(0, cut > 0 ? cut : 270)); s = s.slice(cut > 0 ? cut + 1 : 270); }
+    if ((cur + ' ' + s).trim().length <= 280) cur = (cur + ' ' + s).trim(); else { if (cur) out.push(cur); cur = s; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+async function avatarReelHandler(req, res) {
+  const tmp = [];
+  try {
+    const { userId, topic, length, brand, description, sector, tone, style, socials, aiLabel } = req.body;
+    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'I reel con il tuo avatar sono inclusi nei piani a pagamento' });
+    const av = await getAvatar(userId);
+    if (!av) return res.status(400).json({ error: 'Prima crea il tuo avatar caricando un video in cui parli' });
+    if (!process.env.FAL_KEY) return res.status(400).json({ error: 'Chiave FAL_KEY mancante su Railway' });
+    const words = length === 'medium' ? '75-95 parole (circa 35 secondi)' : '45-60 parole (circa 20 secondi)';
+
+    // 1) l'AI inventa l'argomento e scrive il testo parlato
+    const ai = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 1500,
+      messages: [{ role: 'user', content: `Sei un social media manager e copywriter italiano. Scrivi il testo di un reel in cui il titolare di "${brand || 'un brand'}" parla guardando la camera, come se lo registrasse lui stesso con lo smartphone.
+Attività: ${description || ''}${sector ? ' — Settore: ' + sector : ''}. Tono: ${tone || 'amichevole'}. ${style ? 'Stile: ' + style + '.' : ''}
+${topic && String(topic).trim() ? 'Argomento richiesto: ' + String(topic).trim() : 'Scegli tu un argomento utile e specifico per il suo pubblico (un consiglio pratico, un errore comune da evitare, un dietro le quinte, un caso reale tipico, una domanda frequente dei clienti), che porti nuovi contatti.'}
+Regole del testo parlato: ${words}; italiano naturale e colloquiale in prima persona, frasi brevi; la prima frase è un gancio che ferma lo scroll; chiudi con un invito all'azione chiaro; niente emoji, niente hashtag, niente elenchi; scrivi i numeri in lettere; niente promesse esagerate.
+Rispondi SOLO con JSON: {"title":"titolo da mostrare a inizio video, massimo 6 parole","script":"testo parlato","text":"testo del post: hook nella prima riga, 2-3 frasi, call to action, qualche emoji","hashtags":["5-8 hashtag senza #"],"objective":"Notorietà | Fiducia | Interazione | Conversione","why":"perché questo reel serve alla strategia, in una frase"}` }]
+    });
+    let meta;
+    try { const t = ai.content.map(b => b.text || '').join(''); meta = JSON.parse((t.match(/\{[\s\S]*\}/) || [t])[0]); } catch (e) { throw new Error('Testo del reel non generato, riprova'); }
+    if (!meta.script) throw new Error('Testo del reel non generato, riprova');
+
+    // 2) il testo letto con la voce del cliente (frase per frase, stessa voce e stesso "seed")
+    const parts = splitForTts(meta.script);
+    const seed = Math.floor(Math.random() * 1e6) + 1;
+    const audioUrls = await Promise.all(parts.map(text => fal.subscribe(TTS_MODEL, {
+      input: { text, voice: av.voice_url, custom_audio_language: 'italian', exaggeration: 0.5, cfg_scale: 0.5, temperature: 0.7, seed }
+    }).then(r => r.data.audio.url)));
+    const partFiles = [];
+    for (const u of audioUrls) {
+      const f = talking.tmpFile('.wav'); tmp.push(f); partFiles.push(f);
+      const a = await axios.get(u, { responseType: 'arraybuffer', timeout: 60000 });
+      await fsp.writeFile(f, Buffer.from(a.data));
+    }
+    const speech = await talking.concatAudio(partFiles); tmp.push(speech);
+    const audioName = `posts/voice-${crypto.randomUUID()}.mp3`;
+    const upA = await supabase.storage.from('post-images').upload(audioName, await fsp.readFile(speech), { contentType: 'audio/mpeg', upsert: false });
+    if (upA.error) throw new Error('Salvataggio audio: ' + upA.error.message);
+    const audio_url = supabase.storage.from('post-images').getPublicUrl(audioName).data.publicUrl;
+
+    // 3) labbra sincronizzate sul video vero del cliente
+    const ls = await fal.subscribe(LIPSYNC_MODEL, { input: { video_url: av.video_url, audio_url, sync_mode: 'bounce' }, pollInterval: 5000 });
+    const lsFile = talking.tmpFile('.mp4'); tmp.push(lsFile);
+    const v = await axios.get(ls.data.video.url, { responseType: 'arraybuffer', timeout: 180000 });
+    await fsp.writeFile(lsFile, Buffer.from(v.data));
+
+    // 4) sottotitoli sincronizzati e titolo, poi salvataggio come post da approvare
+    const form = new FormData();
+    form.append('file', new Blob([await fsp.readFile(speech)], { type: 'audio/mpeg' }), 'audio.mp3');
+    form.append('model', 'whisper-1'); form.append('language', 'it');
+    form.append('response_format', 'verbose_json'); form.append('timestamp_granularities[]', 'word');
+    let wordsT = [];
+    try {
+      const tr = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: form });
+      const tj = await tr.json(); if (tr.ok) wordsT = tj.words || [];
+    } catch (e) { console.log('Sottotitoli non disponibili:', e.message); }
+    const acc = accentFromStyle(style);
+    const ass = talking.buildAss(talking.groupWords(wordsT), meta.title || '', acc === '#ffffff' ? '#6D4AFF' : acc);
+    const outPath = await talking.renderReel(lsFile, ass, 90); tmp.push(outPath);
+    const thumbPath = await talking.thumbnail(outPath, 1.0); tmp.push(thumbPath);
+    const videoName = `videos/${crypto.randomUUID()}.mp4`, thumbName = `posts/${crypto.randomUUID()}.jpg`;
+    const up1 = await supabase.storage.from('post-images').upload(videoName, await fsp.readFile(outPath), { contentType: 'video/mp4', upsert: false });
+    if (up1.error) throw new Error('Salvataggio video: ' + up1.error.message);
+    await supabase.storage.from('post-images').upload(thumbName, await fsp.readFile(thumbPath), { contentType: 'image/jpeg', upsert: false });
+    supabase.storage.from('post-images').remove([audioName]).catch(() => {});
+
+    const rawSocial = Array.isArray(socials) ? socials.join(' + ') : String(socials || 'Instagram');
+    let platforms = /tutti/i.test(rawSocial) ? ['Instagram', 'Facebook', 'TikTok'] : ['Instagram', 'Facebook', 'TikTok'].filter(n => new RegExp(n, 'i').test(rawSocial));
+    if (!platforms.length) platforms = ['Instagram'];
+    let caption = meta.text || meta.script;
+    if (aiLabel !== false) caption += '\n\n🤖 Video realizzato con l\'AI a partire dalla mia voce e dal mio volto.';
+    const post = {
+      type: 'reel', social: platforms[0], socials: platforms, talking: true, ai_avatar: true, person_photo: true,
+      text: caption, hashtags: Array.isArray(meta.hashtags) ? meta.hashtags.slice(0, 10) : [],
+      objective: meta.objective || 'Fiducia', why: meta.why || '', overlay_title: meta.title || '', transcript: meta.script,
+      video_url: supabase.storage.from('post-images').getPublicUrl(videoName).data.publicUrl,
+      image_url: supabase.storage.from('post-images').getPublicUrl(thumbName).data.publicUrl,
+      video_status: 'completed', day: 'Martedi', scheduled_time: '18:30', status: 'draft'
+    };
+    const { data: saved, error: sErr } = await supabase.from('strategies').insert({
+      user_id: userId, brand: brand || '', sector: sector || '', strategy: { summary: 'Reel con il tuo avatar' }, posts: [post], created_at: new Date().toISOString()
+    }).select('id').single();
+    if (sErr) throw new Error('Salvataggio post: ' + sErr.message);
+    res.json({ success: true, post, strategy_id: saved.id });
+  } catch (e) {
+    const msg = (e && (e.status || e.body)) ? falErrorMessage(e) : e.message;
+    console.error('Reel avatar:', msg);
+    res.status(500).json({ error: msg });
+  } finally { for (const f of tmp) fsp.unlink(f).catch(() => {}); }
+}
+app.post('/api/reel/avatar', (req, res) => runAsJob(req, res, avatarReelHandler));
+
 
 // ===== SCHEDULER =====
 cron.schedule('*/15 * * * *', async () => {

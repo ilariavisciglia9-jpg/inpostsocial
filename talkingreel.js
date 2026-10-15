@@ -99,23 +99,45 @@ function buildAss(chunks, title, accentHex) {
 }
 
 // video del cliente -> reel 1080x1920 con sottotitoli e titolo; la voce originale resta intatta
-async function renderReel(inputPath, assText, maxSeconds) {
-  const assPath = tmpFile('.ass');
+async function renderReel(inputPath, assText, maxSeconds, opts) {
+  opts = opts || {};
+  const assPath = assText ? tmpFile('.ass') : null;
   const out = tmpFile('.mp4');
-  fs.writeFileSync(assPath, assText, 'utf8');
+  if (assPath) fs.writeFileSync(assPath, assText, 'utf8');
   const fontsDir = path.join(__dirname, 'fonts');
   const esc = (p) => p.replace(/\\/g, '/').replace(/:/g, '\\:').replace(/'/g, "\\'");
+  const subs = assPath ? `,ass='${esc(assPath)}':fontsdir='${esc(fontsDir)}'` : '';
   const filter =
     '[0:v]split=2[bgsrc][fgsrc];' +
     '[bgsrc]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=30:2,eq=brightness=-0.08[bg];' +
     '[fgsrc]scale=1080:1920:force_original_aspect_ratio=decrease[fg];' +
-    `[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1,ass='${esc(assPath)}':fontsdir='${esc(fontsDir)}'[v]`;
+    `[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1${subs}[v]`;
+  const audioArgs = opts.noAudio ? ['-an'] : ['-map', '0:a?', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000'];
   try {
-    await run(['-i', inputPath, '-t', String(maxSeconds || 90), '-filter_complex', filter, '-map', '[v]', '-map', '0:a?',
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-pix_fmt', 'yuv420p', '-r', '30',
-      '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', out], 600000);
-  } finally { try { fs.unlinkSync(assPath); } catch (e) {} }
+    await run(['-i', inputPath, '-t', String(maxSeconds || 90), '-filter_complex', filter, '-map', '[v]',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', opts.crf || '21', '-pix_fmt', 'yuv420p', '-r', '30',
+      ...audioArgs, '-movflags', '+faststart', out], 600000);
+  } finally { if (assPath) { try { fs.unlinkSync(assPath); } catch (e) {} } }
   return out;
 }
 
-module.exports = { extractAudio, thumbnail, groupWords, buildAss, renderReel, probeDuration, tmpFile };
+// campione della voce (12 secondi puliti) per clonare il timbro
+async function extractVoiceRef(videoPath, startSec) {
+  const out = tmpFile('.wav');
+  await run(['-ss', String(startSec || 1), '-i', videoPath, '-t', '12', '-vn', '-ac', '1', '-ar', '24000', '-af', 'loudnorm=I=-18:TP=-2', out]);
+  return out;
+}
+
+// unisce più pezzi audio (frasi) in un unico file, con una piccola pausa tra le frasi
+async function concatAudio(files) {
+  const out = tmpFile('.mp3');
+  if (files.length === 1) { await run(['-i', files[0], '-ac', '1', '-ar', '44100', '-b:a', '160k', out]); return out; }
+  const inputs = [];
+  let chain = '';
+  files.forEach((f, i) => { inputs.push('-i', f); chain += `[${i}:a]aresample=44100,aformat=channel_layouts=mono,apad=pad_dur=0.18[a${i}];`; });
+  chain += files.map((_, i) => `[a${i}]`).join('') + `concat=n=${files.length}:v=0:a=1,loudnorm=I=-16:TP=-1.5[out]`;
+  await run([...inputs, '-filter_complex', chain, '-map', '[out]', '-ac', '1', '-b:a', '160k', out]);
+  return out;
+}
+
+module.exports = { extractAudio, thumbnail, groupWords, buildAss, renderReel, probeDuration, tmpFile, extractVoiceRef, concatAudio };

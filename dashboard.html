@@ -263,6 +263,15 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .pBtn-dark:hover{background:#2A2A33}
 .pv-ok{font-size:0.82rem;color:var(--blue);background:var(--blue-bg);border-radius:8px;padding:0.5rem 0.7rem}
 /* ===== REEL CON LA TUA VOCE ===== */
+.talk-tabs{margin:-0.3rem 0 1rem}
+.av-consent{margin-top:0.7rem;font-size:0.8rem !important;align-items:flex-start !important;line-height:1.45}
+.av-consent input{margin-top:2px;flex-shrink:0}
+.av-head{display:flex;gap:1rem;align-items:flex-start}
+.av-head video{width:110px;height:196px;object-fit:cover;border-radius:10px;background:#111;flex-shrink:0}
+.av-head b{font-size:0.92rem}
+.av-actions{display:flex;gap:0.5rem;flex-wrap:wrap}
+.av-actions .pBtn{flex:0 0 auto}
+.talk-select{border:1px solid var(--border-strong);border-radius:8px;padding:0.6rem 0.6rem;font:inherit;font-size:0.86rem;background:#fff}
 .talk-row{display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center}
 .talk-row input[type=text]{flex:1;min-width:200px;padding:0.6rem 0.8rem;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-size:0.88rem}
 label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;border-radius:8px;background:#fff;border:1px solid var(--border-strong);font-size:0.84rem;font-weight:600;color:var(--dark2);cursor:pointer;max-width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -578,12 +587,46 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
       </div>
       <!-- REEL CON LA TUA VOCE -->
       <div class="card-box" id="talk-box">
-        <h3>Reel con la tua voce</h3>
-        <p class="ph-hint" style="margin-top:-0.6rem">Carica un video in cui parli (meglio in verticale, da 5 a 90 secondi, massimo 50 MB). <b>Video e voce restano i tuoi, senza modifiche</b>: aggiungiamo il formato reel, i sottotitoli in italiano sincronizzati, un titolo iniziale e scriviamo il testo del post.</p>
+        <h3>Reel con il tuo volto e la tua voce</h3>
+        <div class="ag-tabs talk-tabs">
+          <button type="button" class="ag-tab active" data-talktab="avatar">Avatar AI: l'AI crea il reel per te</button>
+          <button type="button" class="ag-tab" data-talktab="own">Usa un mio video così com'è</button>
+        </div>
+
+        <div class="talk-panel" id="talkp-avatar">
+          <div id="av-setup">
+            <p class="ph-hint">Carica <b>una sola volta</b> un video di 20-60 secondi in cui parli guardando la camera: viso frontale e ben illuminato, ambiente silenzioso, senza musica, inquadratura come la vuoi nei reel. Da qui l'AI impara il tuo volto e il timbro della tua voce; poi inventa l'argomento, scrive il testo, lo dice con la tua voce e monta il reel.</p>
+            <div class="talk-row">
+              <label class="ph-add talk-pick"><input type="file" id="av-input" accept="video/mp4,video/quicktime,video/webm,video/*" hidden><span id="av-name">Scegli il video</span></label>
+              <button type="button" class="btn-gen" id="av-save" style="max-width:240px">Crea il mio avatar</button>
+            </div>
+            <label class="media-opt av-consent"><input type="checkbox" id="av-consent"> Confermo che nel video ci sono io (o una persona che mi ha dato il consenso scritto) e autorizzo l'uso del volto e della voce per creare video con l'AI. Posso eliminare l'avatar in qualsiasi momento.</label>
+          </div>
+          <div id="av-ready" hidden>
+            <div class="av-head">
+              <video id="av-video" muted playsinline loop preload="metadata"></video>
+              <div>
+                <b>Il tuo avatar è pronto</b>
+                <p class="ph-hint">L'AI sceglie l'argomento (o usa quello che scrivi), scrive il testo e lo pronuncia con la tua voce sul tuo video. Sottotitoli e titolo vengono aggiunti in automatico.</p>
+                <div class="av-actions"><button type="button" class="pBtn" id="av-replace">Sostituisci video</button><button type="button" class="pBtn pBtn-delete" id="av-delete">Elimina avatar</button></div>
+              </div>
+            </div>
+            <div class="talk-row" style="margin-top:0.9rem">
+              <input type="text" id="av-topic" maxlength="200" placeholder="Argomento (facoltativo: se vuoto lo sceglie l'AI)">
+              <select id="av-length" class="talk-select"><option value="short">Breve (~20 s)</option><option value="medium">Medio (~35 s)</option></select>
+              <button type="button" class="btn-gen" id="av-go" style="max-width:200px">Crea il reel</button>
+            </div>
+            <label class="media-opt av-consent"><input type="checkbox" id="av-label" checked> Scrivi nel testo del post che il video è realizzato con l'AI (consigliato: Instagram, Facebook e TikTok chiedono di segnalare i video realistici creati con l'AI)</label>
+          </div>
+        </div>
+
+        <div class="talk-panel" id="talkp-own" hidden>
+        <p class="ph-hint">Carica un video in cui parli (meglio in verticale, da 5 a 90 secondi, massimo 50 MB). <b>Video e voce restano i tuoi, senza modifiche</b>: aggiungiamo il formato reel, i sottotitoli in italiano sincronizzati, un titolo iniziale e scriviamo il testo del post.</p>
         <div class="talk-row">
           <label class="ph-add talk-pick"><input type="file" id="talk-input" accept="video/mp4,video/quicktime,video/webm,video/*" hidden><span id="talk-name">Scegli il video</span></label>
           <input type="text" id="talk-title" maxlength="60" placeholder="Titolo iniziale (facoltativo: se vuoto lo scrive l'AI)">
           <button type="button" class="btn-gen" id="talk-go" style="max-width:220px">Crea il reel</button>
+        </div>
         </div>
       </div>
 
@@ -766,6 +809,7 @@ async function init() {
   await loadUser();
   await loadPosts();
   await loadSocialConnections();
+  loadAvatar();
 }
 
 function bindEvents() {
@@ -1627,6 +1671,106 @@ async function createTalkingReel() {
   hideLoading(); btn.disabled = false;
 }
 
+// ===== AVATAR AI =====
+var avFile = null, avatarInfo = null;
+async function uploadVideoFile(file) {
+  if (file.size > 50 * 1024 * 1024) throw new Error('Il video supera i 50 MB: accorcialo o esportalo in qualità più bassa');
+  var ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
+  var r1 = await fetch('/api/reel/upload-url', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ext: ext }) });
+  var u = await readJson(r1);
+  if (!r1.ok || !u.token) throw new Error(u.error || 'Caricamento non disponibile');
+  var up = await sb.storage.from('post-images').uploadToSignedUrl(u.path, u.token, file, { contentType: file.type || 'video/mp4' });
+  if (up.error) throw new Error('Caricamento: ' + up.error.message);
+  return u.path;
+}
+async function waitJob(res, label) {
+  if (!res.job_id) return res;
+  var t0 = Date.now(), lt = document.getElementById('loading-text');
+  while (true) {
+    await new Promise(function(r) { setTimeout(r, 5000); });
+    var sr = await fetch('/api/generate/status?id=' + encodeURIComponent(res.job_id));
+    var out = await readJson(sr);
+    if (out.done || !sr.ok) return out;
+    if (lt) lt.textContent = label + ' (' + Math.round((Date.now() - t0) / 1000) + 's)';
+    if (Date.now() - t0 > 20 * 60000) throw new Error('Sta impiegando troppo, riprova');
+  }
+}
+function showAvatar(info) {
+  avatarInfo = info && info.exists ? info : null;
+  document.getElementById('av-setup').hidden = !!avatarInfo;
+  document.getElementById('av-ready').hidden = !avatarInfo;
+  var v = document.getElementById('av-video');
+  if (avatarInfo && v.getAttribute('src') !== avatarInfo.video_url) { v.src = avatarInfo.video_url; v.play().catch(function() {}); }
+}
+async function loadAvatar() {
+  try { var r = await fetch('/api/avatar'); var j = await readJson(r); if (r.ok) showAvatar(j); } catch (e) {}
+}
+async function saveAvatar() {
+  if (!avFile) return toast('Scegli prima il video', 'error');
+  if (!document.getElementById('av-consent').checked) return toast('Per creare l\'avatar serve la conferma del consenso', 'error');
+  var d = await videoDuration(avFile);
+  if (d && d < 10) return toast('Il video è troppo corto: servono almeno 10 secondi in cui parli', 'error');
+  showLoading('Carico il video…');
+  try {
+    var p = await uploadVideoFile(avFile);
+    document.getElementById('loading-text').textContent = 'Preparo il tuo avatar…';
+    var r = await fetch('/api/avatar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: p, consent: true }) });
+    var res = await waitJob(await readJson(r), 'Preparo il tuo avatar…');
+    if (!res.success) throw new Error(res.error || 'Avatar non creato');
+    avFile = null; document.getElementById('av-input').value = ''; document.getElementById('av-name').textContent = 'Scegli il video';
+    await loadAvatar();
+    toast('Avatar pronto! Ora puoi creare i reel.');
+  } catch (e) { toast('Errore: ' + e.message, 'error'); }
+  hideLoading();
+}
+async function createAvatarReel() {
+  showLoading('L\'AI sta scrivendo il testo…');
+  var btn = document.getElementById('av-go'); btn.disabled = true;
+  try {
+    var r = await fetch('/api/reel/avatar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+      topic: document.getElementById('av-topic').value.trim(), length: document.getElementById('av-length').value,
+      brand: document.getElementById('g-brand').value.trim(), description: document.getElementById('g-desc').value.trim(),
+      sector: document.getElementById('g-sector').value, tone: document.getElementById('g-tone').value,
+      style: document.getElementById('g-style').value.trim(), socials: document.getElementById('g-social').value,
+      aiLabel: document.getElementById('av-label').checked
+    }) });
+    var res = await waitJob(await readJson(r), 'Scrivo il testo, creo la tua voce e sincronizzo il video… (3-6 minuti)');
+    if (!res.success) throw new Error(res.error || 'Reel non creato');
+    var np = withUid(Object.assign({}, res.post, { _sid: res.strategy_id }));
+    posts.unshift(np); genUids.unshift(np._uid);
+    document.getElementById('gen-result').style.display = 'block';
+    rerenderPosts();
+    document.getElementById('av-topic').value = '';
+    toast('Reel pronto! Guardalo nell\'anteprima prima di approvarlo.');
+    setTimeout(function() { var el = document.querySelector('#gen-posts .post-item'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
+  } catch (e) { toast('Errore: ' + e.message, 'error'); }
+  hideLoading(); btn.disabled = false;
+}
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'av-input') {
+    avFile = e.target.files && e.target.files[0] || null;
+    document.getElementById('av-name').textContent = avFile ? avFile.name : 'Scegli il video';
+    if (avFile && avatarInfo) { document.getElementById('av-setup').hidden = false; }
+  }
+});
+document.addEventListener('click', function(e) {
+  var t = e.target;
+  var tab = t.closest && t.closest('[data-talktab]');
+  if (tab) {
+    document.querySelectorAll('[data-talktab]').forEach(function(b) { b.classList.toggle('active', b === tab); });
+    document.getElementById('talkp-avatar').hidden = tab.getAttribute('data-talktab') !== 'avatar';
+    document.getElementById('talkp-own').hidden = tab.getAttribute('data-talktab') !== 'own';
+    return;
+  }
+  if (t.id === 'av-save') saveAvatar();
+  else if (t.id === 'av-go') createAvatarReel();
+  else if (t.id === 'av-replace') { document.getElementById('av-setup').hidden = false; document.getElementById('av-input').click(); }
+  else if (t.id === 'av-delete') {
+    if (!confirm('Eliminare il tuo avatar (video e campione di voce)? I reel già creati restano.')) return;
+    fetch('/api/avatar/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' }).then(function() { showAvatar(null); toast('Avatar eliminato'); });
+  }
+});
+
 // ===== FOTO DEL BRAND =====
 var brandPhotos = []; // { url, thumb, kind: work | place | person }
 try {
@@ -1928,7 +2072,7 @@ function bindAgentEvents() {
 }
 
 function agShowTab(name) {
-  document.querySelectorAll('.ag-tab').forEach(function(t) { t.classList.toggle('active', t.getAttribute('data-agtab') === name); });
+  document.querySelectorAll('#ag-tabs .ag-tab').forEach(function(t) { t.classList.toggle('active', t.getAttribute('data-agtab') === name); });
   document.querySelectorAll('.ag-panel').forEach(function(p) { p.classList.toggle('active', p.id === 'agp-' + name); });
 }
 
