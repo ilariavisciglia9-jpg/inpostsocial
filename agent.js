@@ -360,7 +360,7 @@ Rispondi SOLO con JSON valido:
                 } else {
                   // VIDEO: generazione Reel con Seedance (fal.ai) a partire dall'immagine del post
                   const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
-                    input: { prompt: post.video_prompt || post.caption.slice(0, 300), image_url: imageUrl, resolution: '720p', duration: '5' }
+                    input: { prompt: post.video_prompt || post.caption.slice(0, 300), image_url: imageUrl, resolution: process.env.VIDEO_RESOLUTION === '720p' ? '720p' : '480p', duration: '5', aspect_ratio: '9:16', generate_audio: false }
                   });
                   upd.video_task_id = request_id;
                   upd.media_status = 'video_processing';

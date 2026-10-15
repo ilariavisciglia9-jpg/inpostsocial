@@ -76,6 +76,8 @@ function falErrorMessage(e) {
   if (st === 402 || /balance|credit|billing/i.test(detail)) return 'Credito fal.ai esaurito: ricaricalo su fal.ai → Billing';
   return 'Video: ' + detail;
 }
+// risoluzione dei video AI: 480p costa meno della metà di 720p (su Railway VIDEO_RESOLUTION=720p per tornare alla qualità più alta)
+const VIDEO_RES = process.env.VIDEO_RESOLUTION === '720p' ? '720p' : '480p';
 // durata del video: Seedance 2.0 fast accetta da 4 a 15 secondi
 function videoSeconds(v) { const n = parseInt(v, 10); return [5, 8, 10, 15].includes(n) ? n : 5; }
 async function startAdVideo(imageUrl, motion, brand, sector, style, seconds, person) {
@@ -84,7 +86,7 @@ async function startAdVideo(imageUrl, motion, brand, sector, style, seconds, per
   if (person) motion = `The real person in the photo must keep exactly the same face, identity, hairstyle, clothes and body: no changes, no morphing. Only natural, very subtle movement (soft breathing, a slight smile, a small head turn) and a slow cinematic camera push-in; the background can have gentle motion and light. The person does not speak. ${motion || ''}`;
   const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
     // niente audio generato: la voce AI non parla bene l'italiano. La musica si aggiunge su Instagram.
-    input: { prompt: adVideoPrompt(motion, brand, sector, style) + (sec > 5 ? ` The video lasts ${sec} seconds: develop the action in ${sec >= 10 ? 'three' : 'two'} smooth consecutive moments, with continuous camera movement.` : ''), image_url: imageUrl, resolution: '720p', duration: String(sec), aspect_ratio: '9:16', generate_audio: false }
+    input: { prompt: adVideoPrompt(motion, brand, sector, style) + (sec > 5 ? ` The video lasts ${sec} seconds: develop the action in ${sec >= 10 ? 'three' : 'two'} smooth consecutive moments, with continuous camera movement.` : ''), image_url: imageUrl, resolution: VIDEO_RES, duration: String(sec), aspect_ratio: '9:16', generate_audio: false }
   });
   videoJobs.set(request_id, SEEDANCE_MODEL);
   return request_id;
