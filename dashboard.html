@@ -262,6 +262,10 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .pBtn-dark{background:var(--dark);border-color:var(--dark);color:#fff}
 .pBtn-dark:hover{background:#2A2A33}
 .pv-ok{font-size:0.82rem;color:var(--blue);background:var(--blue-bg);border-radius:8px;padding:0.5rem 0.7rem}
+/* ===== REEL CON LA TUA VOCE ===== */
+.talk-row{display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center}
+.talk-row input[type=text]{flex:1;min-width:200px;padding:0.6rem 0.8rem;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-size:0.88rem}
+label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;border-radius:8px;background:#fff;border:1px solid var(--border-strong);font-size:0.84rem;font-weight:600;color:var(--dark2);cursor:pointer;max-width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 /* ===== FOTO DEL BRAND ===== */
 .ph-cell{display:flex;flex-direction:column;gap:0.3rem;width:110px}
 .ph-cell .ph-item{width:110px;height:110px}
@@ -572,6 +576,17 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
         <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Prova gratuita: puoi generare <b>2 post a settimana</b> con immagini AI. I video Reel sono inclusi nei piani a pagamento.</p>
         <button class="btn-gen" id="btn-gen">Genera strategia e post AI</button>
       </div>
+      <!-- REEL CON LA TUA VOCE -->
+      <div class="card-box" id="talk-box">
+        <h3>Reel con la tua voce</h3>
+        <p class="ph-hint" style="margin-top:-0.6rem">Carica un video in cui parli (meglio in verticale, da 5 a 90 secondi, massimo 50 MB). <b>Video e voce restano i tuoi, senza modifiche</b>: aggiungiamo il formato reel, i sottotitoli in italiano sincronizzati, un titolo iniziale e scriviamo il testo del post.</p>
+        <div class="talk-row">
+          <label class="ph-add talk-pick"><input type="file" id="talk-input" accept="video/mp4,video/quicktime,video/webm,video/*" hidden><span id="talk-name">Scegli il video</span></label>
+          <input type="text" id="talk-title" maxlength="60" placeholder="Titolo iniziale (facoltativo: se vuoto lo scrive l'AI)">
+          <button type="button" class="btn-gen" id="talk-go" style="max-width:220px">Crea il reel</button>
+        </div>
+      </div>
+
       <div id="gen-result" style="display:none">
         <div class="section-header"><div class="section-title">La tua strategia</div></div>
         <div id="strategy-output"></div>
@@ -1151,8 +1166,8 @@ function buildPostCard(post) {
   var noImage = !post.image_url && !(post.carousel_images && post.carousel_images.length) && !post.video_url;
   var editable = (st === 'draft' || !post.status);
   var imgBtn = (noImage && editable) ? '<button class="pBtn pBtn-img">Crea immagine' + (post.type === 'reel' ? ' e video' : '') + '</button>'
-    : (post.type === 'reel' && post.image_url && !post.video_url && !post.video_task_id && editable) ? '<button class="pBtn pBtn-img pBtn-vid">Crea video</button>'
-    : (post.type === 'reel' && post.image_url && post.video_url && editable) ? '<button class="pBtn pBtn-img pBtn-vid" data-redo="1">Rifai il video (nuova versione)</button>' : '';
+    : (post.type === 'reel' && !post.talking && post.image_url && !post.video_url && !post.video_task_id && editable) ? '<button class="pBtn pBtn-img pBtn-vid">Crea video</button>'
+    : (post.type === 'reel' && !post.talking && post.image_url && post.video_url && editable) ? '<button class="pBtn pBtn-img pBtn-vid" data-redo="1">Rifai il video (nuova versione)</button>' : '';
   var actions;
   if (st === 'approved' || st === 'failed') {
     var pubBtn = '<button class="pBtn pBtn-pubnow">Pubblica ora</button>';
@@ -1175,7 +1190,7 @@ function buildPostCard(post) {
   return '<div class="post-item pv-card" data-idx="' + post._uid + '">' + preview +
     '<div class="pv-side">' +
       '<span class="status ' + stClass + '">' + stLabel + '</span>' +
-      '<div class="pv-meta"><b>' + escH(social) + '</b> · ' + typeLabel + (post.person_photo ? ' · con la tua foto' : '') + '</div>' +
+      '<div class="pv-meta"><b>' + escH(social) + '</b> · ' + typeLabel + (post.talking ? ' · con la tua voce' : post.person_photo ? ' · con la tua foto' : '') + '</div>' +
       (post.objective && !/^\.\.\.$/.test(post.objective) ? '<div class="pv-why"><span class="pv-obj">' + escH(post.objective) + '</span>' + (post.why && post.why !== '...' ? escH(post.why) : '') + '</div>' : '') +
       (when ? '<div class="pv-when">' + escH(when) + '</div>' : '') +
       actions +
@@ -1546,6 +1561,71 @@ function saveGenForm() {
 document.addEventListener('input', function(e) { if (e.target && e.target.closest && e.target.closest('#page-genera')) saveGenForm(); });
 document.addEventListener('change', function(e) { if (e.target && e.target.closest && e.target.closest('#page-genera')) saveGenForm(); });
 restoreGenForm();
+
+// ===== REEL CON LA TUA VOCE =====
+var talkFile = null;
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'talk-input') {
+    talkFile = e.target.files && e.target.files[0] || null;
+    document.getElementById('talk-name').textContent = talkFile ? talkFile.name : 'Scegli il video';
+  }
+});
+document.addEventListener('click', function(e) { if (e.target && e.target.id === 'talk-go') createTalkingReel(); });
+function videoDuration(file) {
+  return new Promise(function(resolve) {
+    var v = document.createElement('video'); v.preload = 'metadata';
+    v.onloadedmetadata = function() { URL.revokeObjectURL(v.src); resolve(v.duration || 0); };
+    v.onerror = function() { resolve(0); };
+    v.src = URL.createObjectURL(file);
+  });
+}
+async function createTalkingReel() {
+  if (!talkFile) return toast('Scegli prima il video', 'error');
+  if (talkFile.size > 50 * 1024 * 1024) return toast('Il video supera i 50 MB: accorcialo o esportalo in qualità più bassa', 'error');
+  var d = await videoDuration(talkFile);
+  if (d && d > 92) toast('Il video dura ' + Math.round(d) + ' secondi: useremo i primi 90', 'error');
+  var btn = document.getElementById('talk-go'); btn.disabled = true;
+  showLoading('Carico il video…');
+  try {
+    var ext = (talkFile.name.split('.').pop() || 'mp4').toLowerCase();
+    var r1 = await fetch('/api/reel/upload-url', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ext: ext }) });
+    var u = await readJson(r1);
+    if (!r1.ok || !u.token) throw new Error(u.error || 'Caricamento non disponibile');
+    var up = await sb.storage.from('post-images').uploadToSignedUrl(u.path, u.token, talkFile, { contentType: talkFile.type || 'video/mp4' });
+    if (up.error) throw new Error('Caricamento: ' + up.error.message);
+    var lt = document.getElementById('loading-text');
+    if (lt) lt.textContent = 'Trascrivo la tua voce e monto il reel… (1-3 minuti)';
+    var gf = {}; try { gf = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+    var r2 = await fetch('/api/reel/talking', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+      path: u.path, title: document.getElementById('talk-title').value.trim(),
+      brand: document.getElementById('g-brand').value.trim() || gf['g-brand'] || '', sector: document.getElementById('g-sector').value,
+      style: document.getElementById('g-style').value.trim(), tone: document.getElementById('g-tone').value, socials: document.getElementById('g-social').value
+    }) });
+    var res = await readJson(r2);
+    if (res.job_id) {
+      var t0 = Date.now();
+      while (true) {
+        await new Promise(function(r) { setTimeout(r, 4000); });
+        var sr = await fetch('/api/generate/status?id=' + encodeURIComponent(res.job_id));
+        res = await readJson(sr);
+        if (res.done || !sr.ok) break;
+        if (lt) lt.textContent = 'Trascrivo la tua voce e monto il reel… (' + Math.round((Date.now() - t0) / 1000) + 's)';
+        if (Date.now() - t0 > 12 * 60000) throw new Error('Sta impiegando troppo, riprova');
+      }
+    }
+    if (!res.success) throw new Error(res.error || 'Reel non creato');
+    var np = withUid(Object.assign({}, res.post, { _sid: res.strategy_id }));
+    posts.unshift(np); genUids.unshift(np._uid);
+    document.getElementById('gen-result').style.display = 'block';
+    rerenderPosts();
+    talkFile = null; document.getElementById('talk-input').value = ''; document.getElementById('talk-name').textContent = 'Scegli il video'; document.getElementById('talk-title').value = '';
+    toast('Reel pronto! Controllalo nell\'anteprima, modifica il testo se vuoi e approvalo.');
+    setTimeout(function() { var el = document.querySelector('#gen-posts .post-item'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
+  } catch (e) {
+    toast('Errore: ' + e.message, 'error');
+  }
+  hideLoading(); btn.disabled = false;
+}
 
 // ===== FOTO DEL BRAND =====
 var brandPhotos = []; // { url, thumb, kind: work | place | person }

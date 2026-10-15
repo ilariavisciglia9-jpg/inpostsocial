@@ -5,6 +5,8 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
 const { addTextOverlay } = require('./overlay');
 const sharp = require('sharp');
+const talking = require('./talkingreel');
+const fsp = require('fs').promises;
 const Stripe = require('stripe');
 const axios = require('axios');
 const cron = require('node-cron');
@@ -142,7 +144,7 @@ function freeWeekKey() {
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
 const PROTECTED_API = ['/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
-  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay', '/api/posts/permalink'];
+  '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/image/overlay', '/api/posts/permalink', '/api/reel/upload-url', '/api/reel/talking'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
@@ -160,7 +162,7 @@ app.use(async (req, res, next) => {
 });
 // il codice del server e i file di configurazione non devono essere scaricabili dal sito
 app.use((req, res, next) => {
-  if (/^\/(server\.js|agent\.js|overlay\.js|package(-lock)?\.json|schema.*\.sql|env\.example|download|.*\.md)$/i.test(req.path) || req.path.startsWith('/node_modules')) {
+  if (/^\/(server\.js|agent\.js|overlay\.js|talkingreel\.js|package(-lock)?\.json|schema.*\.sql|env\.example|download|.*\.md)$/i.test(req.path) || req.path.startsWith('/node_modules')) {
     return res.status(404).end();
   }
   next();
@@ -444,6 +446,17 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
 // La generazione con immagini e video può durare minuti: la facciamo "in background"
 // e il browser chiede ogni pochi secondi se è pronta (così nessun timeout interrompe la richiesta).
 const genJobs = new Map();
+function runAsJob(req, res, handler) {
+  const id = crypto.randomUUID();
+  const job = { userId: req.body.userId, done: false, code: 200, body: null, started: Date.now() };
+  genJobs.set(id, job);
+  const fake = {
+    status(c) { job.code = c; return fake; },
+    json(b) { job.body = b; job.done = true; return fake; }
+  };
+  Promise.resolve().then(() => handler(req, fake)).catch(e => { job.code = 500; job.body = { error: e.message }; job.done = true; });
+  res.json({ job_id: id });
+}
 app.post('/api/generate', (req, res) => {
   if (req.query.async !== '1') return generateHandler(req, res);
   const id = crypto.randomUUID();
@@ -1075,6 +1088,109 @@ app.get('/api/posts/permalink', async (req, res) => {
     res.json({ permalink: null, error: 'Link non disponibile: ' + ((e.response && e.response.data && e.response.data.error && e.response.data.error.message) || e.message) });
   }
 });
+
+// ===== REEL CON LA VOCE ORIGINALE =====
+async function userIsPaid(userId, authEmail) {
+  if (isOwnerEmail(authEmail)) return true;
+  const { data } = await supabase.from('users').select('plan,email').eq('id', userId).single();
+  return !!data && (isOwnerEmail(data.email) || ['starter', 'pro', 'business'].includes(data.plan));
+}
+
+// 1) il browser chiede dove caricare il video (link firmato, il file non passa dal nostro server)
+app.post('/api/reel/upload-url', async (req, res) => {
+  try {
+    const { userId, ext } = req.body;
+    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'I reel con la tua voce sono inclusi nei piani a pagamento' });
+    const e = ['mp4', 'mov', 'webm', 'm4v'].includes(String(ext || '').toLowerCase()) ? String(ext).toLowerCase() : 'mp4';
+    const filePath = `uploads/${userId}/videos/${crypto.randomUUID()}.${e}`;
+    const { data, error } = await supabase.storage.from('post-images').createSignedUploadUrl(filePath);
+    if (error) throw new Error(error.message);
+    res.json({ path: filePath, token: data.token });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 2) sottotitoli + titolo + testo del post, la voce resta quella vera
+async function talkingReelHandler(req, res) {
+  const tmp = [];
+  try {
+    const { userId, path: vPath, brand, sector, style, tone, socials, title: wantedTitle } = req.body;
+    if (!(await userIsPaid(userId, req.authEmail))) return res.status(403).json({ error: 'I reel con la tua voce sono inclusi nei piani a pagamento' });
+    if (!vPath || !String(vPath).startsWith(`uploads/${userId}/videos/`)) return res.status(400).json({ error: 'Video non valido' });
+    if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'Chiave OpenAI mancante: serve per trascrivere la voce' });
+
+    const { data: blob, error: dlErr } = await supabase.storage.from('post-images').download(vPath);
+    if (dlErr || !blob) throw new Error('Video non trovato: ' + (dlErr && dlErr.message));
+    const inPath = talking.tmpFile(path.extname(vPath) || '.mp4'); tmp.push(inPath);
+    await fsp.writeFile(inPath, Buffer.from(await blob.arrayBuffer()));
+    const dur = await talking.probeDuration(inPath);
+    if (dur && dur < 3) return res.status(400).json({ error: 'Il video è troppo corto (minimo 3 secondi)' });
+
+    // trascrizione con i tempi di ogni parola (per i sottotitoli sincronizzati)
+    const audio = await talking.extractAudio(inPath); tmp.push(audio);
+    const form = new FormData();
+    form.append('file', new Blob([await fsp.readFile(audio)], { type: 'audio/mpeg' }), 'audio.mp3');
+    form.append('model', 'whisper-1');
+    form.append('language', 'it');
+    form.append('response_format', 'verbose_json');
+    form.append('timestamp_granularities[]', 'word');
+    form.append('timestamp_granularities[]', 'segment');
+    const tr = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: form });
+    const tj = await tr.json();
+    if (!tr.ok) throw new Error('Trascrizione: ' + ((tj.error && tj.error.message) || tr.status));
+    const transcript = String(tj.text || '').trim();
+    const words = (tj.words || []).filter(w => w.start < 90);
+
+    // titolo, testo del post e hashtag scritti dall'AI partendo da quello che hai detto
+    const rawSocial = Array.isArray(socials) ? socials.join(' + ') : String(socials || 'Instagram');
+    let platforms = /tutti/i.test(rawSocial) ? ['Instagram', 'Facebook', 'TikTok'] : ['Instagram', 'Facebook', 'TikTok'].filter(n => new RegExp(n, 'i').test(rawSocial));
+    if (!platforms.length) platforms = ['Instagram'];
+    const ai = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 1200,
+      messages: [{ role: 'user', content: `Sei un social media manager italiano. Questo è il parlato di un reel in cui il titolare di "${brand || 'un brand'}"${sector ? ' (' + sector + ')' : ''} parla in camera:
+<<<${transcript.slice(0, 4000)}>>>
+Tono: ${tone || 'professionale'}. ${style ? 'Stile: ' + style + '.' : ''}
+Scrivi in italiano corretto e naturale. Rispondi SOLO con JSON:
+{"title":"titolo d'impatto da mostrare all'inizio del video, massimo 6 parole, senza emoji","text":"testo del post: prima riga hook che ferma lo scroll, poi 2-4 frasi che riprendono il messaggio, chiusura con call to action; qualche emoji","hashtags":["5-8 hashtag pertinenti senza #"],"objective":"Notorietà | Fiducia | Interazione | Conversione","why":"perché questo reel serve alla strategia, in una frase"}` }]
+    });
+    let meta = {};
+    try { const t = ai.content.map(b => b.text || '').join(''); meta = JSON.parse((t.match(/\{[\s\S]*\}/) || [t])[0]); } catch (e) { meta = {}; }
+    const title = (wantedTitle && String(wantedTitle).trim()) || meta.title || '';
+
+    // montaggio: 9:16, sottotitoli, titolo; voce originale intatta
+    const acc = accentFromStyle(style);
+    const ass = talking.buildAss(talking.groupWords(words), title, acc === '#ffffff' ? '#6D4AFF' : acc);
+    const outPath = await talking.renderReel(inPath, ass, 90); tmp.push(outPath);
+    const thumbPath = await talking.thumbnail(outPath, Math.min(1.5, Math.max(0.3, (dur || 2) / 3))); tmp.push(thumbPath);
+    const videoName = `videos/${crypto.randomUUID()}.mp4`, thumbName = `posts/${crypto.randomUUID()}.jpg`;
+    const up1 = await supabase.storage.from('post-images').upload(videoName, await fsp.readFile(outPath), { contentType: 'video/mp4', upsert: false });
+    if (up1.error) throw new Error('Salvataggio video: ' + up1.error.message + ' (se il video finito supera i 50 MB prova con un video più corto)');
+    const up2 = await supabase.storage.from('post-images').upload(thumbName, await fsp.readFile(thumbPath), { contentType: 'image/jpeg', upsert: false });
+    if (up2.error) throw new Error('Salvataggio anteprima: ' + up2.error.message);
+    const video_url = supabase.storage.from('post-images').getPublicUrl(videoName).data.publicUrl;
+    const image_url = supabase.storage.from('post-images').getPublicUrl(thumbName).data.publicUrl;
+
+    const post = {
+      type: 'reel', social: platforms[0], socials: platforms, talking: true, person_photo: true,
+      text: meta.text || transcript.slice(0, 600), hashtags: Array.isArray(meta.hashtags) ? meta.hashtags.slice(0, 10) : [],
+      objective: meta.objective || 'Fiducia', why: meta.why || 'Il volto e la voce del titolare creano fiducia.',
+      overlay_title: title, transcript, video_url, image_url, video_status: 'completed',
+      day: 'Giovedi', scheduled_time: '18:30', status: 'draft'
+    };
+    const { data: saved, error: sErr } = await supabase.from('strategies').insert({
+      user_id: userId, brand: brand || '', sector: sector || '',
+      strategy: { summary: 'Reel con la tua voce' }, posts: [post], created_at: new Date().toISOString()
+    }).select('id').single();
+    if (sErr) throw new Error('Salvataggio post: ' + sErr.message);
+    supabase.storage.from('post-images').remove([vPath]).catch(() => {}); // il video originale non serve più
+    res.json({ success: true, post, strategy_id: saved.id });
+  } catch (e) {
+    console.error('Reel parlato:', e.message);
+    res.status(500).json({ error: e.message });
+  } finally {
+    for (const f of tmp) fsp.unlink(f).catch(() => {});
+  }
+}
+app.post('/api/reel/talking', (req, res) => runAsJob(req, res, talkingReelHandler));
 
 // ===== SCHEDULER =====
 cron.schedule('*/15 * * * *', async () => {
