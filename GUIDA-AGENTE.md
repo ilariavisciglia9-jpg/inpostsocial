@@ -13,7 +13,7 @@ Supabase → SQL Editor → incolla tutto `schema-agent.sql` → Run.
 Nel bucket Storage `post-images` controlla che siano ammessi anche i file `video/mp4`.
 
 ## 2. Stripe — 3 prezzi mensili ricorrenti
-Prodotti → crea Starter 29€, Pro 79€, Business 199€ (mensili). Copia i 3 `price_...`.
+Prodotti → crea Starter 50€, Pro 95€, Business 200€ (mensili). Copia i 3 `price_...`.
 Webhook: aggiungi l'evento `customer.subscription.updated` (oltre a quelli già presenti).
 
 ## 3. Railway → Variables
