@@ -258,6 +258,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .pv-row{display:flex;gap:0.5rem}
 .pv-err{font-size:0.82rem;color:var(--red);background:var(--red-bg);border-radius:8px;padding:0.5rem 0.7rem}
 .pBtn-img{background:var(--lavender);border-color:var(--lavender);color:var(--purple)}
+.vid-dur select{margin-left:0.4rem;border:1px solid var(--border-strong);border-radius:6px;padding:0.2rem 0.4rem;font:inherit;font-size:0.82rem;background:#fff}
 .pBtn-dark{background:var(--dark);border-color:var(--dark);color:#fff}
 .pBtn-dark:hover{background:#2A2A33}
 .pv-ok{font-size:0.82rem;color:var(--blue);background:var(--blue-bg);border-radius:8px;padding:0.5rem 0.7rem}
@@ -554,6 +555,9 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
           <div class="media-label">AI Media</div>
           <label class="media-opt"><input type="checkbox" id="gen-images"> Immagini AI realistiche</label>
           <label class="media-opt"><input type="checkbox" id="gen-text" checked> Scritte sulle immagini (italiano corretto)</label>
+          <label class="media-opt vid-dur">Durata video
+            <select id="gen-duration"><option value="5">5 secondi</option><option value="8">8 secondi</option><option value="10">10 secondi</option><option value="15">15 secondi</option></select>
+          </label>
           <label class="media-opt"><input type="checkbox" id="gen-video"> Video Reel (Seedance AI)</label>
         </div>
         <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Prova gratuita: puoi generare <b>2 post a settimana</b> con immagini AI. I video Reel sono inclusi nei piani a pagamento.</p>
@@ -1473,7 +1477,7 @@ async function createPostVideo(post, btn) {
   try {
     var f = {}; try { f = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
     var resp = await fetch('/api/generate-video', { method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ imageUrl: post.image_url, prompt: post.video_prompt || post.text, brand: post.brand || '', sector: f['g-sector'] || '', style: f['g-style'] || '' }) });
+      body: JSON.stringify({ imageUrl: post.image_url, prompt: post.video_prompt || post.text, brand: post.brand || '', sector: f['g-sector'] || '', style: f['g-style'] || '', duration: f['gen-duration'] || '5' }) });
     var r = await resp.json();
     if (!resp.ok || !r.task_id) throw new Error(r.error || 'Video non avviato');
     post.video_task_id = r.task_id;
@@ -1512,7 +1516,7 @@ async function deletePost(idx) {
 }
 
 // ===== I CAMPI DEL MODULO "GENERA" RESTANO SALVATI =====
-var GEN_FIELDS = ['g-brand', 'g-sector', 'g-desc', 'g-style', 'g-tone', 'g-social'];
+var GEN_FIELDS = ['g-brand', 'g-sector', 'g-desc', 'g-style', 'g-tone', 'g-social', 'gen-duration'];
 function restoreGenForm() {
   try {
     var saved = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}');
@@ -1626,7 +1630,8 @@ async function doGenerate() {
         generateVideo: genVideo,
         refImages: brandPhotos.map(function(p) { return p.url; }).filter(Boolean),
         useRealPhotos: useReal,
-        textOverlay: document.getElementById('gen-text').checked
+        textOverlay: document.getElementById('gen-text').checked,
+        videoDuration: document.getElementById('gen-duration').value
       })
     });
     var result = await readJson(resp);

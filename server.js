@@ -56,10 +56,13 @@ function falErrorMessage(e) {
   if (st === 402 || /balance|credit|billing/i.test(detail)) return 'Credito fal.ai esaurito: ricaricalo su fal.ai → Billing';
   return 'Video: ' + detail;
 }
-async function startAdVideo(imageUrl, motion, brand, sector, style) {
+// durata del video: Seedance 2.0 fast accetta da 4 a 15 secondi
+function videoSeconds(v) { const n = parseInt(v, 10); return [5, 8, 10, 15].includes(n) ? n : 5; }
+async function startAdVideo(imageUrl, motion, brand, sector, style, seconds) {
+  const sec = videoSeconds(seconds);
   const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
     // niente audio generato: la voce AI non parla bene l'italiano. La musica si aggiunge su Instagram.
-    input: { prompt: adVideoPrompt(motion, brand, sector, style), image_url: imageUrl, resolution: '720p', duration: '5', aspect_ratio: '9:16', generate_audio: false }
+    input: { prompt: adVideoPrompt(motion, brand, sector, style) + (sec > 5 ? ` The video lasts ${sec} seconds: develop the action in ${sec >= 10 ? 'three' : 'two'} smooth consecutive moments, with continuous camera movement.` : ''), image_url: imageUrl, resolution: '720p', duration: String(sec), aspect_ratio: '9:16', generate_audio: false }
   });
   videoJobs.set(request_id, SEEDANCE_MODEL);
   return request_id;
@@ -180,6 +183,7 @@ async function generateHandler(req, res) {
     const photos = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 8);
     const realPhotos = (useRealPhotos === true || useRealPhotos === 'true') && photos.length > 0;
     const wantVideo = generateVideo === true || generateVideo === 'true';
+    const vidSec = videoSeconds(req.body.videoDuration);
     if (!brand || !description) return res.status(400).json({ error: 'Brand e descrizione obbligatori' });
 
     // piano gratuito: massimo FREE_WEEKLY_POSTS post a settimana, senza video
@@ -217,7 +221,7 @@ SOCIAL: ogni post verrà pubblicato su ${socialsList}: scrivi testi che funzioni
 TONO: ${tone || 'professionale'}
 LINGUA: scrivi in italiano corretto e naturale, come un copywriter madrelingua: niente traduzioni letterali dall'inglese, niente errori di grammatica, accenti e apostrofi giusti (è, perché, po', un'idea).
 ${styleInstruction}${style && style.trim() ? `IMMAGINI: ogni "image_prompt" (anche quelli di ogni slide del carosello e della scena del reel) deve descrivere esplicitamente i colori, la palette e lo stile visivo richiesti dall'utente qui sopra.\n` : ''}
-REEL: ogni post di tipo "reel" deve parlare di un argomento concreto e specifico di questo settore e di questa attività (un servizio, un prodotto, un lavoro tipico, un dietro le quinte, un consiglio pratico), mai generico. Il suo "image_prompt" descrive la scena di apertura verticale (9:16) con il soggetto del settore ben riconoscibile; il suo "video_prompt" va scritto IN INGLESE (50-90 parole) e descrive cosa succede nei 5 secondi: un'azione semplice e realistica del soggetto (movimenti lenti, niente mani in primo piano che fanno gesti complessi), movimento della camera, luce, atmosfera, coerente con l'immagine di apertura. Nel video non deve comparire nessuna scritta e nessuno deve parlare.${wantVideo ? ' Includi almeno 2 post di tipo "reel".' : ''}
+REEL: ogni post di tipo "reel" deve parlare di un argomento concreto e specifico di questo settore e di questa attività (un servizio, un prodotto, un lavoro tipico, un dietro le quinte, un consiglio pratico), mai generico. Il suo "image_prompt" descrive la scena di apertura verticale (9:16) con il soggetto del settore ben riconoscibile; il suo "video_prompt" va scritto IN INGLESE (${vidSec > 5 ? '80-140' : '50-90'} parole) e descrive cosa succede nei ${vidSec} secondi${vidSec > 5 ? ' (una piccola sequenza di 2-3 momenti consecutivi, sempre nella stessa scena)' : ''}: un'azione semplice e realistica del soggetto (movimenti lenti, niente mani in primo piano che fanno gesti complessi), movimento della camera, luce, atmosfera, coerente con l'immagine di apertura. Nel video non deve comparire nessuna scritta e nessuno deve parlare.${wantVideo ? ' Includi almeno 2 post di tipo "reel".' : ''}
 ${wantText ? `SCRITTE SULLE IMMAGINI: per ogni post aggiungi "overlay_title" (titolo d'impatto, massimo 6 parole, italiano perfetto, senza emoji e senza hashtag) e "overlay_subtitle" (frase breve di supporto, massimo 10 parole). Per ogni slide del carosello scrivi in "title" il titolo che apparirà su quella slide (massimo 6 parole) e in "subtitle" una riga di supporto (massimo 10 parole). Queste scritte verranno sovrapposte all'immagine in modo tipografico, quindi l'immagine stessa NON deve contenere testo.\n` : ''}IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo, scritte, insegne o loghi nell'immagine: i messaggi vanno solo nel testo del post.
 ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)} foto reali del brand. Studiale con attenzione (prodotti, ambienti, persone, colori, stile) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
 {"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel su un tema specifico del settore","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"english description of the 5-second action and camera movement, specific to this business"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"Slide 1","image_prompt":"descrizione prima slide"},{"title":"Slide 2","image_prompt":"descrizione seconda slide"},{"title":"Slide 3","image_prompt":"descrizione terza slide"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
@@ -336,7 +340,8 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
         if (post.type !== 'reel') continue;
         if (!post.image_url) { mediaErrors.push('Video non creato: manca l\'immagine di partenza del reel (usa "Crea immagine", poi partirà il video)'); continue; }
         try {
-          data.posts[i].video_task_id = await startAdVideo(post.image_url, post.video_prompt || post.text, brand, sector, style);
+          data.posts[i].video_task_id = await startAdVideo(post.image_url, post.video_prompt || post.text, brand, sector, style, vidSec);
+          data.posts[i].video_seconds = vidSec;
           data.posts[i].video_status = 'processing';
           console.log('🎬 Video Seedance avviato:', data.posts[i].video_task_id);
         } catch (e) {
@@ -522,9 +527,9 @@ app.post('/api/generate-carousel', async (req, res) => {
 
 app.post('/api/generate-video', async (req, res) => {
   try {
-    const { prompt, imageUrl, userId, brand, sector, style } = req.body;
+    const { prompt, imageUrl, userId, brand, sector, style, duration } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl obbligatoria' });
-    const request_id = await startAdVideo(imageUrl, prompt, brand, sector, style);
+    const request_id = await startAdVideo(imageUrl, prompt, brand, sector, style, duration);
     res.json({ success: true, task_id: request_id, status: 'processing' });
   } catch (e) { res.status(500).json({ error: falErrorMessage(e) }); }
 });
