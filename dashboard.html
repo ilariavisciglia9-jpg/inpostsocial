@@ -792,6 +792,20 @@ window.fetch = async function(url, opts) {
 };
 
 var user = null;
+// i dati salvati nel browser (modulo Genera, foto del brand) sono separati per ogni account
+function lsKey(k) { return k + ':' + (user ? user.id : 'anon'); }
+function migrateLocalData() {
+  // vecchie chiavi uniche per tutti gli account: le tiene solo l'account proprietario, poi si cancellano
+  try {
+    var owner = ['info@inpostsocial.com', 'ilaria.visciglia9@gmail.com'].indexOf(String(user.email || '').toLowerCase()) >= 0;
+    ['inpost_gen_form', 'inpost_brand_photos'].forEach(function(k) {
+      var old = localStorage.getItem(k);
+      if (old == null) return;
+      if (owner && localStorage.getItem(lsKey(k)) == null) localStorage.setItem(lsKey(k), old);
+      if (owner) localStorage.removeItem(k);
+    });
+  } catch (e) {}
+}
 var userPlan = 'free';
 var posts = [];
 var socialCount = 0;
@@ -811,6 +825,9 @@ async function init() {
   }
   if (!session) { window.location.href = '/login.html'; return; }
   user = session.user;
+  migrateLocalData();
+  restoreGenForm();
+  loadBrandPhotos();
 
   var params = new URLSearchParams(window.location.search);
   if (params.get('payment') === 'success') toast('Piano attivato con successo!');
@@ -1440,7 +1457,7 @@ async function saveEditor(item, post) {
     if (otEl && (st === 'draft' || !post.status)) {
       var ot = otEl.value.trim(), os = box.querySelector('.pv-in-os').value.trim();
       if (ot !== (post.overlay_title || '') || os !== (post.overlay_subtitle || '')) {
-        var f = {}; try { f = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+        var f = {}; try { f = JSON.parse(localStorage.getItem(lsKey('inpost_gen_form')) || '{}'); } catch (e) {}
         var ro = await fetch('/api/image/overlay', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ rawUrl: post.image_raw_url, title: ot, subtitle: os, style: f['g-style'] || '' }) });
         var rj = await ro.json(); if (!ro.ok || !rj.url) throw new Error(rj.error || 'Scritta non applicata');
         post.image_url = rj.url; post.overlay_title = ot; post.overlay_subtitle = os;
@@ -1555,7 +1572,7 @@ async function createPostImage(post, btn) {
   btn.disabled = true; btn.textContent = post.type === 'carousel' ? 'Creo le 5 slide… (2-3 minuti)' : 'Creo l\'immagine… (circa 30 secondi)';
   var refs = (typeof brandRefs === 'function' ? brandRefs(false) : []).map(function(p) { return p.url; }); // il volto non viene mai rielaborato
   var one = async function(prompt, size) {
-    var gq = {}; try { gq = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+    var gq = {}; try { gq = JSON.parse(localStorage.getItem(lsKey('inpost_gen_form')) || '{}'); } catch (e) {}
     var resp = await fetch('/api/generate-image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: prompt, brand: post.brand || '', refImages: refs, size: size, quality: gq['gen-quality'] || 'medium' }) });
     var r = await resp.json(); if (!resp.ok || !r.url) throw new Error(r.details || r.error || 'Immagine non creata');
     return r.url;
@@ -1572,7 +1589,7 @@ async function createPostImage(post, btn) {
       body.image_url = post.image_url;
     }
     // se il post prevede le scritte, le aggiungiamo anche alle immagini create adesso
-    var gf = {}; try { gf = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+    var gf = {}; try { gf = JSON.parse(localStorage.getItem(lsKey('inpost_gen_form')) || '{}'); } catch (e) {}
     var ovl = async function(raw, t, sub) {
       if (!t) return raw;
       var ro = await fetch('/api/image/overlay', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ rawUrl: raw, title: t, subtitle: sub || '', style: gf['g-style'] || '' }) });
@@ -1607,7 +1624,7 @@ async function createPostVideo(post, btn) {
   if (!post.image_url) return toast('Serve prima l\'immagine di partenza', 'error');
   if (btn) { btn.disabled = true; btn.textContent = 'Avvio il video…'; }
   try {
-    var f = {}; try { f = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+    var f = {}; try { f = JSON.parse(localStorage.getItem(lsKey('inpost_gen_form')) || '{}'); } catch (e) {}
     var resp = await fetch('/api/generate-video', { method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ imageUrl: post.image_url, prompt: post.video_prompt || post.text, brand: post.brand || '', sector: f['g-sector'] || '', style: f['g-style'] || '', duration: f['gen-duration'] || '5', person: !!post.person_photo }) });
     var r = await resp.json();
@@ -1651,7 +1668,7 @@ async function deletePost(idx) {
 var GEN_FIELDS = ['g-brand', 'g-sector', 'g-desc', 'g-style', 'g-tone', 'g-social', 'gen-duration', 'gen-quality'];
 function restoreGenForm() {
   try {
-    var saved = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}');
+    var saved = JSON.parse(localStorage.getItem(lsKey('inpost_gen_form')) || '{}');
     GEN_FIELDS.forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.value = saved[id]; });
     ['gen-images', 'gen-video', 'ph-real', 'gen-text'].forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.checked = !!saved[id]; });
   } catch (e) {}
@@ -1661,12 +1678,11 @@ function saveGenForm() {
     var data = {};
     GEN_FIELDS.forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.value; });
     ['gen-images', 'gen-video', 'ph-real', 'gen-text'].forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.checked; });
-    localStorage.setItem('inpost_gen_form', JSON.stringify(data));
+    if (user) localStorage.setItem(lsKey('inpost_gen_form'), JSON.stringify(data));
   } catch (e) {}
 }
 document.addEventListener('input', function(e) { if (e.target && e.target.closest && e.target.closest('#page-genera')) saveGenForm(); });
 document.addEventListener('change', function(e) { if (e.target && e.target.closest && e.target.closest('#page-genera')) saveGenForm(); });
-restoreGenForm();
 
 // ===== REEL CON LA TUA VOCE =====
 var talkFile = null;
@@ -1701,7 +1717,7 @@ async function createTalkingReel() {
     if (up.error) throw new Error('Caricamento: ' + up.error.message);
     var lt = document.getElementById('loading-text');
     if (lt) lt.textContent = 'Trascrivo la tua voce e monto il reel… (1-3 minuti)';
-    var gf = {}; try { gf = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
+    var gf = {}; try { gf = JSON.parse(localStorage.getItem(lsKey('inpost_gen_form')) || '{}'); } catch (e) {}
     var payload = JSON.stringify({
       path: u.path, title: document.getElementById('talk-title').value.trim(),
       brand: document.getElementById('g-brand').value.trim() || gf['g-brand'] || '', sector: document.getElementById('g-sector').value,
@@ -1887,12 +1903,15 @@ document.addEventListener('click', function(e) {
 
 // ===== FOTO DEL BRAND =====
 var brandPhotos = []; // { url, thumb, kind: work | place | person }
+function loadBrandPhotos() {
 try {
-  brandPhotos = JSON.parse(localStorage.getItem('inpost_brand_photos') || '[]').map(function(x) {
+  brandPhotos = JSON.parse(localStorage.getItem(lsKey('inpost_brand_photos')) || '[]').map(function(x) {
     return typeof x === 'string' ? { url: x, thumb: x, kind: 'work' } : { url: x.url, thumb: x.url, kind: x.kind || 'work' };
   }).filter(function(p) { return p.url; });
 } catch (e) { brandPhotos = []; }
-function saveBrandPhotos() { try { localStorage.setItem('inpost_brand_photos', JSON.stringify(brandPhotos.filter(function(p) { return p.url; }).map(function(p) { return { url: p.url, kind: p.kind || 'work' }; }))); } catch (e) {} }
+renderBrandPhotos();
+}
+function saveBrandPhotos() { try { if (user) localStorage.setItem(lsKey('inpost_brand_photos'), JSON.stringify(brandPhotos.filter(function(p) { return p.url; }).map(function(p) { return { url: p.url, kind: p.kind || 'work' }; }))); } catch (e) {} }
 var PH_KINDS = [['work', 'Lavoro / prodotto'], ['place', 'Locale / ambiente'], ['person', 'Io / persona']];
 function renderBrandPhotos() {
   var g = document.getElementById('ph-grid');
