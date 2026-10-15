@@ -145,6 +145,14 @@ app.use((req, res, next) => {
   }
   next();
 });
+// ===== VERIFICA DEL DOMINIO PER TIKTOK FOR DEVELOPERS =====
+// TikTok chiede di mettere online un file tipo /tiktokAbC123.txt: su Railway imposta
+// TIKTOK_VERIFY_FILE = nome del file (es. tiktokAbC123.txt) e TIKTOK_VERIFY_CONTENT = il testo contenuto nel file.
+app.get(/^\/tiktok[A-Za-z0-9_-]+\.txt$/, (req, res, next) => {
+  const name = (process.env.TIKTOK_VERIFY_FILE || '').trim().replace(/^\//, '');
+  if (!name || req.path !== '/' + name) return next();
+  res.type('text/plain').send((process.env.TIKTOK_VERIFY_CONTENT || '').trim());
+});
 app.use(express.static(path.join(__dirname), { dotfiles: 'deny' }));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/webhook')) return next();
