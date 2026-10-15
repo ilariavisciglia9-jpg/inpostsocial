@@ -140,4 +140,36 @@ async function concatAudio(files) {
   return out;
 }
 
-module.exports = { extractAudio, thumbnail, groupWords, buildAss, renderReel, probeDuration, tmpFile, extractVoiceRef, concatAudio };
+// montaggio "da agenzia": avatar che parla + immagini di approfondimento (B-roll) con zoom lento,
+// voce continua, sottotitoli e titolo. brolls = [{ path, start, end }] in secondi.
+async function editAvatarReel(avatarPath, audioPath, brolls, assText, duration) {
+  const assPath = tmpFile('.ass');
+  const out = tmpFile('.mp4');
+  fs.writeFileSync(assPath, assText || '', 'utf8');
+  const fontsDir = path.join(__dirname, 'fonts');
+  const esc = (p) => p.replace(/\\/g, '/').replace(/:/g, '\\:').replace(/'/g, "\\'");
+  const D = Math.max(3, duration || 20);
+  const inputs = ['-stream_loop', '-1', '-i', avatarPath, '-i', audioPath];
+  let fc = '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30[base0];';
+  let last = 'base0';
+  (brolls || []).forEach((b, i) => {
+    const idx = i + 2, dur = Math.max(1.2, b.end - b.start), frames = Math.round(dur * 30);
+    inputs.push('-loop', '1', '-t', String(dur), '-i', b.path);
+    // zoom lento sull'immagine, comparsa e uscita in dissolvenza
+    fc += `[${idx}:v]scale=1440:2560:force_original_aspect_ratio=increase,crop=1440:2560,` +
+      `zoompan=z='min(zoom+0.0012,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=1080x1920:fps=30,` +
+      `format=yuva420p,fade=t=in:st=0:d=0.25:alpha=1,fade=t=out:st=${(dur - 0.25).toFixed(2)}:d=0.25:alpha=1,` +
+      `setpts=PTS-STARTPTS+${b.start.toFixed(2)}/TB[b${i}];`;
+    fc += `[${last}][b${i}]overlay=0:0:enable='between(t,${b.start.toFixed(2)},${b.end.toFixed(2)})'[base${i + 1}];`;
+    last = `base${i + 1}`;
+  });
+  fc += `[${last}]ass='${esc(assPath)}':fontsdir='${esc(fontsDir)}'[v]`;
+  try {
+    await run([...inputs, '-filter_complex', fc, '-map', '[v]', '-map', '1:a', '-t', D.toFixed(2),
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-pix_fmt', 'yuv420p', '-r', '30',
+      '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', out], 600000);
+  } finally { try { fs.unlinkSync(assPath); } catch (e) {} }
+  return out;
+}
+
+module.exports = { extractAudio, thumbnail, groupWords, buildAss, renderReel, probeDuration, tmpFile, extractVoiceRef, concatAudio, editAvatarReel };

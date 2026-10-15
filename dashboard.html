@@ -271,6 +271,14 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .av-head b{font-size:0.92rem}
 .av-actions{display:flex;gap:0.5rem;flex-wrap:wrap}
 .av-actions .pBtn{flex:0 0 auto}
+.av-preview{margin-top:1rem;border:1px solid var(--border);border-radius:10px;padding:1rem;background:var(--off-white)}
+.av-preview label{display:block;font-size:0.8rem;font-weight:600;color:var(--dark2);margin:0.6rem 0 0.3rem}
+.av-preview input,.av-preview textarea{width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:0.55rem 0.7rem;font:inherit;font-size:0.88rem;background:#fff;line-height:1.5}
+.avp-voice{display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin:0.7rem 0}
+.avp-voice audio{height:36px;max-width:100%}
+.avp-broll{font-size:0.82rem;color:var(--dark2);margin-bottom:0.6rem}
+.avp-broll ul{margin:0.3rem 0 0 1.1rem}
+.av-preview .post-actions{padding:0;border:none;align-items:center}
 .talk-select{border:1px solid var(--border-strong);border-radius:8px;padding:0.6rem 0.6rem;font:inherit;font-size:0.86rem;background:#fff}
 .talk-row{display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center}
 .talk-row input[type=text]{flex:1;min-width:200px;padding:0.6rem 0.8rem;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-size:0.88rem}
@@ -607,14 +615,23 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
               <video id="av-video" muted playsinline loop preload="metadata"></video>
               <div>
                 <b>Il tuo avatar è pronto</b>
-                <p class="ph-hint">L'AI sceglie l'argomento (o usa quello che scrivi), scrive il testo e lo pronuncia con la tua voce sul tuo video. Sottotitoli e titolo vengono aggiunti in automatico.</p>
+                <p class="ph-hint">Come un presentatore: l'AI sceglie l'argomento (o usa il tuo), scrive il testo e lo legge con la tua voce. <b>Prima ascolti e correggi</b> (costa meno di un centesimo); solo se ti piace crei il video: la tua foto prende vita con gesti naturali, con immagini di approfondimento, sottotitoli e titolo.</p>
                 <div class="av-actions"><button type="button" class="pBtn" id="av-replace">Sostituisci video</button><button type="button" class="pBtn pBtn-delete" id="av-delete">Elimina avatar</button></div>
               </div>
             </div>
             <div class="talk-row" style="margin-top:0.9rem">
               <input type="text" id="av-topic" maxlength="200" placeholder="Argomento (facoltativo: se vuoto lo sceglie l'AI)">
               <select id="av-length" class="talk-select"><option value="short">Breve (~20 s)</option><option value="medium">Medio (~35 s)</option></select>
-              <button type="button" class="btn-gen" id="av-go" style="max-width:200px">Crea il reel</button>
+              <button type="button" class="btn-gen" id="av-go" style="max-width:240px">1. Prepara testo e voce</button>
+            </div>
+            <div id="av-preview" class="av-preview" hidden>
+              <label>Titolo a inizio video</label>
+              <input type="text" id="avp-title" maxlength="60">
+              <label>Testo che dirai (puoi correggerlo)</label>
+              <textarea id="avp-script" rows="5"></textarea>
+              <div class="avp-voice"><audio id="avp-audio" controls preload="none"></audio><button type="button" class="pBtn" id="avp-revoice">Riascolta con il testo corretto</button></div>
+              <div id="avp-broll" class="avp-broll"></div>
+              <div class="post-actions"><button type="button" class="btn-gen" id="avp-render" style="max-width:320px">2. Crea il video</button><button type="button" class="pBtn" id="avp-discard">Scarta</button></div>
             </div>
             <label class="media-opt av-consent"><input type="checkbox" id="av-label" checked> Scrivi nel testo del post che il video è realizzato con l'AI (consigliato: Instagram, Facebook e TikTok chiedono di segnalare i video realistici creati con l'AI)</label>
           </div>
@@ -1730,24 +1747,76 @@ async function saveAvatar() {
   } catch (e) { toast('Errore: ' + e.message, 'error'); }
   hideLoading();
 }
+var avDraft = null; // testo, voce e immagini proposti, in attesa di conferma
+function avFormData() {
+  return {
+    brand: document.getElementById('g-brand').value.trim(), description: document.getElementById('g-desc').value.trim(),
+    sector: document.getElementById('g-sector').value, tone: document.getElementById('g-tone').value,
+    style: document.getElementById('g-style').value.trim(), socials: document.getElementById('g-social').value
+  };
+}
+function avCost(sec) { return (sec * 0.0562 + 0.12).toFixed(2).replace('.', ','); }
+function showAvDraft(d) {
+  avDraft = d;
+  var box = document.getElementById('av-preview');
+  box.hidden = !d;
+  if (!d) return;
+  document.getElementById('avp-title').value = d.title || '';
+  document.getElementById('avp-script').value = d.script || '';
+  document.getElementById('avp-audio').src = d.audio_url || '';
+  document.getElementById('avp-broll').innerHTML = (d.broll || []).length
+    ? '<b>Immagini che compariranno mentre parli:</b><ul>' + d.broll.map(function(b) { return '<li>' + escH(b.prompt || '') + '</li>'; }).join('') + '</ul>' : '';
+  document.getElementById('avp-render').textContent = '2. Crea il video (circa ' + avCost(d.duration || 20) + ' $, ' + Math.round(d.duration || 20) + ' s)';
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 async function createAvatarReel() {
   showLoading('L\'AI sta scrivendo il testo…');
   var btn = document.getElementById('av-go'); btn.disabled = true;
   try {
-    var r = await fetch('/api/reel/avatar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
-      topic: document.getElementById('av-topic').value.trim(), length: document.getElementById('av-length').value,
-      brand: document.getElementById('g-brand').value.trim(), description: document.getElementById('g-desc').value.trim(),
-      sector: document.getElementById('g-sector').value, tone: document.getElementById('g-tone').value,
-      style: document.getElementById('g-style').value.trim(), socials: document.getElementById('g-social').value,
-      aiLabel: document.getElementById('av-label').checked
-    }) });
-    var res = await waitJob(await readJson(r), 'Scrivo il testo, creo la tua voce e sincronizzo il video… (3-6 minuti)');
-    if (!res.success) throw new Error(res.error || 'Reel non creato');
+    var r = await fetch('/api/reel/avatar/script', { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(Object.assign({ topic: document.getElementById('av-topic').value.trim(), length: document.getElementById('av-length').value }, avFormData())) });
+    var res = await waitJob(await readJson(r), 'Scrivo il testo e preparo la tua voce…');
+    if (!res.success) throw new Error(res.error || 'Testo non creato');
+    showAvDraft(res);
+    toast('Ascolta la voce e leggi il testo: se ti piace, crea il video.');
+  } catch (e) { toast('Errore: ' + e.message, 'error'); }
+  hideLoading(); btn.disabled = false;
+}
+async function revoiceAvatar() {
+  if (!avDraft) return;
+  var script = document.getElementById('avp-script').value.trim();
+  if (!script) return toast('Il testo è vuoto', 'error');
+  showLoading('Rigenero la voce…');
+  try {
+    var r = await fetch('/api/reel/avatar/voice', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ script: script }) });
+    var j = await readJson(r);
+    if (!r.ok || !j.audio_url) throw new Error(j.error || 'Voce non creata');
+    avDraft.script = script; avDraft.audio_url = j.audio_url; avDraft.duration = j.duration; avDraft.voiceFor = script;
+    showAvDraft(avDraft);
+    document.getElementById('avp-audio').play().catch(function() {});
+  } catch (e) { toast('Errore: ' + e.message, 'error'); }
+  hideLoading();
+}
+async function renderAvatarReel() {
+  if (!avDraft) return;
+  var script = document.getElementById('avp-script').value.trim();
+  if (script !== avDraft.script) return toast('Hai modificato il testo: clicca prima "Riascolta con il testo corretto"', 'error');
+  if (!confirm('Creare il video? Costo stimato circa ' + avCost(avDraft.duration || 20) + ' $ di credito fal.ai.')) return;
+  showLoading('Creo il video con il tuo avatar…');
+  var btn = document.getElementById('avp-render'); btn.disabled = true;
+  try {
+    var body = Object.assign({}, avFormData(), {
+      script: avDraft.script, title: document.getElementById('avp-title').value.trim(), text: avDraft.text, hashtags: avDraft.hashtags,
+      objective: avDraft.objective, why: avDraft.why, broll: avDraft.broll, audio_url: avDraft.audio_url, aiLabel: document.getElementById('av-label').checked
+    });
+    var r = await fetch('/api/reel/avatar/render', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    var res = await waitJob(await readJson(r), 'Il tuo avatar prende vita e monto il reel… (3-6 minuti)');
+    if (!res.success) throw new Error(res.error || 'Video non creato');
     var np = withUid(Object.assign({}, res.post, { _sid: res.strategy_id }));
     posts.unshift(np); genUids.unshift(np._uid);
     document.getElementById('gen-result').style.display = 'block';
     rerenderPosts();
-    document.getElementById('av-topic').value = '';
+    showAvDraft(null); document.getElementById('av-topic').value = '';
     toast('Reel pronto! Guardalo nell\'anteprima prima di approvarlo.');
     setTimeout(function() { var el = document.querySelector('#gen-posts .post-item'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
   } catch (e) { toast('Errore: ' + e.message, 'error'); }
@@ -1771,6 +1840,9 @@ document.addEventListener('click', function(e) {
   }
   if (t.id === 'av-save') saveAvatar();
   else if (t.id === 'av-go') createAvatarReel();
+  else if (t.id === 'avp-revoice') revoiceAvatar();
+  else if (t.id === 'avp-render') renderAvatarReel();
+  else if (t.id === 'avp-discard') showAvDraft(null);
   else if (t.id === 'av-replace') { document.getElementById('av-setup').hidden = false; document.getElementById('av-input').click(); }
   else if (t.id === 'av-delete') {
     if (!confirm('Eliminare il tuo avatar (video e campione di voce)? I reel già creati restano.')) return;
