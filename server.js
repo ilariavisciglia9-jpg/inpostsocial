@@ -67,13 +67,37 @@ function adVideoPrompt(motion, brand, sector, style) {
     `Absolutely no text of any kind: no words, letters, captions, subtitles, logos, signs or writing anywhere in the frame. Nobody speaks to the camera.` +
     (style && style.trim() ? ` Visual style and colors: ${style.trim()}.` : '')).substring(0, 2000);
 }
+// ===== AVVISO EMAIL ALLA PROPRIETARIA: credito dei fornitori AI esaurito =====
+// Su Railway: RESEND_API_KEY (resend.com, gratuito) e, se vuoi, ALERT_EMAIL (default ilaria.visciglia9@gmail.com).
+const lastAlerts = new Map();
+async function notifyOwner(key, subject, text) {
+  try {
+    const now = Date.now();
+    if (lastAlerts.get(key) && now - lastAlerts.get(key) < 6 * 3600000) return; // al massimo una mail ogni 6 ore per tipo
+    lastAlerts.set(key, now);
+    console.error('🚨 AVVISO:', subject);
+    if (!process.env.RESEND_API_KEY) return;
+    await axios.post('https://api.resend.com/emails', {
+      from: process.env.ALERT_FROM || 'InPostSocial <onboarding@resend.dev>',
+      to: [process.env.ALERT_EMAIL || 'ilaria.visciglia9@gmail.com'],
+      subject: '⚠️ InPostSocial: ' + subject,
+      html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5"><p><b>${subject}</b></p><p>${text}</p><p style="color:#777;font-size:13px">I clienti in questo momento ricevono un errore quando generano. Ricarica il credito e tutto riprende da solo.</p></div>`
+    }, { headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY }, timeout: 15000 });
+  } catch (e) { console.error('Email di avviso non inviata:', e.response?.data || e.message); }
+}
+const ALERTS = {
+  fal: () => notifyOwner('fal', 'credito fal.ai esaurito (video, voce, avatar)', 'Ricarica su <a href="https://fal.ai/dashboard/billing">fal.ai → Billing</a>. Consiglio: attiva la ricarica automatica.'),
+  openai: () => notifyOwner('openai', 'credito OpenAI esaurito (immagini e trascrizioni)', 'Ricarica su <a href="https://platform.openai.com/settings/organization/billing">platform.openai.com → Billing</a>. Consiglio: attiva "Auto recharge".'),
+  anthropic: () => notifyOwner('anthropic', 'credito Anthropic esaurito (testi e strategie)', 'Ricarica su <a href="https://console.anthropic.com/settings/billing">console.anthropic.com → Billing</a>. Consiglio: attiva la ricarica automatica.')
+};
+
 function falErrorMessage(e) {
   const st = e && (e.status || (e.response && e.response.status));
   const body = e && (e.body || (e.response && e.response.data)) || {};
   const detail = typeof body.detail === 'string' ? body.detail : (Array.isArray(body.detail) && body.detail[0] && body.detail[0].msg) || body.message || (e && e.message) || 'errore sconosciuto';
   if (!process.env.FAL_KEY) return 'Chiave FAL_KEY mancante su Railway: video non creati';
-  if (st === 401 || st === 403) return /balance|credit|locked|billing/i.test(detail) ? 'Credito fal.ai esaurito: ricaricalo su fal.ai → Billing' : 'Chiave FAL_KEY non valida (controllala su Railway)';
-  if (st === 402 || /balance|credit|billing/i.test(detail)) return 'Credito fal.ai esaurito: ricaricalo su fal.ai → Billing';
+  if (((st === 401 || st === 403) && /balance|credit|locked|billing/i.test(detail)) || st === 402 || /balance|credit|billing/i.test(detail)) { ALERTS.fal(); return 'Servizio video momentaneamente non disponibile, riprova più tardi (i crediti ti vengono restituiti)'; }
+  if (st === 401 || st === 403) return 'Chiave FAL_KEY non valida (controllala su Railway)';
   return 'Video: ' + detail;
 }
 // risoluzione dei video AI: 480p costa meno della metà di 720p (su Railway VIDEO_RESOLUTION=720p per tornare alla qualità più alta)
@@ -149,6 +173,7 @@ function freeWeekKey() {
 // Finita la prova si torna al piano gratuito (2 post a settimana).
 // Contatori in agent_usage, riga month='trial': posts = immagini, videos = reel AI, replies = reel avatar.
 const TRIAL_DAYS = 7;
+const TRIAL_ENABLED = false; // sostituita dai 6 crediti di benvenuto del piano gratuito
 const TRIAL_START = Date.parse(process.env.TRIAL_START || '2026-10-15T00:00:00+02:00');
 const TRIAL_LIMITS = { posts: 15, reels: 2, avatars: 2 };
 const TRIAL_REEL_SECONDS = 10;
@@ -163,6 +188,7 @@ async function getAccess(userId, authEmail) {
   if (isNaN(created)) {
     try { const { data } = await supabase.auth.admin.getUserById(userId); created = Date.parse(data && data.user && data.user.created_at); } catch (e) {}
   }
+  if (!TRIAL_ENABLED) return { kind: 'free' };
   if (isNaN(created)) created = Date.now();
   const start = Math.max(created, TRIAL_START);
   const ends = start + TRIAL_DAYS * 86400000;
@@ -212,19 +238,39 @@ async function addCredits(userId, n, reason, ref) {
   return data;
 }
 const noCredits = (n) => ({ error: `Crediti insufficienti: servono ${n} crediti. Acquista un pacchetto di crediti per continuare.`, credits_needed: true });
-// paga un'azione: proprietaria gratis → settimana di prova → crediti
-async function payAction(userId, authEmail, trialField, credits, reason) {
+// PIANO GRATUITO: 6 crediti di benvenuto, poi si ricomprano; al massimo 4 immagini e 2 reel (solo 5 s) al giorno; niente avatar.
+// PIANI A PAGAMENTO: tutto (post, caroselli, reel di ogni durata, avatar), quanto dipende dai crediti.
+const WELCOME_CREDITS = 6;
+const FREE_DAILY = { images: 4, reels: 2 };
+const FREE_REEL_SECONDS = 5;
+function dayKey() { return 'day-' + new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' }); }
+async function freeDailyUsed(userId) {
+  const { data } = await supabase.from('agent_usage').select('posts,videos').eq('user_id', userId).eq('month', dayKey()).maybeSingle();
+  return { images: (data && data.posts) || 0, reels: (data && data.videos) || 0 };
+}
+async function bumpFreeDaily(userId, field) {
+  const u = await freeDailyUsed(userId);
+  u[field]++;
+  await supabase.from('agent_usage').upsert({ user_id: userId, month: dayKey(), posts: u.images, videos: u.reels }, { onConflict: 'user_id,month' });
+}
+// paga un'azione: proprietaria gratis → (gratuito: limite giornaliero) → crediti
+async function payAction(userId, authEmail, cap, credits, reason) {
   const acc = await getAccess(userId, authEmail);
   if (acc.kind === 'owner') return { ok: true, via: 'owner' };
-  if (acc.kind === 'trial' && trialField === 'free') return { ok: true, via: 'trial' };
-  if (acc.kind === 'trial' && trialField && acc.left[trialField] > 0) { await bumpTrial(userId, trialField, 1); return { ok: true, via: 'trial' }; }
-  if (await spendCredits(userId, credits, reason)) return { ok: true, via: 'credits' };
-  return { ok: false, body: noCredits(credits) };
+  if (acc.kind === 'free' && (cap === 'images' || cap === 'reels')) {
+    const used = await freeDailyUsed(userId);
+    if (used[cap] >= FREE_DAILY[cap]) return { ok: false, body: { error: cap === 'images'
+      ? `Piano gratuito: massimo ${FREE_DAILY.images} immagini al giorno. Riprova domani o passa a un piano.`
+      : `Piano gratuito: massimo ${FREE_DAILY.reels} reel al giorno. Riprova domani o passa a un piano.`, upgrade: true } };
+  }
+  if (!(await spendCredits(userId, credits, reason))) return { ok: false, body: noCredits(credits) };
+  if (acc.kind === 'free' && (cap === 'images' || cap === 'reels')) await bumpFreeDaily(userId, cap);
+  return { ok: true, via: 'credits' };
 }
 
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
-const PROTECTED_API = ['/api/credits', '/api/credits/checkout', '/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
+const PROTECTED_API = ['/api/admin/test-alert', '/api/credits', '/api/credits/checkout', '/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
   '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/posts/reschedule', '/api/image/overlay', '/api/posts/permalink', '/api/reel/upload-url', '/api/reel/talking', '/api/avatar', '/api/avatar/delete', '/api/reel/avatar', '/api/reel/avatar/script', '/api/reel/avatar/voice', '/api/reel/avatar/render'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
@@ -310,21 +356,11 @@ async function generateHandler(req, res) {
     if (!brand || !description) return res.status(400).json({ error: 'Brand e descrizione obbligatori' });
 
     // piano gratuito: massimo FREE_WEEKLY_POSTS post a settimana, senza video
-    const freeKey = freeWeekKey();
     const access = await getAccess(userId, req.authEmail);
     const payAll = !userId || access.kind === 'owner';
-    let freeUsed = 0, weeklyLeft = 0;
-    if (!payAll) {
-      if (access.kind === 'free') {
-        // senza piano: oltre ai crediti restano i 2 post gratuiti a settimana
-        const { data: usage } = await supabase.from('agent_usage').select('posts').eq('user_id', userId).eq('month', freeKey).maybeSingle();
-        freeUsed = (usage && usage.posts) || 0;
-        weeklyLeft = Math.max(0, FREE_WEEKLY_POSTS - freeUsed);
-      }
-      const avail = (access.kind === 'trial' ? access.left.posts : 0) + (await getCredits(userId)) + weeklyLeft;
-      if (avail <= 0) return res.status(402).json({ error: 'Hai finito i crediti: acquista un pacchetto di crediti per generare nuovi post.', credits_needed: true });
-    }
-    if (access.kind === 'trial' && access.left.reels > 0) vidSec = Math.min(vidSec, TRIAL_REEL_SECONDS);
+    if (!payAll && (await getCredits(userId)) <= 0) return res.status(402).json({ error: 'Hai finito i crediti: acquista un pacchetto di crediti per generare nuovi post.', credits_needed: true });
+    if (access.kind === 'free') vidSec = FREE_REEL_SECONDS; // piano gratuito: reel solo da 5 secondi
+    let lastPayError = null;
 
     // social scelti dall'utente: ogni post verrà pubblicato su tutti questi
     const rawSocial = Array.isArray(socials) ? socials.join(' + ') : String(socials || 'Instagram');
@@ -393,21 +429,20 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
 
     if (Array.isArray(data.posts)) data.posts.forEach(p => { p.socials = platforms.slice(); p.social = platforms[0]; });
 
-    // ogni post con immagine si paga: prova gratuita → crediti → post gratuiti della settimana
-    let weeklyUsedNow = 0, creditsSpent = 0, droppedPosts = 0;
+    // ogni post con immagine si paga con i crediti (gratuito: max 4 immagini al giorno)
+    let creditsSpent = 0, droppedPosts = 0;
     const wantImages = generateImages === true || generateImages === 'true';
     if (!payAll && Array.isArray(data.posts)) {
       const kept = [];
       for (const p of data.posts) {
         if (!wantImages && p.type !== 'reel') { kept.push(p); continue; } // solo testo: gratis
         const cost = p.type === 'carousel' ? (imgQuality === 'high' ? CREDIT_COSTS.carousel_hq : CREDIT_COSTS.carousel) : (imgQuality === 'high' ? CREDIT_COSTS.image_hq : CREDIT_COSTS.image);
-        const pay = await payAction(userId, req.authEmail, 'posts', cost, 'Post ' + (p.type || 'immagine'));
+        const pay = await payAction(userId, req.authEmail, 'images', cost, 'Post ' + (p.type || 'immagine'));
         if (pay.ok) { if (pay.via === 'credits') { creditsSpent += cost; p._credit = cost; } kept.push(p); continue; }
-        if (weeklyLeft - weeklyUsedNow > 0 && p.type !== 'reel') { weeklyUsedNow++; kept.push(p); continue; }
-        droppedPosts++;
+        lastPayError = pay.body; droppedPosts++;
       }
       data.posts = kept;
-      if (!data.posts.length) return res.status(402).json({ error: 'Hai finito i crediti: acquista un pacchetto di crediti per generare nuovi post.', credits_needed: true });
+      if (!data.posts.length) return res.status(402).json(lastPayError || noCredits(1));
     }
 
     // foto del titolare: in un solo post, usata così com'è (solo ritagliata nel formato giusto)
@@ -514,8 +549,8 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
         if (post.type !== 'reel') continue;
         if (!post.image_url) { mediaErrors.push('Video non creato: manca l\'immagine di partenza del reel (usa "Crea immagine", poi partirà il video)'); continue; }
         if (!payAll) {
-          const pay = await payAction(userId, req.authEmail, vidSec <= TRIAL_REEL_SECONDS ? 'reels' : null, reelCost(vidSec), 'Reel AI ' + vidSec + 's');
-          if (!pay.ok) { mediaErrors.push(`Crediti insufficienti per il video (servono ${reelCost(vidSec)} crediti): il reel resta con l'immagine`); continue; }
+          const pay = await payAction(userId, req.authEmail, 'reels', reelCost(vidSec), 'Reel AI ' + vidSec + 's');
+          if (!pay.ok) { mediaErrors.push((pay.body && pay.body.error ? pay.body.error : 'Crediti insufficienti per il video') + ' — il reel resta con l\'immagine'); continue; }
           if (pay.via === 'credits') { creditsSpent += reelCost(vidSec); post._videoCredit = reelCost(vidSec); }
         }
         try {
@@ -544,7 +579,6 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
     }
 
     let free = null;
-    if (weeklyUsedNow > 0) await supabase.from('agent_usage').upsert({ user_id: userId, month: freeKey, posts: freeUsed + weeklyUsedNow }, { onConflict: 'user_id,month' });
     if (!payAll) {
       const a2 = await getAccess(userId, req.authEmail);
       free = { credits: await getCredits(userId), credits_spent: creditsSpent, dropped: droppedPosts,
@@ -555,6 +589,7 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
 
   } catch (error) {
     console.error('Generate error:', error);
+    if (/credit balance|billing|insufficient/i.test(String(error && error.message))) ALERTS.anthropic();
     res.status(500).json({ error: 'Errore generazione', details: error.message });
   }
 }
@@ -577,7 +612,7 @@ function runAsJob(req, res, handler) {
     status(c) { job.code = c; return fake; },
     json(b) { job.body = b; finish(); return fake; }
   };
-  Promise.resolve().then(() => handler(req, fake)).catch(e => { job.code = 500; job.body = { error: e.message }; finish(); });
+  Promise.resolve().then(() => handler(req, fake)).catch(e => { if (/credit balance/i.test(e.message)) ALERTS.anthropic(); job.code = 500; job.body = { error: e.message }; finish(); });
   res.json({ job_id: id });
 }
 app.post('/api/generate', (req, res) => {
@@ -669,7 +704,8 @@ async function generateImage(prompt, brand, opts) {
           const st = err.response && err.response.status;
           const oe = (err.response && err.response.data && err.response.data.error) || {};
           if (st === 429 && (oe.code === 'insufficient_quota' || /quota|billing/i.test(oe.message || ''))) {
-            throw new Error('Credito OpenAI esaurito: ricarica il saldo su platform.openai.com → Billing');
+            ALERTS.openai();
+            throw new Error('Servizio immagini momentaneamente non disponibile, riprova più tardi (i crediti ti vengono restituiti)');
           }
           if (st === 429 && attempt < 5) {
             const wait = (parseInt(err.response.headers['retry-after'], 10) || attempt * 15) * 1000;
@@ -722,7 +758,7 @@ app.post('/api/generate-image', async (req, res) => {
     const { prompt, brand, userId, refImages, size, quality } = req.body;
     if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'OpenAI non configurato' });
     const imgCost = quality === 'high' ? CREDIT_COSTS.image_hq : CREDIT_COSTS.image;
-    const pay = await payAction(userId, req.authEmail, 'posts', imgCost, 'Immagine');
+    const pay = await payAction(userId, req.authEmail, 'images', imgCost, 'Immagine');
     if (!pay.ok) return res.status(402).json(pay.body);
     const refs = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 4);
     let url;
@@ -752,8 +788,8 @@ app.post('/api/generate-video', async (req, res) => {
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl obbligatoria' });
     duration = videoSeconds(duration);
     const acc = await getAccess(userId, req.authEmail);
-    if (acc.kind === 'trial' && acc.left.reels > 0) duration = Math.min(duration, TRIAL_REEL_SECONDS);
-    const pay = await payAction(userId, req.authEmail, duration <= TRIAL_REEL_SECONDS ? 'reels' : null, reelCost(duration), 'Reel AI ' + duration + 's');
+    if (acc.kind === 'free') duration = FREE_REEL_SECONDS; // piano gratuito: solo 5 secondi
+    const pay = await payAction(userId, req.authEmail, 'reels', reelCost(duration), 'Reel AI ' + duration + 's');
     if (!pay.ok) return res.status(402).json(pay.body);
     let request_id;
     try { request_id = await startAdVideo(imageUrl, prompt, brand, sector, style, duration, person === true); }
@@ -986,10 +1022,16 @@ app.get('/api/user/profile', async (req, res) => {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId mancante' });
     const { data, error } = await supabase.from('users').select('plan,brand,sector,name,email').eq('id', userId).single();
-    if (error || !data) return res.json({ plan: isOwnerEmail(req.authEmail) ? 'business' : 'free', brand: '', sector: '', name: '', email: req.authEmail || '' });
+    if (error || !data) {
+      // account senza riga in users (es. accesso con Google): la creiamo, così riceve anche i crediti di benvenuto
+      await supabase.from('users').insert({ id: userId, email: req.authEmail || null, plan: 'free', created_at: new Date().toISOString() });
+      await addCredits(userId, WELCOME_CREDITS, 'Crediti di benvenuto', 'welcome_' + userId);
+      return res.json({ plan: isOwnerEmail(req.authEmail) ? 'business' : 'free', brand: '', sector: '', name: '', email: req.authEmail || '', credits: await getCredits(userId), unlimited: isOwnerEmail(req.authEmail) });
+    }
     if (isOwnerEmail(data.email) || isOwnerEmail(req.authEmail)) data.plan = 'business';
     const acc = await getAccess(userId, req.authEmail);
     if (acc.kind === 'trial') data.trial = { days_left: acc.days_left, ends_at: acc.ends_at, left: acc.left, limits: acc.limits };
+    await addCredits(userId, WELCOME_CREDITS, 'Crediti di benvenuto', 'welcome_' + userId); // una sola volta per account
     data.credits = await getCredits(userId);
     data.unlimited = acc.kind === 'owner';
     res.json(data);
@@ -1025,6 +1067,15 @@ app.post('/api/checkout', async (req, res) => {
     console.error('Checkout error:', e.message);
     res.status(500).json({ error: 'Errore checkout', details: e.message });
   }
+});
+
+// prova dell'email di avviso (solo proprietaria): apri /api/admin/test-alert dalla dashboard
+app.post('/api/admin/test-alert', async (req, res) => {
+  if (!isOwnerEmail(req.authEmail)) return res.status(403).json({ error: 'Solo per la proprietaria' });
+  if (!process.env.RESEND_API_KEY) return res.status(400).json({ error: 'Manca RESEND_API_KEY su Railway' });
+  lastAlerts.delete('test');
+  await notifyOwner('test', 'email di prova', 'Se leggi questa email, gli avvisi funzionano.');
+  res.json({ success: true });
 });
 
 // pacchetti di crediti: pagamento singolo (il prezzo è definito qui, non serve creare prodotti su Stripe)
@@ -1447,7 +1498,7 @@ app.post('/api/reel/upload-url', async (req, res) => {
   try {
     const { userId, ext } = req.body;
     { const acc = await getAccess(userId, req.authEmail);
-      if (acc.kind !== 'owner' && acc.kind !== 'trial' && (await getCredits(userId)) < CREDIT_COSTS.voice_reel) return res.status(402).json(noCredits(CREDIT_COSTS.voice_reel)); }
+      if (acc.kind !== 'owner' && (await getCredits(userId)) < CREDIT_COSTS.voice_reel) return res.status(402).json(noCredits(CREDIT_COSTS.voice_reel)); }
     const e = ['mp4', 'mov', 'webm', 'm4v'].includes(String(ext || '').toLowerCase()) ? String(ext).toLowerCase() : 'mp4';
     const filePath = `uploads/${userId}/videos/${crypto.randomUUID()}.${e}`;
     const { data, error } = await supabase.storage.from('post-images').createSignedUploadUrl(filePath);
@@ -1462,7 +1513,7 @@ async function talkingReelHandler(req, res) {
   try {
     const { userId, path: vPath, brand, sector, style, tone, socials, title: wantedTitle } = req.body;
     if (!vPath || !String(vPath).startsWith(`uploads/${userId}/videos/`)) return res.status(400).json({ error: 'Video non valido' });
-    const payV = await payAction(userId, req.authEmail, 'free', CREDIT_COSTS.voice_reel, 'Reel con la tua voce');
+    const payV = await payAction(userId, req.authEmail, null, CREDIT_COSTS.voice_reel, 'Reel con la tua voce');
     if (!payV.ok) return res.status(402).json(payV.body);
     if (!vPath || !String(vPath).startsWith(`uploads/${userId}/videos/`)) return res.status(400).json({ error: 'Video non valido' });
     if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'Chiave OpenAI mancante: serve per trascrivere la voce' });
@@ -1575,8 +1626,8 @@ async function avatarSetupHandler(req, res) {
   try {
     const { userId, path: vPath, consent } = req.body;
     { const acc = await getAccess(userId, req.authEmail);
-      const trialOk = acc.kind === 'trial' && acc.left.avatars > 0;
-      if (acc.kind !== 'owner' && !trialOk && (await getCredits(userId)) < CREDIT_COSTS.avatar_30) return res.status(402).json(noCredits(CREDIT_COSTS.avatar_30)); }
+      if (acc.kind === 'free') return res.status(403).json({ error: 'I reel Avatar AI sono inclusi nei piani Starter, Pro e Business', upgrade: true });
+      if (acc.kind !== 'owner' && (await getCredits(userId)) < CREDIT_COSTS.avatar_30) return res.status(402).json(noCredits(CREDIT_COSTS.avatar_30)); }
     if (consent !== true) return res.status(400).json({ error: 'Serve la conferma del consenso all\'uso del volto e della voce' });
     if (!vPath || !String(vPath).startsWith(`uploads/${userId}/videos/`)) return res.status(400).json({ error: 'Video non valido' });
     const { data: blob, error: dlErr } = await supabase.storage.from('post-images').download(vPath);
@@ -1762,8 +1813,8 @@ async function avatarScriptHandler(req, res) {
   try {
     const { userId, topic, length, brand, description, sector, tone, style } = req.body;
     { const acc = await getAccess(userId, req.authEmail);
-      const trialOk = acc.kind === 'trial' && acc.left.avatars > 0;
-      if (acc.kind !== 'owner' && !trialOk && (await getCredits(userId)) < CREDIT_COSTS.avatar_30) return res.status(402).json(noCredits(CREDIT_COSTS.avatar_30)); }
+      if (acc.kind === 'free') return res.status(403).json({ error: 'I reel Avatar AI sono inclusi nei piani Starter, Pro e Business', upgrade: true });
+      if (acc.kind !== 'owner' && (await getCredits(userId)) < CREDIT_COSTS.avatar_30) return res.status(402).json(noCredits(CREDIT_COSTS.avatar_30)); }
     const av = await getAvatar(userId);
     if (!av) return res.status(400).json({ error: 'Prima crea il tuo avatar caricando un video in cui parli' });
     const medium = length === 'medium';
@@ -1806,8 +1857,9 @@ async function avatarRenderHandler(req, res) {
   try {
     const { userId, script, title, text, hashtags, objective, why, broll, audio_url, brand, sector, style, socials, aiLabel } = req.body;
     const accR = await getAccess(userId, req.authEmail);
-    const trialAv = accR.kind === 'trial' && accR.left.avatars > 0;
-    if (accR.kind !== 'owner' && !trialAv && (await getCredits(userId)) < CREDIT_COSTS.avatar_30) return res.status(402).json(noCredits(CREDIT_COSTS.avatar_30));
+    const trialAv = false;
+    if (accR.kind === 'free') return res.status(403).json({ error: 'I reel Avatar AI sono inclusi nei piani Starter, Pro e Business', upgrade: true });
+    if (accR.kind !== 'owner' && (await getCredits(userId)) < CREDIT_COSTS.avatar_30) return res.status(402).json(noCredits(CREDIT_COSTS.avatar_30));
     const av = await getAvatar(userId);
     if (!av) return res.status(400).json({ error: 'Avatar non trovato' });
     if (!audio_url || !String(audio_url).includes('/storage/v1/object/public/post-images/posts/voice-')) return res.status(400).json({ error: 'Prima prepara testo e voce' });
@@ -1819,7 +1871,7 @@ async function avatarRenderHandler(req, res) {
     if (!D || D > 60) throw new Error('La voce dura ' + Math.round(D) + ' secondi: accorcia il testo (massimo 60 secondi)');
     if (trialAv && D > TRIAL_AVATAR_MAX_SECONDS + 1) throw new Error(`Nella settimana di prova il reel avatar può durare al massimo ${TRIAL_AVATAR_MAX_SECONDS} secondi (ora ${Math.round(D)}): accorcia il testo e rigenera la voce`);
     const avCost = D > TRIAL_AVATAR_MAX_SECONDS + 1 ? CREDIT_COSTS.avatar_60 : CREDIT_COSTS.avatar_30;
-    const payA = await payAction(userId, req.authEmail, trialAv ? 'avatars' : null, avCost, 'Reel Avatar AI');
+    const payA = await payAction(userId, req.authEmail, null, avCost, 'Reel Avatar AI');
     if (!payA.ok) return res.status(402).json(payA.body);
     if (payA.via === 'credits') avatarCharge = { userId, cost: avCost };
     const photo = await avatarPhotoUrl(av);
