@@ -263,6 +263,12 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .pBtn-dark:hover{background:#2A2A33}
 .pv-ok{font-size:0.82rem;color:var(--blue);background:var(--blue-bg);border-radius:8px;padding:0.5rem 0.7rem}
 /* ===== FOTO DEL BRAND ===== */
+.ph-cell{display:flex;flex-direction:column;gap:0.3rem;width:110px}
+.ph-cell .ph-item{width:110px;height:110px}
+.ph-item.is-person{outline:2px solid var(--purple);outline-offset:1px}
+.fg .ph-kind{width:110px;padding:0.25rem 0.3rem;font-size:0.72rem;border-radius:6px;background-image:none;padding-right:0.3rem}
+.pv-why{font-size:0.82rem;color:var(--dark2);line-height:1.5}
+.pv-obj{display:inline-block;background:var(--lavender);color:var(--purple);font-weight:600;font-size:0.72rem;border-radius:5px;padding:0.1rem 0.45rem;margin-right:0.4rem}
 .ph-box{border:1px dashed var(--border-strong);border-radius:10px;padding:0.85rem;background:var(--off-white)}
 .ph-grid{display:flex;flex-wrap:wrap;gap:0.5rem}
 .ph-grid:not(:empty){margin-bottom:0.7rem}
@@ -533,7 +539,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
           <div class="ph-box">
             <div class="ph-grid" id="ph-grid"></div>
             <label class="ph-add"><input type="file" id="ph-input" accept="image/jpeg,image/png,image/webp" multiple hidden>+ Aggiungi foto</label>
-            <p class="ph-hint">Prodotti, locale, lavori fatti, persone del team: l'AI le studia per creare post e immagini più fedeli al tuo brand.</p>
+            <p class="ph-hint">Indica sotto ogni foto cosa mostra. <b>Lavori, prodotti e locale</b>: l'AI li studia per creare immagini fedeli al tuo brand. <b>Io / persona</b>: la tua foto viene usata così com'è, senza mai modificare il volto, in un solo post per volta (anche come reel animato).</p>
             <label class="media-opt ph-real"><input type="checkbox" id="ph-real"> Usa direttamente le mie foto nei post e nei caroselli (al posto delle immagini AI)</label>
           </div>
         </div>
@@ -1169,7 +1175,8 @@ function buildPostCard(post) {
   return '<div class="post-item pv-card" data-idx="' + post._uid + '">' + preview +
     '<div class="pv-side">' +
       '<span class="status ' + stClass + '">' + stLabel + '</span>' +
-      '<div class="pv-meta"><b>' + escH(social) + '</b> · ' + typeLabel + '</div>' +
+      '<div class="pv-meta"><b>' + escH(social) + '</b> · ' + typeLabel + (post.person_photo ? ' · con la tua foto' : '') + '</div>' +
+      (post.objective && !/^\.\.\.$/.test(post.objective) ? '<div class="pv-why"><span class="pv-obj">' + escH(post.objective) + '</span>' + (post.why && post.why !== '...' ? escH(post.why) : '') + '</div>' : '') +
       (when ? '<div class="pv-when">' + escH(when) + '</div>' : '') +
       actions +
       '<div class="pv-edit" hidden></div>' +
@@ -1425,7 +1432,7 @@ async function openPublished(post, btn) {
 // ===== CREA IMMAGINE PER UN POST CHE NE È SENZA =====
 async function createPostImage(post, btn) {
   btn.disabled = true; btn.textContent = post.type === 'carousel' ? 'Creo le 5 slide… (2-3 minuti)' : 'Creo l\'immagine… (circa 30 secondi)';
-  var refs = (typeof brandPhotos !== 'undefined' ? brandPhotos : []).map(function(p) { return p.url; }).filter(Boolean);
+  var refs = (typeof brandRefs === 'function' ? brandRefs(false) : []).map(function(p) { return p.url; }); // il volto non viene mai rielaborato
   var one = async function(prompt, size) {
     var gq = {}; try { gq = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
     var resp = await fetch('/api/generate-image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: prompt, brand: post.brand || '', refImages: refs, size: size, quality: gq['gen-quality'] || 'medium' }) });
@@ -1481,7 +1488,7 @@ async function createPostVideo(post, btn) {
   try {
     var f = {}; try { f = JSON.parse(localStorage.getItem('inpost_gen_form') || '{}'); } catch (e) {}
     var resp = await fetch('/api/generate-video', { method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ imageUrl: post.image_url, prompt: post.video_prompt || post.text, brand: post.brand || '', sector: f['g-sector'] || '', style: f['g-style'] || '', duration: f['gen-duration'] || '5' }) });
+      body: JSON.stringify({ imageUrl: post.image_url, prompt: post.video_prompt || post.text, brand: post.brand || '', sector: f['g-sector'] || '', style: f['g-style'] || '', duration: f['gen-duration'] || '5', person: !!post.person_photo }) });
     var r = await resp.json();
     if (!resp.ok || !r.task_id) throw new Error(r.error || 'Video non avviato');
     post.video_task_id = r.task_id;
@@ -1541,15 +1548,24 @@ document.addEventListener('change', function(e) { if (e.target && e.target.close
 restoreGenForm();
 
 // ===== FOTO DEL BRAND =====
-var brandPhotos = []; // { url, thumb }
-try { brandPhotos = JSON.parse(localStorage.getItem('inpost_brand_photos') || '[]').map(function(u) { return { url: u, thumb: u }; }); } catch (e) { brandPhotos = []; }
-function saveBrandPhotos() { try { localStorage.setItem('inpost_brand_photos', JSON.stringify(brandPhotos.map(function(p) { return p.url; }).filter(Boolean))); } catch (e) {} }
+var brandPhotos = []; // { url, thumb, kind: work | place | person }
+try {
+  brandPhotos = JSON.parse(localStorage.getItem('inpost_brand_photos') || '[]').map(function(x) {
+    return typeof x === 'string' ? { url: x, thumb: x, kind: 'work' } : { url: x.url, thumb: x.url, kind: x.kind || 'work' };
+  }).filter(function(p) { return p.url; });
+} catch (e) { brandPhotos = []; }
+function saveBrandPhotos() { try { localStorage.setItem('inpost_brand_photos', JSON.stringify(brandPhotos.filter(function(p) { return p.url; }).map(function(p) { return { url: p.url, kind: p.kind || 'work' }; }))); } catch (e) {} }
+var PH_KINDS = [['work', 'Lavoro / prodotto'], ['place', 'Locale / ambiente'], ['person', 'Io / persona']];
 function renderBrandPhotos() {
   var g = document.getElementById('ph-grid');
   if (!g) return;
   g.innerHTML = brandPhotos.map(function(p, i) {
-    return '<div class="ph-item' + (p.url ? '' : ' loading') + '"><img src="' + escH(p.thumb) + '" alt=""><button type="button" class="ph-del" data-ph="' + i + '" aria-label="Rimuovi">&times;</button></div>';
+    return '<div class="ph-cell"><div class="ph-item' + (p.url ? '' : ' loading') + (p.kind === 'person' ? ' is-person' : '') + '"><img src="' + escH(p.thumb) + '" alt=""><button type="button" class="ph-del" data-ph="' + i + '" aria-label="Rimuovi">&times;</button></div>' +
+      '<select class="ph-kind" data-ph="' + i + '">' + PH_KINDS.map(function(k) { return '<option value="' + k[0] + '"' + ((p.kind || 'work') === k[0] ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select></div>';
   }).join('');
+}
+function brandRefs(includePerson) {
+  return brandPhotos.filter(function(p) { return p.url && (includePerson || p.kind !== 'person'); }).map(function(p) { return { url: p.url, kind: p.kind || 'work' }; });
 }
 function resizeImage(file) {
   return new Promise(function(resolve, reject) {
@@ -1571,7 +1587,7 @@ async function addBrandPhotos(fileList) {
   if (!files.length) return toast('Puoi caricare fino a 8 foto', 'error');
   var datas = [];
   for (var i = 0; i < files.length; i++) {
-    try { var d = await resizeImage(files[i]); datas.push(d); brandPhotos.push({ url: null, thumb: d }); } catch (e) {}
+    try { var d = await resizeImage(files[i]); datas.push(d); brandPhotos.push({ url: null, thumb: d, kind: 'work' }); } catch (e) {}
   }
   renderBrandPhotos();
   try {
@@ -1591,6 +1607,10 @@ async function addBrandPhotos(fileList) {
 }
 document.addEventListener('change', function(e) {
   if (e.target && e.target.id === 'ph-input') { addBrandPhotos(e.target.files); e.target.value = ''; }
+  if (e.target && e.target.classList && e.target.classList.contains('ph-kind')) {
+    var i = parseInt(e.target.getAttribute('data-ph'));
+    if (brandPhotos[i]) { brandPhotos[i].kind = e.target.value; saveBrandPhotos(); renderBrandPhotos(); }
+  }
 });
 document.addEventListener('click', function(e) {
   var del = e.target.closest('.ph-del');
@@ -1613,7 +1633,7 @@ async function doGenerate() {
   var genImages = document.getElementById('gen-images').checked;
   var genVideo = document.getElementById('gen-video').checked;
   var useReal = document.getElementById('ph-real').checked;
-  if (useReal && !brandPhotos.length) return toast('Aggiungi almeno una foto per usarla nei post', 'error');
+  if (useReal && !brandRefs(false).length) return toast('Aggiungi almeno una foto di lavori, prodotti o locale per usarla nei post', 'error');
   var lmsg = useReal ? 'Preparo i post con le tue foto...' : genImages && genVideo ? 'Generando post, immagini e video... (1-2 min)' :
              genImages ? 'Generando immagini con DALL-E 3...' :
              genVideo ? 'Generando video con Seedance AI...' : 'L\'AI sta generando la tua strategia...';
@@ -1632,7 +1652,7 @@ async function doGenerate() {
         userId: user.id,
         generateImages: genImages,
         generateVideo: genVideo,
-        refImages: brandPhotos.map(function(p) { return p.url; }).filter(Boolean),
+        refImages: brandRefs(true),
         useRealPhotos: useReal,
         textOverlay: document.getElementById('gen-text').checked,
         videoDuration: document.getElementById('gen-duration').value,
@@ -1684,9 +1704,12 @@ function renderStrategy(s, brand) {
       '<h4>Strategia per ' + brand + '</h4>' +
       '<p>' + s.summary + '</p>' +
       '<div class="strategy-grid">' +
+        (s.goal ? '<div class="s-block" style="grid-column:span 2"><h5>Obiettivo</h5><p>' + escH(s.goal) + '</p></div>' : '') +
+        (s.funnel ? '<div class="s-block" style="grid-column:span 2"><h5>Percorso del cliente</h5><p>' + escH(s.funnel) + '</p></div>' : '') +
         '<div class="s-block"><h5>Target</h5><p>' + s.target + '</p></div>' +
         '<div class="s-block"><h5>Orari migliori</h5><p>' + s.best_times + '</p></div>' +
-        '<div class="s-block" style="grid-column:span 2"><h5>Content Pillars</h5><ul>' + pillars + '</ul></div>' +
+        '<div class="s-block" style="grid-column:span 2"><h5>Temi dei contenuti</h5><ul>' + pillars + '</ul></div>' +
+        ((s.tips && s.tips.length) ? '<div class="s-block" style="grid-column:span 2"><h5>Consigli</h5><ul>' + s.tips.map(function(t) { return '<li>' + escH(t) + '</li>'; }).join('') + '</ul></div>' : '') +
       '</div>' +
     '</div>';
 }

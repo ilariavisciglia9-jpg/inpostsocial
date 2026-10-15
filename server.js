@@ -4,6 +4,7 @@ const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
 const { addTextOverlay } = require('./overlay');
+const sharp = require('sharp');
 const Stripe = require('stripe');
 const axios = require('axios');
 const cron = require('node-cron');
@@ -27,6 +28,23 @@ function accentFromStyle(style) {
   for (const [k, v] of map) if (t.includes(k)) return v;
   return '#ffffff';
 }
+// ritaglia una foto reale nel formato giusto (feed 4:5, reel 9:16) tenendo al centro la parte importante
+const preparedCache = new Map();
+async function prepareRealPhoto(url, mode) {
+  const key = url + '|' + mode;
+  if (preparedCache.has(key)) return preparedCache.get(key);
+  const f = await axios.get(url, { responseType: 'arraybuffer', timeout: 30000 });
+  const [W, H] = mode === 'reel' ? [1080, 1920] : [1080, 1350];
+  const out = await sharp(Buffer.from(f.data)).rotate().resize(W, H, { fit: 'cover', position: sharp.strategy.attention }).jpeg({ quality: 90 }).toBuffer();
+  const fileName = `posts/${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage.from('post-images').upload(fileName, out, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw new Error('Salvataggio foto: ' + error.message);
+  const pub = supabase.storage.from('post-images').getPublicUrl(fileName).data.publicUrl;
+  preparedCache.set(key, pub);
+  if (preparedCache.size > 200) preparedCache.delete(preparedCache.keys().next().value);
+  return pub;
+}
+
 async function overlayAndUpload(imageUrl, title, subtitle, accent) {
   if (!imageUrl || !title || !String(title).trim()) return imageUrl;
   const f = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000 });
@@ -58,8 +76,10 @@ function falErrorMessage(e) {
 }
 // durata del video: Seedance 2.0 fast accetta da 4 a 15 secondi
 function videoSeconds(v) { const n = parseInt(v, 10); return [5, 8, 10, 15].includes(n) ? n : 5; }
-async function startAdVideo(imageUrl, motion, brand, sector, style, seconds) {
+async function startAdVideo(imageUrl, motion, brand, sector, style, seconds, person) {
   const sec = videoSeconds(seconds);
+  // con la foto vera del titolare: volto identico, movimenti minimi (niente deformazioni)
+  if (person) motion = `The real person in the photo must keep exactly the same face, identity, hairstyle, clothes and body: no changes, no morphing. Only natural, very subtle movement (soft breathing, a slight smile, a small head turn) and a slow cinematic camera push-in; the background can have gentle motion and light. The person does not speak. ${motion || ''}`;
   const { request_id } = await fal.queue.submit(SEEDANCE_MODEL, {
     // niente audio generato: la voce AI non parla bene l'italiano. La musica si aggiunge su Instagram.
     input: { prompt: adVideoPrompt(motion, brand, sector, style) + (sec > 5 ? ` The video lasts ${sec} seconds: develop the action in ${sec >= 10 ? 'three' : 'two'} smooth consecutive moments, with continuous camera movement.` : ''), image_url: imageUrl, resolution: '720p', duration: String(sec), aspect_ratio: '9:16', generate_audio: false }
@@ -189,7 +209,13 @@ async function generateHandler(req, res) {
     const wantText = textOverlay === true || textOverlay === 'true';
     const imgQuality = req.body.imageQuality === 'high' ? 'high' : 'medium';
     // foto del cliente: solo link del nostro storage
-    const photos = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 8);
+    // foto del cliente: link (vecchio formato) o { url, kind } con kind = work | place | person
+    const okUrl = u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/');
+    const photoList = (Array.isArray(refImages) ? refImages : [])
+      .map(p => typeof p === 'string' ? { url: p, kind: 'work' } : { url: p && p.url, kind: ['work', 'place', 'person'].includes(p && p.kind) ? p.kind : 'work' })
+      .filter(p => okUrl(p.url)).slice(0, 8);
+    const photos = photoList.filter(p => p.kind !== 'person').map(p => p.url);      // riferimenti per l'AI e foto da usare nei post
+    const personPhotos = photoList.filter(p => p.kind === 'person').map(p => p.url); // volto: mai rielaborato dall'AI
     const realPhotos = (useRealPhotos === true || useRealPhotos === 'true') && photos.length > 0;
     const wantVideo = generateVideo === true || generateVideo === 'true';
     const vidSec = videoSeconds(req.body.videoDuration);
@@ -231,24 +257,30 @@ TONO: ${tone || 'professionale'}
 LINGUA: scrivi in italiano corretto e naturale, come un copywriter madrelingua: niente traduzioni letterali dall'inglese, niente errori di grammatica, accenti e apostrofi giusti (è, perché, po', un'idea).
 ${styleInstruction}${style && style.trim() ? `IMMAGINI: ogni "image_prompt" (anche quelli di ogni slide del carosello e della scena del reel) deve descrivere esplicitamente i colori, la palette e lo stile visivo richiesti dall'utente qui sopra.\n` : ''}
 REEL: ogni post di tipo "reel" deve parlare di un argomento concreto e specifico di questo settore e di questa attività (un servizio, un prodotto, un lavoro tipico, un dietro le quinte, un consiglio pratico), mai generico. Il suo "image_prompt" descrive la scena di apertura verticale (9:16) con il soggetto del settore ben riconoscibile; il suo "video_prompt" va scritto IN INGLESE (${vidSec > 5 ? '80-140' : '50-90'} parole) e descrive cosa succede nei ${vidSec} secondi${vidSec > 5 ? ' (una piccola sequenza di 2-3 momenti consecutivi, sempre nella stessa scena)' : ''}: un'azione semplice e realistica del soggetto (movimenti lenti, niente mani in primo piano che fanno gesti complessi), movimento della camera, luce, atmosfera, coerente con l'immagine di apertura. Nel video non deve comparire nessuna scritta e nessuno deve parlare.${wantVideo ? ' Includi almeno 2 post di tipo "reel".' : ''}
-${wantText ? `SCRITTE SULLE IMMAGINI: per ogni post aggiungi "overlay_title" (titolo d'impatto, massimo 6 parole, italiano perfetto, senza emoji e senza hashtag) e "overlay_subtitle" (frase breve di supporto, massimo 10 parole). Per ogni slide del carosello scrivi in "title" il titolo che apparirà su quella slide (massimo 6 parole) e in "subtitle" una riga di supporto (massimo 10 parole). Queste scritte verranno sovrapposte all'immagine in modo tipografico, quindi l'immagine stessa NON deve contenere testo.\n` : ''}DIREZIONE VISIVA: immagini accattivanti da agenzia creativa, mai generiche o da stock. Per ogni post scegli il tipo di immagine più adatto all'attività:
+${wantText ? `SCRITTE SULLE IMMAGINI: per ogni post aggiungi "overlay_title" (titolo d'impatto, massimo 6 parole, italiano perfetto, senza emoji e senza hashtag) e "overlay_subtitle" (frase breve di supporto, massimo 10 parole). Per ogni slide del carosello scrivi in "title" il titolo che apparirà su quella slide (massimo 6 parole) e in "subtitle" una riga di supporto (massimo 10 parole). Queste scritte verranno sovrapposte all'immagine in modo tipografico, quindi l'immagine stessa NON deve contenere testo.\n` : ''}STRATEGIA (non semplici pubblicazioni): costruisci un piano che porti le persone da "non ti conosco" a "ti contatto/compro". Mix dei post: circa 40% valore (consigli, spiegazioni, errori da evitare), 30% fiducia (lavori realizzati, dietro le quinte, risultati, prima/dopo, chi c'è dietro), 20% interazione (domande, scelte tra due opzioni, sondaggi), 10% vendita diretta con offerta chiara. Ogni post apre con un "hook" nella prima riga che ferma lo scroll (domanda, numero, affermazione forte) e chiude con una call to action adatta al suo obiettivo (salva, commenta, scrivici in DM, prenota, visita il link in bio). Orari scelti in base alle abitudini del target.
+DIREZIONE VISIVA: immagini accattivanti da agenzia creativa, mai generiche o da stock. Per ogni post scegli il tipo di immagine più adatto all'attività:
 - se l'attività REALIZZA qualcosa (grafica, locandine, volantini, biglietti da visita, loghi, siti web, app, packaging, arredamento, abiti, gioielli, piatti, lavori artigianali...), mostra IL LAVORO FINITO come mockup fotografico professionale e realistico: locandina stampata appesa o tenuta in mano, biglietti da visita impilati su una scrivania di design con luce morbida, sito web aperto su laptop e smartphone in uno studio luminoso, packaging in uno scatto da catalogo, prima/dopo, dettagli dei materiali. Il lavoro deve sembrare vero, curato e di alto livello (gerarchia grafica, impaginazione pulita, colori del brand, foto e forme ben composte), così che si capisca che dietro c'è un vero lavoro professionale;
 - se l'attività offre un servizio alle persone, mostra persone reali in azione, l'ambiente, il risultato per il cliente;
 - alterna inquadrature (dettaglio, ambiente, prodotto in mano, flat lay dall'alto) per rendere il feed vario.
 CAROSELLI: ogni carosello ha esattamente 5 slide che raccontano una piccola storia (1 copertina d'impatto, 2-4 sviluppo: fasi del lavoro, dettagli, vantaggi o esempi diversi, 5 chiusura con invito all'azione). Le 5 immagini devono essere diverse tra loro ma coerenti nello stile.
 IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo, scritte, insegne o loghi nell'immagine: i messaggi vanno solo nel testo del post.
-${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)} foto reali del brand. Studiale con attenzione (prodotti, ambienti, persone, colori, stile) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
-{"strategy":{"summary":"sintesi strategia in 2 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare","tips":["consiglio1","consiglio2"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","text":"testo coinvolgente per il reel su un tema specifico del settore","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"english description of the 5-second action and camera movement, specific to this business"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"titolo slide 1 (copertina)","subtitle":"riga di supporto","image_prompt":"scena della slide 1"},{"title":"titolo slide 2","subtitle":"riga di supporto","image_prompt":"scena della slide 2"},{"title":"titolo slide 3","subtitle":"riga di supporto","image_prompt":"scena della slide 3"},{"title":"titolo slide 4","subtitle":"riga di supporto","image_prompt":"scena della slide 4"},{"title":"titolo slide 5 (chiusura con invito all'azione)","subtitle":"riga di supporto","image_prompt":"scena della slide 5"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
+${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodotti o ambienti del brand. Studiale con attenzione (stile, colori, materiali, qualità) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}${personPhotos.length ? `FOTO DEL TITOLARE: ti allego anche una foto della persona che rappresenta il brand. Questa foto verrà usata COSÌ COM'È, senza modificarla, in UN SOLO post: scegli il post più adatto (presentazione, dietro le quinte, "chi sono", messaggio personale) di tipo "image" oppure "reel" e aggiungi su quel post "use_person_photo": true; scrivi quel testo in prima persona. Negli altri post NON descrivere né inserire il volto del titolare negli image_prompt (puoi usare mani al lavoro, persone generiche o dettagli).\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
+{"strategy":{"summary":"sintesi strategia in 2 frasi","goal":"obiettivo principale e misurabile del periodo (es. 10 richieste di preventivo al mese)","funnel":"come i post accompagnano le persone dalla scoperta al contatto/acquisto, in 2-3 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare e perché","tips":["consiglio pratico 1","consiglio pratico 2","consiglio pratico 3"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","objective":"Notorietà | Fiducia | Interazione | Conversione","hook":"prima riga che ferma lo scroll","why":"perché questo post serve alla strategia, in una frase","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","objective":"...","hook":"...","why":"...","text":"testo coinvolgente per il reel su un tema specifico del settore","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"english description of the 5-second action and camera movement, specific to this business"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","objective":"...","hook":"...","why":"...","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","objective":"...","hook":"...","why":"...","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"titolo slide 1 (copertina)","subtitle":"riga di supporto","image_prompt":"scena della slide 1"},{"title":"titolo slide 2","subtitle":"riga di supporto","image_prompt":"scena della slide 2"},{"title":"titolo slide 3","subtitle":"riga di supporto","image_prompt":"scena della slide 3"},{"title":"titolo slide 4","subtitle":"riga di supporto","image_prompt":"scena della slide 4"},{"title":"titolo slide 5 (chiusura con invito all'azione)","subtitle":"riga di supporto","image_prompt":"scena della slide 5"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","objective":"...","hook":"...","why":"...","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
 
     // le foto del cliente vengono mostrate anche all'AI che scrive post e descrizioni delle immagini
     let content = prompt;
-    if (photos.length) {
+    const visionList = photos.slice(0, 4).map(u => ({ u, label: 'Foto di un lavoro, prodotto o ambiente del brand:' }))
+      .concat(personPhotos.slice(0, 1).map(u => ({ u, label: 'Foto del titolare (da usare così com\'è in un solo post):' })));
+    if (visionList.length) {
       const blocks = [];
-      for (const u of photos.slice(0, 4)) {
+      for (const v of visionList) {
         try {
-          const f = await axios.get(u, { responseType: 'arraybuffer', timeout: 20000 });
+          const f = await axios.get(v.u, { responseType: 'arraybuffer', timeout: 20000 });
           const mt = (f.headers['content-type'] || 'image/jpeg').split(';')[0];
-          if (['image/jpeg', 'image/png', 'image/webp'].includes(mt)) blocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: Buffer.from(f.data).toString('base64') } });
+          if (['image/jpeg', 'image/png', 'image/webp'].includes(mt)) {
+            blocks.push({ type: 'text', text: v.label });
+            blocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: Buffer.from(f.data).toString('base64') } });
+          }
         } catch (e) { console.log('Foto di riferimento non leggibile:', e.message); }
       }
       if (blocks.length) content = blocks.concat([{ type: 'text', text: prompt }]);
@@ -278,23 +310,40 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
       data.posts = data.posts.slice().sort((a, b) => (order[a.type] ?? 1) - (order[b.type] ?? 1)).slice(0, freeLeft);
     }
 
-    // "usa le mie foto": i post usano direttamente le foto reali caricate
-    if (realPhotos && Array.isArray(data.posts)) {
-      let k = 0;
-      const next = () => photos[(k++) % photos.length];
-      data.posts.forEach(p => {
-        if (p.type === 'carousel') {
-          const n = Math.min(Math.max(photos.length, 2), 5); // fino a 5 slide con le tue foto
-          p.carousel_images = Array.from({ length: n }, next);
-          p.image_url = p.carousel_images[0];
-        } else {
-          p.image_url = next();
-        }
-        p.real_photo = true;
-      });
+    // foto del titolare: in un solo post, usata così com'è (solo ritagliata nel formato giusto)
+    if (personPhotos.length && Array.isArray(data.posts)) {
+      let target = data.posts.find(p => p.use_person_photo && (p.type === 'image' || p.type === 'reel'));
+      if (!target) target = data.posts.find(p => p.type === 'image') || data.posts.find(p => p.type === 'reel');
+      data.posts.forEach(p => { if (p !== target) delete p.use_person_photo; });
+      if (target) {
+        try {
+          target.image_url = await prepareRealPhoto(personPhotos[0], target.type === 'reel' ? 'reel' : 'feed');
+          target.use_person_photo = true; target.person_photo = true; target.real_photo = true;
+        } catch (e) { console.error('Foto del titolare non preparata:', e.message); }
+      }
     }
 
-    const doImages = (generateImages === true || generateImages === 'true') && !realPhotos;
+    // "usa le mie foto": i post usano direttamente le foto reali caricate (ritagliate nel formato accettato da Instagram)
+    if (realPhotos && Array.isArray(data.posts)) {
+      let k = 0;
+      const next = (mode) => prepareRealPhoto(photos[(k++) % photos.length], mode);
+      for (const p of data.posts) {
+        if (p.person_photo) continue;
+        try {
+          if (p.type === 'carousel') {
+            const n = Math.min(Math.max(photos.length, 2), 5); // fino a 5 slide con le tue foto
+            p.carousel_images = [];
+            for (let j = 0; j < n; j++) p.carousel_images.push(await next('feed'));
+            p.image_url = p.carousel_images[0];
+          } else {
+            p.image_url = await next(p.type === 'reel' ? 'reel' : 'feed');
+          }
+          p.real_photo = true;
+        } catch (e) { console.error('Foto reale non preparata:', e.message); }
+      }
+    }
+
+    const doImages = (generateImages === true || generateImages === 'true');
     const doVideo = freeLeft === null && (generateVideo === true || generateVideo === 'true');
     console.log('🖼️ generateImages:', generateImages, '→ doImages:', doImages, '| KEY:', !!process.env.OPENAI_API_KEY);
     // il video parte da un'immagine: per i reel la creiamo anche se "Immagini AI" non è spuntato
@@ -303,7 +352,8 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
     if ((doImages || doVideo) && process.env.OPENAI_API_KEY) {
       const styled = (p) => style && style.trim() ? `${p}. Stile e colori: ${style.trim()}` : p;
       const jobs = data.posts.map((post, i) => async () => {
-        if (!doImages && (post.type !== 'reel' || post.image_url)) return;
+        if (post.image_url || (post.carousel_images && post.carousel_images.length)) return; // ha già una foto reale
+        if (!doImages && post.type !== 'reel') return;
         try {
           if (post.type === 'carousel' && post.carousel_slides) {
             const imgs = [];
@@ -354,7 +404,7 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego ${Math.min(photos.length, 4)}
         if (post.type !== 'reel') continue;
         if (!post.image_url) { mediaErrors.push('Video non creato: manca l\'immagine di partenza del reel (usa "Crea immagine", poi partirà il video)'); continue; }
         try {
-          data.posts[i].video_task_id = await startAdVideo(post.image_url, post.video_prompt || post.text, brand, sector, style, vidSec);
+          data.posts[i].video_task_id = await startAdVideo(post.image_url, post.video_prompt || post.text, brand, sector, style, vidSec, !!post.person_photo);
           data.posts[i].video_seconds = vidSec;
           data.posts[i].video_status = 'processing';
           console.log('🎬 Video Seedance avviato:', data.posts[i].video_task_id);
@@ -544,9 +594,9 @@ app.post('/api/generate-carousel', async (req, res) => {
 
 app.post('/api/generate-video', async (req, res) => {
   try {
-    const { prompt, imageUrl, userId, brand, sector, style, duration } = req.body;
+    const { prompt, imageUrl, userId, brand, sector, style, duration, person } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl obbligatoria' });
-    const request_id = await startAdVideo(imageUrl, prompt, brand, sector, style, duration);
+    const request_id = await startAdVideo(imageUrl, prompt, brand, sector, style, duration, person === true);
     res.json({ success: true, task_id: request_id, status: 'processing' });
   } catch (e) { res.status(500).json({ error: falErrorMessage(e) }); }
 });
