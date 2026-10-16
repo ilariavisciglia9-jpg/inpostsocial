@@ -337,7 +337,7 @@ app.get('/api/config.js', (req, res) => {
   const key = publicAnonKey();
   if (!key) console.error('⚠️ SUPABASE_ANON_KEY mancante o non valida (deve essere la chiave anon/publishable, non la service_role)');
   res.type('application/javascript').set('Cache-Control', 'no-store');
-  res.send(`window.INPOST_CONFIG=${JSON.stringify({ supabaseAnonKey: key })};` +
+  res.send(`window.INPOST_CONFIG=${JSON.stringify({ supabaseAnonKey: key, googleClientId: process.env.GOOGLE_CLIENT_ID || '' })};` +
     (key ? '' : `console.error('InPostSocial: manca SUPABASE_ANON_KEY su Railway');`));
 });
 
