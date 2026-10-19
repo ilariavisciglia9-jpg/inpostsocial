@@ -910,6 +910,7 @@ async function init() {
   if (params.get('error') === 'auth_denied') toast('Collegamento annullato', 'error');
   if (params.get('error') === 'ig_not_configured') toast('Collegamento diretto a Instagram non ancora attivo: usa "oppure collega tramite Facebook".', 'error');
   if (params.get('error') === 'auth_failed') toast('Errore nel collegamento. Riprova.', 'error');
+  if (params.get('error') === 'ig_no_access') toast('Questo account Instagram non è ancora abilitato. Verifica che sia un profilo professionale (Business o Creator) oppure collegalo tramite Facebook.', 'error');
   if (params.get('error') === 'save_failed') toast('Collegamento riuscito su Meta ma non salvato nel database. Contatta l\'assistenza.', 'error');
   if (params.get('plan')) doCheckout(params.get('plan'));
 

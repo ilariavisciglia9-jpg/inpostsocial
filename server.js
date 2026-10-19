@@ -835,6 +835,7 @@ app.get('/auth/instagram', (req, res) => {
 
 app.get('/auth/instagram/callback', async (req, res) => {
   const DASH = siteUrl() + '/dashboard.html';
+  let step = 'avvio';
   try {
     const { code, state, error } = req.query;
     if (error || !code) return res.redirect(DASH + '?error=auth_denied');
@@ -845,12 +846,15 @@ app.get('/auth/instagram/callback', async (req, res) => {
       grant_type: 'authorization_code', redirect_uri: siteUrl() + '/auth/instagram/callback',
       code: String(code).replace(/#_$/, '')
     });
+    step = 'scambio code→token';
     const t1 = await axios.post('https://api.instagram.com/oauth/access_token', form.toString(), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
     const d1 = (t1.data && Array.isArray(t1.data.data)) ? t1.data.data[0] : t1.data;
+    step = 'token lunga durata';
     const t2 = await axios.get('https://graph.instagram.com/access_token', {
       params: { grant_type: 'ig_exchange_token', client_secret: process.env.INSTAGRAM_APP_SECRET, access_token: d1.access_token }
     });
     const token = t2.data.access_token;
+    step = 'lettura profilo /me';
     const me = await axios.get(`${IG_GRAPH}/me`, { params: { fields: 'user_id,username,account_type', access_token: token } });
     const igId = String(me.data.user_id || me.data.id || d1.user_id);
     await supabase.from('social_connections').delete().eq('user_id', userId).eq('platform', 'instagram');
@@ -864,7 +868,11 @@ app.get('/auth/instagram/callback', async (req, res) => {
     console.log('📸 Instagram collegato direttamente:', igId, me.data.username);
     res.redirect(DASH + '?connected=instagram');
   } catch (e) {
-    console.error('❌ Instagram OAuth error:', e.response?.data || e.message);
+    console.error('❌ Instagram OAuth error [' + step + ']:', e.response?.data || e.message);
+    // code 100 "Unsupported request" dopo lo scambio = account Instagram senza accesso all'app
+    // (permessi ancora in Accesso Standard e account non aggiunto come Tester Instagram)
+    const igErr = e.response?.data?.error;
+    if (igErr && igErr.code === 100 && step !== 'scambio code→token') return res.redirect(DASH + '?error=ig_no_access');
     res.redirect(DASH + '?error=auth_failed');
   }
 });
