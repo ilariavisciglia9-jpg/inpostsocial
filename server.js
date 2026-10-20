@@ -361,6 +361,8 @@ async function generateHandler(req, res) {
       .filter(p => okUrl(p.url)).slice(0, 8);
     const photos = photoList.filter(p => p.kind !== 'person').map(p => p.url);      // riferimenti per l'AI e foto da usare nei post
     const personPhotos = photoList.filter(p => p.kind === 'person').map(p => p.url); // volto: mai rielaborato dall'AI
+    const productPhotos = photoList.filter(p => p.kind === 'work').map(p => p.url).slice(0, 4);  // prodotti/lavori: l'AI li porta in nuove scene, identici
+    const placePhotos = photoList.filter(p => p.kind === 'place').map(p => p.url);               // locale: solo riferimento di stile
     const realPhotos = (useRealPhotos === true || useRealPhotos === 'true') && photos.length > 0;
     const wantVideo = generateVideo === true || generateVideo === 'true';
     let vidSec = videoSeconds(req.body.videoDuration);
@@ -400,12 +402,13 @@ DIREZIONE VISIVA: immagini accattivanti da agenzia creativa, mai generiche o da 
 - alterna inquadrature (dettaglio, ambiente, prodotto in mano, flat lay dall'alto) per rendere il feed vario.
 CAROSELLI: ogni carosello ha esattamente 5 slide che raccontano una piccola storia (1 copertina d'impatto, 2-4 sviluppo: fasi del lavoro, dettagli, vantaggi o esempi diversi, 5 chiusura con invito all'azione). Le 5 immagini devono essere diverse tra loro ma coerenti nello stile.
 IMMAGINI REALISTICHE: ogni "image_prompt" deve essere ricco e dettagliato (almeno 60 parole) e descrivere come una vera fotografia: soggetto, ambientazione, persone o prodotti, luce, inquadratura, profondità di campo, palette di colori, atmosfera. Il soggetto deve stare interamente nell'inquadratura. Niente testo, scritte, insegne o loghi nell'immagine: i messaggi vanno solo nel testo del post.
-${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodotti o ambienti del brand. Studiale con attenzione (stile, colori, materiali, qualità) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}${personPhotos.length ? `FOTO DEL TITOLARE: ti allego anche una foto della persona che rappresenta il brand. Questa foto verrà usata COSÌ COM'È, senza modificarla, in UN SOLO post: scegli il post più adatto (presentazione, dietro le quinte, "chi sono", messaggio personale) di tipo "image" oppure "reel" e aggiungi su quel post "use_person_photo": true; scrivi quel testo in prima persona. Negli altri post NON descrivere né inserire il volto del titolare negli image_prompt (puoi usare mani al lavoro, persone generiche o dettagli).\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
+${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodotti o ambienti del brand. Studiale con attenzione (stile, colori, materiali, qualità) e fai in modo che testi e image_prompt siano coerenti con ciò che vedi.\n` : ''}${productPhotos.length && !realPhotos ? `PRODOTTI DEL CLIENTE IN NUOVE SCENE (molto importante): le foto "PRODOTTO n." mostrano i prodotti reali del cliente. Le immagini NON devono riproporre quelle foto così come sono: il prodotto va preso e inserito in contesti NUOVI e diversi in ogni post (ambientazioni di casa o di vita reale, stagioni e occasioni, persone che lo usano o lo regalano, set fotografici da catalogo, flat lay, dettagli in uso), seguendo la descrizione e lo stile chiesti dall'utente. In ogni "image_prompt" (anche nelle slide del carosello e nella scena del reel) scrivi "il prodotto della foto di riferimento" come protagonista ben visibile, descrivi brevemente com'è (forma, colori, materiali) e poi descrivi in dettaglio la NUOVA scena intorno: il prodotto resta identico, cambiano solo ambiente, luce, sfondo, oggetti di contorno e persone. Aggiungi a ogni post il campo "product_ref" con il numero della foto PRODOTTO da usare (da 1 a ${productPhotos.length}); alterna i prodotti tra i post se sono diversi. L'etichetta o il logo stampati sul prodotto reale restano come sono (è l'unica scritta ammessa nell'immagine).\n` : ''}${personPhotos.length ? `FOTO DEL TITOLARE: ti allego anche una foto della persona che rappresenta il brand. Questa foto verrà usata COSÌ COM'È, senza modificarla, in UN SOLO post: scegli il post più adatto (presentazione, dietro le quinte, "chi sono", messaggio personale) di tipo "image" oppure "reel" e aggiungi su quel post "use_person_photo": true; scrivi quel testo in prima persona. Negli altri post NON descrivere né inserire il volto del titolare negli image_prompt (puoi usare mani al lavoro, persone generiche o dettagli).\n` : ''}Rispondi SOLO con JSON valido, niente testo fuori dal JSON:
 {"strategy":{"summary":"sintesi strategia in 2 frasi","goal":"obiettivo principale e misurabile del periodo (es. 10 richieste di preventivo al mese)","funnel":"come i post accompagnano le persone dalla scoperta al contatto/acquisto, in 2-3 frasi","target":"descrizione pubblico target","content_pillars":["pillar1","pillar2","pillar3"],"best_times":"orari migliori per pubblicare e perché","tips":["consiglio pratico 1","consiglio pratico 2","consiglio pratico 3"]},"posts":[{"social":"${platforms[0]}","type":"image","day":"Lunedi","scheduled_time":"11:00","objective":"Notorietà | Fiducia | Interazione | Conversione","hook":"prima riga che ferma lo scroll","why":"perché questo post serve alla strategia, in una frase","text":"testo completo del post con emoji e call to action","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"descrizione dettagliata immagine professionale"},{"social":"${platforms[0]}","type":"reel","day":"Mercoledi","scheduled_time":"19:00","objective":"...","hook":"...","why":"...","text":"testo coinvolgente per il reel su un tema specifico del settore","hashtags":["hashtag1","hashtag2","hashtag3","hashtag4","hashtag5"],"image_prompt":"scena di apertura del video","video_prompt":"english description of the 5-second action and camera movement, specific to this business"},{"social":"${platforms[0]}","type":"image","day":"Venerdi","scheduled_time":"12:00","objective":"...","hook":"...","why":"...","text":"testo dettagliato e coinvolgente","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"immagine professionale"},{"social":"${platforms[0]}","type":"carousel","day":"Sabato","scheduled_time":"10:00","objective":"...","hook":"...","why":"...","text":"testo del carosello","hashtags":["hashtag1","hashtag2","hashtag3"],"carousel_slides":[{"title":"titolo slide 1 (copertina)","subtitle":"riga di supporto","image_prompt":"scena della slide 1"},{"title":"titolo slide 2","subtitle":"riga di supporto","image_prompt":"scena della slide 2"},{"title":"titolo slide 3","subtitle":"riga di supporto","image_prompt":"scena della slide 3"},{"title":"titolo slide 4","subtitle":"riga di supporto","image_prompt":"scena della slide 4"},{"title":"titolo slide 5 (chiusura con invito all'azione)","subtitle":"riga di supporto","image_prompt":"scena della slide 5"}]},{"social":"${platforms[0]}","type":"image","day":"Martedi","scheduled_time":"20:00","objective":"...","hook":"...","why":"...","text":"testo del quinto post","hashtags":["hashtag1","hashtag2","hashtag3"],"image_prompt":"descrizione immagine"}]}`;
 
     // le foto del cliente vengono mostrate anche all'AI che scrive post e descrizioni delle immagini
     let content = prompt;
-    const visionList = photos.slice(0, 4).map(u => ({ u, label: 'Foto di un lavoro, prodotto o ambiente del brand:' }))
+    const visionList = productPhotos.map((u, k) => ({ u, label: `Foto PRODOTTO n. ${k + 1} (prodotto o lavoro reale del cliente):` }))
+      .concat(placePhotos.slice(0, Math.max(0, 4 - productPhotos.length)).map(u => ({ u, label: 'Foto del locale / ambiente del brand (riferimento di stile):' })))
       .concat(personPhotos.slice(0, 1).map(u => ({ u, label: 'Foto del titolare (da usare così com\'è in un solo post):' })));
     if (visionList.length) {
       const blocks = [];
@@ -497,17 +500,26 @@ ${photos.length ? `FOTO REALI DEL BRAND: ti allego foto reali di lavori, prodott
     if ((doImages || doVideo) && !process.env.OPENAI_API_KEY) mediaErrors.push('Chiave OpenAI (OPENAI_API_KEY) mancante su Railway: immagini non create');
     if ((doImages || doVideo) && process.env.OPENAI_API_KEY) {
       const styled = (p) => style && style.trim() ? `${p}. Stile e colori: ${style.trim()}` : p;
+      // con foto prodotto: ogni post usa UN prodotto (quello scelto dall'AI o a rotazione) e lo porta in una scena nuova
+      const refsFor = (post, i) => {
+        if (productPhotos.length) {
+          const n = parseInt(post.product_ref, 10);
+          return { refs: [productPhotos[(n >= 1 && n <= productPhotos.length) ? n - 1 : i % productPhotos.length]], product: true };
+        }
+        return { refs: photos, product: false };
+      };
       const jobs = data.posts.map((post, i) => async () => {
+        const rf = refsFor(post, i);
         if (post.image_url || (post.carousel_images && post.carousel_images.length)) return; // ha già una foto reale
         if (!doImages && post.type !== 'reel') return;
         try {
           if (post.type === 'carousel' && post.carousel_slides) {
             const imgs = [];
-            for (const sl of post.carousel_slides.slice(0, 5)) imgs.push(await generateImage(styled(sl.image_prompt || post.text), brand, { refs: photos, quality: imgQuality }));
+            for (const sl of post.carousel_slides.slice(0, 5)) imgs.push(await generateImage(styled(sl.image_prompt || post.text), brand, { refs: rf.refs, product: rf.product, quality: imgQuality }));
             data.posts[i].carousel_images = imgs.filter(Boolean);
             data.posts[i].image_url = data.posts[i].carousel_images[0] || null;
           } else if (post.image_prompt || post.text) {
-            data.posts[i].image_url = await generateImage(styled(post.image_prompt || post.text), brand, { refs: photos, quality: imgQuality, size: post.type === 'reel' ? '1024x1536' : '1024x1024' });
+            data.posts[i].image_url = await generateImage(styled(post.image_prompt || post.text), brand, { refs: rf.refs, product: rf.product, quality: imgQuality, size: post.type === 'reel' ? '1024x1536' : '1024x1024' });
           }
         } catch (e) {
           const msg = (e.response && e.response.data && e.response.data.error && e.response.data.error.message) || e.message;
@@ -674,7 +686,9 @@ async function generateImage(prompt, brand, opts) {
     `Se si mostra un lavoro grafico o digitale (locandina, volantino, biglietto da visita, logo, sito web su schermo, app, packaging) è un mockup fotografico realistico: ` +
     `il design appare professionale con impaginazione, forme, foto e colori ben composti; eventuali testi del design sono piccoli, in prospettiva o sfocati e mai in primo piano. ` +
     `Nessuna scritta grande e leggibile in primo piano, nessuna insegna o logo inventato con lettere: i titoli vengono aggiunti dopo.` +
-    (refs.length ? ' Usa le foto di riferimento allegate: mantieni prodotti, ambienti, colori e stile reali del brand.' : '')).substring(0, 3800);
+    (refs.length && opts.product
+      ? ' PRODOTTO DI RIFERIMENTO: l\'immagine allegata mostra il prodotto reale del cliente. Inseriscilo come protagonista in una scena COMPLETAMENTE NUOVA come descritto sopra: non riprodurre la foto originale, il suo sfondo o la sua inquadratura. Il prodotto deve restare IDENTICO all\'originale: stessa forma e proporzioni, stessi colori e materiali, stessa etichetta, logo e scritte del prodotto, stessi dettagli. Cambiano solo ambientazione, sfondo, luce, angolazione, oggetti di contorno e persone. Dimensioni del prodotto realistiche rispetto alla scena.'
+      : refs.length ? ' Usa le foto di riferimento allegate: mantieni prodotti, ambienti, colori e stile reali del brand.' : '')).substring(0, 3800);
   console.log('🎨 Prompt immagine:', safePrompt.length, 'caratteri', refs.length ? `+ ${refs.length} foto di riferimento` : '');
   try {
     let r;
@@ -685,6 +699,7 @@ async function generateImage(prompt, brand, opts) {
       form.append('prompt', safePrompt);
       form.append('size', size);
       form.append('quality', quality);
+      if (opts.product && !opts.noFidelity) form.append('input_fidelity', 'high'); // mantiene fedeli forma, etichetta e dettagli del prodotto
       for (let i = 0; i < refs.length; i++) {
         const f = await axios.get(refs[i], { responseType: 'arraybuffer', timeout: 30000 });
         const type = f.headers['content-type'] || 'image/jpeg';
@@ -697,7 +712,9 @@ async function generateImage(prompt, brand, opts) {
       const json = await resp.json();
       if (!resp.ok) {
         // se la modifica con le foto di riferimento non riesce, generiamo comunque l'immagine senza
-        console.log('⚠️ Immagine con foto di riferimento non riuscita, riprovo senza:', json.error && json.error.message);
+        console.log('⚠️ Immagine con foto di riferimento non riuscita:', json.error && json.error.message);
+        // prima riprova con lo stesso prodotto (senza fedeltà alta), solo dopo senza foto
+        if (opts.product && !opts.noFidelity) return generateImage(prompt, brand, Object.assign({}, opts, { noFidelity: true }));
         return generateImage(prompt, brand, { size, quality });
       }
       r = { data: json };
@@ -766,14 +783,14 @@ async function generateImage(prompt, brand, opts) {
 
 app.post('/api/generate-image', async (req, res) => {
   try {
-    const { prompt, brand, userId, refImages, size, quality } = req.body;
+    const { prompt, brand, userId, refImages, size, quality, product } = req.body;
     if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'OpenAI non configurato' });
     const imgCost = quality === 'high' ? CREDIT_COSTS.image_hq : CREDIT_COSTS.image;
     const pay = await payAction(userId, req.authEmail, 'images', imgCost, 'Immagine');
     if (!pay.ok) return res.status(402).json(pay.body);
     const refs = (Array.isArray(refImages) ? refImages : []).filter(u => typeof u === 'string' && u.includes('/storage/v1/object/public/post-images/uploads/')).slice(0, 4);
     let url;
-    try { url = await generateImage(prompt, brand || 'Brand', { refs, quality, size: size === '1024x1536' ? '1024x1536' : '1024x1024' }); }
+    try { url = await generateImage(prompt, brand || 'Brand', { refs, product: product === true && refs.length > 0, quality, size: size === '1024x1536' ? '1024x1536' : '1024x1024' }); }
     catch (err) { if (pay.via === 'credits') await addCredits(userId, imgCost, 'Rimborso: immagine non creata', null); throw err; }
     res.json({ success: true, url });
   } catch (e) { res.status(500).json({ error: 'Errore immagine', details: e.message }); }

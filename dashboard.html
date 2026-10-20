@@ -585,8 +585,8 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
           <div class="ph-box">
             <div class="ph-grid" id="ph-grid"></div>
             <label class="ph-add"><input type="file" id="ph-input" accept="image/jpeg,image/png,image/webp" multiple hidden>+ Aggiungi foto</label>
-            <p class="ph-hint">Indica sotto ogni foto cosa mostra. <b>Lavori, prodotti e locale</b>: l'AI li studia per creare immagini fedeli al tuo brand. <b>Io / persona</b>: la tua foto viene usata così com'è, senza mai modificare il volto, in un solo post per volta (anche come reel animato).</p>
-            <label class="media-opt ph-real"><input type="checkbox" id="ph-real"> Usa direttamente le mie foto nei post e nei caroselli (al posto delle immagini AI)</label>
+            <p class="ph-hint">Indica sotto ogni foto cosa mostra. <b>Lavoro / prodotto</b>: l'AI prende il tuo prodotto e lo inserisce in nuove ambientazioni (casa, regalo, persone che lo usano, lo stile che chiedi), mantenendolo identico. <b>Locale</b>: usato come riferimento di stile. <b>Io / persona</b>: la tua foto viene usata così com'è, senza mai modificare il volto, in un solo post per volta (anche come reel animato).</p>
+            <label class="media-opt ph-real"><input type="checkbox" id="ph-asis"> Pubblica le mie foto così come sono (senza spunta l'AI inserisce i tuoi prodotti in nuove scene, mantenendoli identici)</label>
           </div>
         </div>
         <div class="grid-2">
@@ -1753,10 +1753,15 @@ async function openPublished(post, btn) {
 // ===== CREA IMMAGINE PER UN POST CHE NE È SENZA =====
 async function createPostImage(post, btn) {
   btn.disabled = true; btn.textContent = post.type === 'carousel' ? 'Creo le 5 slide… (2-3 minuti)' : 'Creo l\'immagine… (circa 30 secondi)';
-  var refs = (typeof brandRefs === 'function' ? brandRefs(false) : []).map(function(p) { return p.url; }); // il volto non viene mai rielaborato
+  var allRefs = (typeof brandRefs === 'function' ? brandRefs(false) : []); // il volto non viene mai rielaborato
+  var prodRefs = allRefs.filter(function(p) { return p.kind === 'work'; }).map(function(p) { return p.url; });
+  // con foto prodotto: un prodotto (quello scelto per il post) inserito in una scena nuova
+  var pIdx = parseInt(post.product_ref, 10);
+  var refs = prodRefs.length ? [prodRefs[(pIdx >= 1 && pIdx <= prodRefs.length) ? pIdx - 1 : 0]] : allRefs.map(function(p) { return p.url; });
+  var productMode = prodRefs.length > 0;
   var one = async function(prompt, size) {
     var gq = {}; try { gq = JSON.parse(localStorage.getItem(lsKey('inpost_gen_form')) || '{}'); } catch (e) {}
-    var resp = await fetch('/api/generate-image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: prompt, brand: post.brand || '', refImages: refs, size: size, quality: gq['gen-quality'] || 'medium' }) });
+    var resp = await fetch('/api/generate-image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: prompt, brand: post.brand || '', refImages: refs, product: productMode, size: size, quality: gq['gen-quality'] || 'medium' }) });
     var r = await resp.json(); if (!resp.ok || !r.url) throw new Error(r.details || r.error || 'Immagine non creata');
     return r.url;
   };
@@ -1853,14 +1858,14 @@ function restoreGenForm() {
   try {
     var saved = JSON.parse(localStorage.getItem(lsKey('inpost_gen_form')) || '{}');
     GEN_FIELDS.forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.value = saved[id]; });
-    ['gen-images', 'gen-video', 'ph-real', 'gen-text'].forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.checked = !!saved[id]; });
+    ['gen-images', 'gen-video', 'ph-asis', 'gen-text'].forEach(function(id) { var el = document.getElementById(id); if (el && saved[id] != null) el.checked = !!saved[id]; });
   } catch (e) {}
 }
 function saveGenForm() {
   try {
     var data = {};
     GEN_FIELDS.forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.value; });
-    ['gen-images', 'gen-video', 'ph-real', 'gen-text'].forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.checked; });
+    ['gen-images', 'gen-video', 'ph-asis', 'gen-text'].forEach(function(id) { var el = document.getElementById(id); if (el) data[id] = el.checked; });
     if (user) localStorage.setItem(lsKey('inpost_gen_form'), JSON.stringify(data));
   } catch (e) {}
 }
@@ -2172,7 +2177,7 @@ async function doGenerate() {
   if (!brand || !desc) return toast('Inserisci brand e descrizione', 'error');
   var genImages = document.getElementById('gen-images').checked;
   var genVideo = document.getElementById('gen-video').checked;
-  var useReal = document.getElementById('ph-real').checked;
+  var useReal = document.getElementById('ph-asis').checked;
   if (useReal && !brandRefs(false).length) return toast('Aggiungi almeno una foto di lavori, prodotti o locale per usarla nei post', 'error');
   var lmsg = useReal ? 'Preparo i post con le tue foto...' : genImages && genVideo ? 'Generando post, immagini e video... (1-2 min)' :
              genImages ? 'Generando immagini con DALL-E 3...' :
