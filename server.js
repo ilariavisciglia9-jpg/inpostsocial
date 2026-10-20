@@ -122,6 +122,7 @@ async function startAdVideo(imageUrl, motion, brand, sector, style, seconds, per
 }
 
 const app = express();
+app.use(require('compression')()); // VELOCITÀ: pagine, css e js compressi (gzip)
 const PORT = process.env.PORT || 3000;
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -316,7 +317,12 @@ app.get(/^\/tiktok[A-Za-z0-9_-]+\.txt$/, (req, res, next) => {
 app.use(express.static(path.join(__dirname), {
   dotfiles: 'deny',
   // le pagine HTML vengono sempre ricontrollate, così dopo un aggiornamento non resta la versione vecchia
-  setHeaders: (res, p) => { if (p.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); }
+  setHeaders: (res, p) => {
+    if (p.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    // VELOCITÀ: font e immagini restano in cache 30 giorni, css/js 1 giorno
+    else if (/\.(woff2?|png|jpe?g|webp|svg|ico)$/i.test(p)) res.setHeader('Cache-Control', 'public, max-age=2592000');
+    else if (/\.(css|js)$/i.test(p)) res.setHeader('Cache-Control', 'public, max-age=86400');
+  }
 }));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/webhook')) return next();

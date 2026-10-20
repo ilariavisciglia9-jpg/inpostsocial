@@ -14,7 +14,9 @@ if (/access_token=|refresh_token=/.test(location.hash) || /[?&]code=/.test(locat
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="description" content="InPostSocial è il social media manager virtuale powered by AI che crea la tua strategia, scrive i post e li pubblica automaticamente su Instagram, Facebook e TikTok.">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="/fonts/web/outfit-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/web/playfair-display-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -23,7 +25,7 @@ if (/access_token=|refresh_token=/.test(location.hash) || /[?&]code=/.test(locat
 <header class="header" id="header">
   <nav class="nav container">
     <a href="/" class="logo">
-      <img src="/logo-inpostsocial.png" alt="" style="height:34px;width:auto;vertical-align:middle;margin-right:8px"><span class="logo-text">InPost<span>Social</span></span>
+      <img src="/logo-inpostsocial-sm.png" width="34" height="34" alt="" style="height:34px;width:auto;vertical-align:middle;margin-right:8px"><span class="logo-text">InPost<span>Social</span></span>
     </a>
     <div class="nav-links">
       <a href="#come-funziona" data-it="Come funziona" data-en="How it works">Come funziona</a>
@@ -39,7 +41,7 @@ if (/access_token=|refresh_token=/.test(location.hash) || /[?&]code=/.test(locat
       </div>
       <a href="login.html?mode=signup" class="btn-nav" data-it="Inizia gratis" data-en="Start free">Inizia gratis</a>
     </div>
-    <button class="hamburger" id="hamburger">
+    <button class="hamburger" id="hamburger" aria-label="Apri il menu">
       <span></span><span></span><span></span>
     </button>
   </nav>
@@ -51,6 +53,7 @@ if (/access_token=|refresh_token=/.test(location.hash) || /[?&]code=/.test(locat
     <a href="login.html?mode=signup" class="btn-mobile" data-it="Inizia gratis" data-en="Start free">Inizia gratis</a>
   </div>
 </header>
+<main id="main">
 
 <!-- HERO -->
 <section class="hero">
@@ -118,16 +121,16 @@ if (/access_token=|refresh_token=/.test(location.hash) || /[?&]code=/.test(locat
     <div class="demo-card">
       <div class="demo-form">
         <div class="demo-form-group">
-          <label data-it="Nome del tuo business *" data-en="Your business name *">Nome del tuo business *</label>
+          <label for="demo-brand" data-it="Nome del tuo business *" data-en="Your business name *">Nome del tuo business *</label>
           <input type="text" id="demo-brand" placeholder="es. Pizzeria Da Mario..." class="demo-input">
         </div>
         <div class="demo-form-group">
-          <label data-it="Di cosa ti occupi? *" data-en="What do you do? *">Di cosa ti occupi? *</label>
+          <label for="demo-desc" data-it="Di cosa ti occupi? *" data-en="What do you do? *">Di cosa ti occupi? *</label>
           <textarea id="demo-desc" class="demo-input" rows="3" placeholder="Descrivi il tuo business, i tuoi prodotti o servizi..."></textarea>
         </div>
         <div class="demo-row">
           <div class="demo-form-group">
-            <label data-it="Settore" data-en="Industry">Settore</label>
+            <label for="demo-sector" data-it="Settore" data-en="Industry">Settore</label>
             <select id="demo-sector" class="demo-input">
               <option value="Ristorazione">🍕 Ristorazione</option>
               <option value="Moda">👗 Moda & Lifestyle</option>
@@ -140,7 +143,7 @@ if (/access_token=|refresh_token=/.test(location.hash) || /[?&]code=/.test(locat
             </select>
           </div>
           <div class="demo-form-group">
-            <label data-it="Tono di voce" data-en="Voice tone">Tono di voce</label>
+            <label for="demo-tone" data-it="Tono di voce" data-en="Voice tone">Tono di voce</label>
             <select id="demo-tone" class="demo-input">
               <option value="professionale">Professionale</option>
               <option value="amichevole">Amichevole</option>
@@ -518,12 +521,13 @@ if (/access_token=|refresh_token=/.test(location.hash) || /[?&]code=/.test(locat
 </section>
 
 <!-- FOOTER -->
+</main>
 <footer class="footer">
   <div class="container">
     <div class="footer-top">
       <div class="footer-brand">
         <a href="/" class="logo">
-          <img src="/logo-inpostsocial.png" alt="" style="height:34px;width:auto;vertical-align:middle;margin-right:8px"><span class="logo-text" style="color:white">InPost<span style="color:#b8a9f0">Social</span></span>
+          <img src="/logo-inpostsocial-sm.png" width="34" height="34" alt="" style="height:34px;width:auto;vertical-align:middle;margin-right:8px"><span class="logo-text" style="color:white">InPost<span style="color:#b8a9f0">Social</span></span>
         </a>
         <p data-it="Il social media manager virtuale powered by AI. Strategia, contenuti e pubblicazione automatica per il tuo business." data-en="The AI-powered virtual social media manager. Strategy, content and auto-publishing for your business.">Il social media manager virtuale powered by AI.</p>
       </div>

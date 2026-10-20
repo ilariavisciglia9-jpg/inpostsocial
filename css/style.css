@@ -12,6 +12,7 @@
   --purple: #7C5CFC;
   --purple-light: #9B7DFD;
   --purple-dark: #5B3EDB;
+  --purple-text: #6644EE; /* viola leggermente più scuro: testo e pulsanti leggibili (contrasto AA) */
   --rose: #FFB5C8;
   --rose-dark: #E8839E;
   --gold: #F5C842;
@@ -93,7 +94,7 @@ a { text-decoration: none; color: inherit; }
   font-weight: 600; color: var(--gray-light); padding: 0.2rem 0.4rem;
   border-radius: 6px; transition: all 0.2s;
 }
-.lang-btn.active { color: var(--purple); background: var(--lavender); }
+.lang-btn.active { color: var(--purple-text); background: var(--lavender); }
 .lang-btn:hover { color: var(--purple); }
 
 .btn-nav {
@@ -126,7 +127,7 @@ a { text-decoration: none; color: inherit; }
 /* ========== BUTTONS ========== */
 .btn-primary {
   display: inline-flex; align-items: center;
-  background: var(--purple); color: white;
+  background: var(--purple-text); color: white;
   padding: 0.85rem 2rem; border-radius: 100px;
   font-size: 1rem; font-weight: 600; border: none; cursor: pointer;
   transition: all 0.25s; font-family: 'Outfit', sans-serif;
@@ -148,7 +149,7 @@ a { text-decoration: none; color: inherit; }
 /* ========== SECTION HEADERS ========== */
 .section-label {
   display: inline-block;
-  background: var(--lavender); color: var(--purple);
+  background: var(--lavender); color: var(--purple-text);
   padding: 0.35rem 1rem; border-radius: 100px;
   font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase; margin-bottom: 1rem;
@@ -187,7 +188,7 @@ a { text-decoration: none; color: inherit; }
   display: inline-flex; align-items: center; gap: 0.6rem;
   background: white; border: 1px solid var(--border);
   padding: 0.45rem 1.1rem; border-radius: 100px;
-  font-size: 0.82rem; font-weight: 600; color: var(--purple);
+  font-size: 0.82rem; font-weight: 600; color: var(--purple-text);
   margin-bottom: 1.8rem; box-shadow: var(--shadow);
 }
 .badge-dot {
@@ -579,11 +580,11 @@ textarea.demo-input { resize: vertical; min-height: 80px; }
 .footer-bottom p { font-size: 0.82rem; }
 .footer-lang { display: flex; gap: 0.5rem; }
 .lang-btn-footer {
-  background: rgba(255,255,255,0.08); border: none; color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.08); border: none; color: rgba(255,255,255,0.78);
   padding: 0.3rem 0.7rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
   cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.2s;
 }
-.lang-btn-footer.active { background: var(--purple); color: white; }
+.lang-btn-footer.active { background: var(--purple-text); color: white; }
 .lang-btn-footer:hover { color: white; }
 
 /* ========== RESPONSIVE ========== */
