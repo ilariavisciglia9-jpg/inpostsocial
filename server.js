@@ -672,6 +672,24 @@ app.get('/api/generate/status', async (req, res) => {
 // pulizia dei lavori dimenticati
 setInterval(() => { const lim = Date.now() - 30 * 60000; for (const [k, j] of genJobs) if (j.started < lim) genJobs.delete(k); }, 10 * 60000);
 
+// ===== PRODOTTO DEL CLIENTE IN UNA SCENA NUOVA (Gemini 2.5 Flash Image "Nano Banana" su fal.ai) =====
+async function productScene(scene, brand, refUrl, mode) {
+  const p = (`Use the exact product shown in the reference image as the hero of a brand-new advertising photo for "${brand}". ` +
+    `New scene (described in Italian): ${scene}. ` +
+    `The product must stay IDENTICAL to the reference: same shape and proportions, same colors and materials, same label, logo and printed text, same details. ` +
+    `Do NOT reuse the original photo, its background or its framing: build a completely different environment, camera angle, lighting and props around the product, at a realistic scale. ` +
+    `Photorealistic professional product photography, natural light, shallow depth of field, rich details. ` +
+    `No added text, captions, watermarks or invented logos (only the product's own label stays).`).substring(0, 4000);
+  const input = { prompt: p, image_urls: [refUrl], num_images: 1, output_format: 'jpeg', aspect_ratio: mode === 'reel' ? '9:16' : '4:5' };
+  let out;
+  try { out = await fal.subscribe('fal-ai/nano-banana/edit', { input }); }
+  catch (e) { delete input.aspect_ratio; out = await fal.subscribe('fal-ai/nano-banana/edit', { input }); } // versione senza formato: ritagliamo noi
+  const img = out && out.data && out.data.images && out.data.images[0];
+  if (!img || !img.url) throw new Error('nessuna immagine restituita');
+  console.log('🍌 Scena prodotto creata con Nano Banana');
+  return prepareRealPhoto(img.url, mode); // salva su Supabase nel formato giusto (feed 4:5, reel 9:16)
+}
+
 // ===== DALL-E 3 =====
 // opts.size: '1024x1024' (feed/carosello) o '1024x1536' (reel verticale)
 // opts.refs: link di foto reali del cliente da usare come riferimento visivo
@@ -680,6 +698,12 @@ async function generateImage(prompt, brand, opts) {
   const quality = opts.quality === 'high' ? 'high' : 'medium';
   const size = opts.size || '1024x1024';
   const refs = (opts.refs || []).filter(Boolean).slice(0, 4);
+  // PRODOTTO IN UNA SCENA NUOVA: Gemini "Nano Banana" (via fal.ai) è fatto apposta per prendere il prodotto della foto
+  // e metterlo in un altro contesto lasciandolo identico. OpenAI (images/edits) tende invece a restituire la stessa foto.
+  if (opts.product && refs.length && process.env.FAL_KEY && !opts.noFal) {
+    try { return await productScene(prompt, brand, refs[0], size === '1024x1536' ? 'reel' : 'feed'); }
+    catch (e) { console.log('⚠️ Scena prodotto con Nano Banana non riuscita, uso OpenAI:', e.message); }
+  }
   const safePrompt = (`Immagine fotografica d'impatto per i social di "${brand}", livello agenzia creativa. ${prompt}. ` +
     `Stile: foto vera scattata con fotocamera professionale, luce curata, dettagli e texture reali, composizione elegante e accattivante, ` +
     `soggetto principale ben visibile con margine sui bordi (niente tagliato), nessuna resa da cartone animato o clip art. ` +
@@ -699,7 +723,6 @@ async function generateImage(prompt, brand, opts) {
       form.append('prompt', safePrompt);
       form.append('size', size);
       form.append('quality', quality);
-      if (opts.product && !opts.noFidelity) form.append('input_fidelity', 'high'); // mantiene fedeli forma, etichetta e dettagli del prodotto
       for (let i = 0; i < refs.length; i++) {
         const f = await axios.get(refs[i], { responseType: 'arraybuffer', timeout: 30000 });
         const type = f.headers['content-type'] || 'image/jpeg';
@@ -714,7 +737,6 @@ async function generateImage(prompt, brand, opts) {
         // se la modifica con le foto di riferimento non riesce, generiamo comunque l'immagine senza
         console.log('⚠️ Immagine con foto di riferimento non riuscita:', json.error && json.error.message);
         // prima riprova con lo stesso prodotto (senza fedeltà alta), solo dopo senza foto
-        if (opts.product && !opts.noFidelity) return generateImage(prompt, brand, Object.assign({}, opts, { noFidelity: true }));
         return generateImage(prompt, brand, { size, quality });
       }
       r = { data: json };
