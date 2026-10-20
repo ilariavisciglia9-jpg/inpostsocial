@@ -282,15 +282,21 @@ app.use(async (req, res, next) => {
   if (!PROTECTED_API.includes(req.path) && !userById) return next();
   try {
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const { data, error } = token ? await supabase.auth.getUser(token) : { data: null, error: true };
-    if (error || !data || !data.user) return res.status(401).json({ error: 'Accesso richiesto' });
+    if (!token) { console.warn('[auth] token mancante su', req.path); return res.status(401).json({ error: 'Accesso richiesto' }); }
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data || !data.user) {
+      console.warn('[auth] token rifiutato su', req.path, error ? (error.status + ' ' + error.message) : 'nessun utente');
+      // problema di Supabase (rete, limite richieste, errore server): non è colpa dell'utente
+      if (error && (!error.status || error.status >= 500 || error.status === 429)) return res.status(503).json({ error: 'Verifica dell\'accesso non riuscita, riprova tra qualche secondo' });
+      return res.status(401).json({ error: 'Accesso richiesto' });
+    }
     const uid = data.user.id;
     req.authEmail = data.user.email || '';
     if (userById && req.path.split('/').pop() !== uid) return res.status(403).json({ error: 'Non autorizzato' });
     req.query.userId = uid;
     if (req.body && typeof req.body === 'object') req.body.userId = uid;
     next();
-  } catch (e) { res.status(401).json({ error: 'Accesso richiesto' }); }
+  } catch (e) { console.warn('[auth] errore verifica', req.path, e.message); res.status(503).json({ error: 'Verifica dell\'accesso non riuscita, riprova tra qualche secondo' }); }
 });
 // il codice del server e i file di configurazione non devono essere scaricabili dal sito
 app.use((req, res, next) => {

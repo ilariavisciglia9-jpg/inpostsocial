@@ -844,14 +844,38 @@ var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ogni chiamata alle API del sito porta con sé il token di sessione
 var _fetch = window.fetch.bind(window);
+// token sempre valido: se la sessione non c'è o è scaduta la rinnova (es. dopo accesso con Google o con più schede aperte)
+async function freshToken(force) {
+  var s = null;
+  if (!force) { try { s = (await sb.auth.getSession()).data.session; } catch (e) {} }
+  if (!s || force || (s.expires_at && s.expires_at * 1000 < Date.now() + 60000)) {
+    try { var r = await sb.auth.refreshSession(); if (r && r.data && r.data.session) s = r.data.session; } catch (e) {}
+  }
+  return s ? s.access_token : null;
+}
+var _sessionLost = false;
 window.fetch = async function(url, opts) {
-  if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+  var isApi = typeof url === 'string' && url.indexOf('/api/') === 0;
+  if (isApi) {
     opts = opts || {};
-    var s = (await sb.auth.getSession()).data.session;
-    if (s) opts.headers = Object.assign({}, opts.headers || {}, {'Authorization': 'Bearer ' + s.access_token});
+    var tk = await freshToken(false);
+    if (tk) opts.headers = Object.assign({}, opts.headers || {}, {'Authorization': 'Bearer ' + tk});
   }
   var resp = await _fetch(url, opts);
-  if (typeof url === 'string' && url.indexOf('/api/') === 0) {
+  if (isApi && resp.status === 401) {
+    // token rifiutato: lo rinnoviamo e riproviamo una volta
+    var tk2 = await freshToken(true);
+    if (tk2) {
+      opts.headers = Object.assign({}, opts.headers || {}, {'Authorization': 'Bearer ' + tk2});
+      resp = await _fetch(url, opts);
+    }
+    if (resp.status === 401 && !_sessionLost) {
+      _sessionLost = true;
+      try { toast('La sessione è scaduta: accedi di nuovo per continuare', 'error'); } catch (e) {}
+      setTimeout(function() { window.location.href = '/login.html'; }, 2500);
+    }
+  }
+  if (isApi) {
     if (resp.status === 402) {
       // crediti finiti: avvisiamo e apriamo la pagina per ricaricarli
       setTimeout(function() { try { goTo('piano'); var cb = document.getElementById('credits-box'); if (cb) cb.scrollIntoView({ behavior: 'smooth' }); } catch (e) {} }, 1200);
