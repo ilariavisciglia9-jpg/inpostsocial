@@ -90,6 +90,26 @@ async function notifyOwner(key, subject, text) {
     return { ok: false, error: m };
   }
 }
+// ===== EMAIL ALLA PROPRIETARIA: nuove registrazioni e richieste di accesso Instagram (fase di test Meta) =====
+function escHtml(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+async function mailOwner(subject, html) {
+  try {
+    console.log('📧 Avviso alla proprietaria:', subject);
+    if (!process.env.RESEND_API_KEY) return;
+    await axios.post('https://api.resend.com/emails', {
+      from: process.env.ALERT_FROM || 'InPostSocial <onboarding@resend.dev>',
+      to: [process.env.ALERT_EMAIL || 'info@inpostsocial.com'],
+      subject: 'InPostSocial: ' + subject,
+      html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6">${html}</div>`
+    }, { headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY }, timeout: 15000 });
+  } catch (e) { console.error('Email alla proprietaria non inviata:', (e.response && e.response.data && e.response.data.message) || e.message); }
+}
+function newSignupMail(name, email, via) {
+  mailOwner('nuova registrazione' + (name ? ' — ' + name : ''),
+    `<p><b>Nuovo utente registrato</b> (${escHtml(via)})</p><p>Nome: ${escHtml(name || '—')}<br>Email: ${escHtml(email || '—')}</p>` +
+    `<p style="color:#777;font-size:13px">Quando ti manda il nome del suo Instagram dalla pagina "Social collegati" ricevi un'altra email con il link per aggiungerlo come tester.</p>`);
+}
+
 const ALERTS = {
   fal: () => notifyOwner('fal', 'credito fal.ai esaurito (video, voce, avatar)', 'Ricarica su <a href="https://fal.ai/dashboard/billing">fal.ai → Billing</a>. Consiglio: attiva la ricarica automatica.'),
   openai: () => notifyOwner('openai', 'credito OpenAI esaurito (immagini e trascrizioni)', 'Ricarica su <a href="https://platform.openai.com/settings/organization/billing">platform.openai.com → Billing</a>. Consiglio: attiva "Auto recharge".'),
@@ -276,7 +296,7 @@ async function payAction(userId, authEmail, cap, credits, reason) {
 
 // ===== LOGIN OBBLIGATORIO SULLE API DELLA DASHBOARD =====
 // L'utente viene preso dal token di sessione, non dall'userId inviato dal browser.
-const PROTECTED_API = ['/api/admin/test-alert', '/api/credits', '/api/credits/checkout', '/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
+const PROTECTED_API = ['/api/admin/test-alert', '/api/instagram/tester-request', '/api/credits', '/api/credits/checkout', '/api/generate', '/api/generate/status', '/api/generate-image', '/api/generate-carousel', '/api/generate-video',
   '/api/user/profile', '/api/user/save', '/api/posts/save', '/api/posts/delete', '/api/publish', '/api/social/status', '/api/social/disconnect', '/api/posts/state', '/api/media/upload', '/api/posts/update', '/api/posts/reschedule', '/api/image/overlay', '/api/posts/permalink', '/api/reel/upload-url', '/api/reel/talking', '/api/avatar', '/api/avatar/delete', '/api/reel/avatar', '/api/reel/avatar/script', '/api/reel/avatar/voice', '/api/reel/avatar/render'];
 app.use(async (req, res, next) => {
   const userById = req.method === 'GET' && /^\/api\/user\/[0-9a-f-]{36}$/i.test(req.path);
@@ -1097,6 +1117,7 @@ app.get('/api/user/profile', async (req, res) => {
       // account senza riga in users (es. accesso con Google): la creiamo, così riceve anche i crediti di benvenuto
       await supabase.from('users').insert({ id: userId, email: req.authEmail || null, plan: 'free', created_at: new Date().toISOString() });
       await addCredits(userId, WELCOME_CREDITS, 'Crediti di benvenuto', 'welcome_' + userId);
+      if (!isOwnerEmail(req.authEmail)) newSignupMail('', req.authEmail, 'accesso con Google');
       return res.json({ plan: isOwnerEmail(req.authEmail) ? 'business' : 'free', brand: '', sector: '', name: '', email: req.authEmail || '', credits: await getCredits(userId), unlimited: isOwnerEmail(req.authEmail) });
     }
     if (isOwnerEmail(data.email) || isOwnerEmail(req.authEmail)) data.plan = 'business';
@@ -1265,6 +1286,28 @@ app.get('/api/social/status', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== RICHIESTA DI ACCESSO INSTAGRAM (finché Meta non approva l'app, solo i tester possono collegarsi) =====
+const lastTesterReq = new Map();
+app.post('/api/instagram/tester-request', async (req, res) => {
+  try {
+    const username = String(req.body.username || '').trim().replace(/^@+/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/[\/?#].*$/, '').toLowerCase();
+    if (!/^[a-z0-9._]{1,30}$/.test(username)) return res.status(400).json({ error: 'Nome utente Instagram non valido (es. @iltuonegozio)' });
+    const uid = req.body.userId;
+    if (lastTesterReq.get(uid) && Date.now() - lastTesterReq.get(uid) < 60000) return res.json({ success: true }); // doppio clic
+    lastTesterReq.set(uid, Date.now());
+    let name = '';
+    try { const { data } = await supabase.from('users').select('name').eq('id', uid).single(); name = (data && data.name) || ''; } catch (e) {}
+    const appId = process.env.META_APP_ID || '2329145960824291';
+    await mailOwner('richiesta accesso Instagram — @' + username,
+      `<p><b>Da aggiungere come tester Instagram</b></p>` +
+      `<p>Instagram: <b><a href="https://www.instagram.com/${escHtml(username)}/">@${escHtml(username)}</a></b><br>Nome: ${escHtml(name || '—')}<br>Email: ${escHtml(req.authEmail || '—')}</p>` +
+      `<p><b>Cosa fare:</b><br>1. Apri <a href="https://developers.facebook.com/apps/${appId}/roles/roles/">Meta for Developers → Ruoli dell'app</a><br>` +
+      `2. Aggiungi persone → <b>Tester Instagram</b> → scrivi <b>${escHtml(username)}</b> → Invia<br>` +
+      `3. Il cliente trova già nella pagina "Social collegati" le istruzioni per accettare l'invito.</p>`);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ===== USER =====
 app.post('/api/user/register', async (req, res) => {
   try {
@@ -1291,6 +1334,7 @@ app.post('/api/user/register', async (req, res) => {
       throw error;
     }
     await supabase.from('users').upsert({ id: data.user.id, email, name, plan: 'free', posts_this_week: 0, created_at: new Date().toISOString() }, { onConflict: 'id' });
+    newSignupMail(name, email, 'email e password');
     res.json({ success: true, userId: data.user.id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

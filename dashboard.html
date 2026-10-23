@@ -96,6 +96,15 @@ button{cursor:pointer;border:none;background:none;font-family:inherit}
 .btn-sm{padding:0.45rem 0.9rem;border-radius:7px;font-size:0.8rem;font-weight:600;transition:all 0.15s;border:none;cursor:pointer}
 .btn-purple{background:var(--purple);color:#fff}
 .btn-purple:hover{background:var(--purple-dark)}
+.ig-early{background:var(--lavender,#EFEBFF);border:1px solid rgba(109,74,255,.18);border-radius:14px;padding:1.2rem 1.3rem;margin-bottom:1.5rem}
+.ig-early h4{margin:0 0 .35rem;font-size:1rem}
+.ig-early p{margin:0 0 .8rem;font-size:.86rem;color:var(--gray)}
+.ig-early-row{display:flex;gap:.6rem;flex-wrap:wrap}
+.ig-early-row input{flex:1 1 200px;min-width:0;padding:.65rem .8rem;border:1px solid rgba(0,0,0,.12);border-radius:10px;font:inherit;font-size:16px;background:#fff}
+.ig-early-msg{font-size:.84rem;margin-top:.5rem;min-height:1em}
+.ig-early-steps{margin:.8rem 0 0;padding-left:1.2rem;font-size:.84rem;line-height:1.55}
+.ig-early-steps li{margin-bottom:.35rem}
+.ig-early-steps a{color:var(--purple);font-weight:600}
 .btn-outline{background:#fff;color:var(--dark2);border:1px solid var(--border-strong)}
 .btn-outline:hover{background:var(--off-white)}
 .btn-gen{width:100%;padding:0.7rem 1rem;background:var(--purple);color:#fff;border:none;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;transition:background 0.15s}
@@ -704,6 +713,21 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
     <!-- SOCIAL -->
     <div class="page" id="page-social">
       <p style="color:var(--gray);margin-bottom:1.5rem;font-size:0.88rem">Collega i tuoi profili per abilitare la pubblicazione automatica.</p>
+      <!-- ACCESSO INSTAGRAM IN ANTEPRIMA: finché Meta non approva l'app, il cliente va aggiunto come tester (togliere questo box dopo l'approvazione) -->
+      <div class="ig-early" id="ig-early">
+        <h4>Instagram: accesso in anteprima</h4>
+        <p>Il collegamento diretto con Instagram è in fase di attivazione. Scrivici il nome del tuo profilo: ti mandiamo un invito per abilitarlo.</p>
+        <div class="ig-early-row">
+          <input type="text" id="ig-early-user" placeholder="@iltuoprofilo" autocomplete="off" aria-label="Nome utente Instagram">
+          <button type="button" class="btn btn-purple" id="ig-early-btn">Invia richiesta</button>
+        </div>
+        <div class="ig-early-msg" id="ig-early-msg" aria-live="polite"></div>
+        <ol class="ig-early-steps">
+          <li><b>Invia la richiesta</b> qui sopra con il nome del tuo profilo Instagram (deve essere professionale: Business o Creator).</li>
+          <li><b>Accetta l'invito</b> (di solito entro 24 ore): da computer o telefono apri <a href="https://www.instagram.com/accounts/manage_access/" target="_blank" rel="noopener">instagram.com/accounts/manage_access</a>, accedi con il tuo profilo, apri la scheda <b>"Inviti tester"</b> e premi <b>Accetta</b> su InPostSocial.</li>
+          <li><b>Torna qui</b> e premi <b>Collega Instagram</b>.</li>
+        </ol>
+      </div>
       <div class="social-grid">
         <div class="social-card" id="card-ig">
           <div class="social-card-icon"></div>
@@ -1026,6 +1050,20 @@ function bindEvents() {
   bindAgentEvents();
   document.getElementById('pb-business').addEventListener('click', function() { doCheckout('business'); });
   document.getElementById('btn-ig').addEventListener('click', function() { connectInstagram(); });
+  // richiesta di accesso Instagram in anteprima (mail alla proprietaria per aggiungerlo come tester)
+  document.getElementById('ig-early-btn').addEventListener('click', async function() {
+    var b = this, inp = document.getElementById('ig-early-user'), msg = document.getElementById('ig-early-msg');
+    var u = inp.value.trim();
+    if (!u) { msg.style.color = '#c0392b'; msg.textContent = 'Scrivi il nome del tuo profilo Instagram'; inp.focus(); return; }
+    b.disabled = true; b.textContent = 'Invio...';
+    try {
+      var r = await fetch('/api/instagram/tester-request', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username: u }) });
+      var j = await r.json().catch(function() { return {}; });
+      if (!r.ok) throw new Error(j.error || 'Invio non riuscito, riprova');
+      msg.style.color = '#1e8449'; msg.textContent = 'Richiesta inviata! Riceverai l\'invito entro 24 ore: poi segui il punto 2 qui sotto.';
+      b.textContent = 'Inviata';
+    } catch (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; b.disabled = false; b.textContent = 'Invia richiesta'; }
+  });
   document.getElementById('btn-ig-fb').addEventListener('click', function() { connectMeta(); });
   document.getElementById('btn-fb').addEventListener('click', function() { connectMeta(); });
   document.getElementById('btn-tt').addEventListener('click', function() { connectTikTok(); });
@@ -1183,6 +1221,7 @@ async function loadSocialConnections() {
       if (c.platform === 'instagram') {
         igVia = c.via || 'facebook';
         markConnected('card-ig', 'btn-ig', 'Instagram collegato' + (c.page_name ? ' (' + c.page_name + ')' : ''));
+        var ige = document.getElementById('ig-early'); if (ige) ige.style.display = 'none'; // già collegato: niente box di richiesta
         var alt = document.getElementById('btn-ig-fb'); if (alt) alt.style.display = 'none';
         document.getElementById('os-social').classList.add('done');
       }
