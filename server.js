@@ -68,7 +68,7 @@ function adVideoPrompt(motion, brand, sector, style) {
     (style && style.trim() ? ` Visual style and colors: ${style.trim()}.` : '')).substring(0, 2000);
 }
 // ===== AVVISO EMAIL ALLA PROPRIETARIA: credito dei fornitori AI esaurito =====
-// Su Railway: RESEND_API_KEY (resend.com, gratuito) e, se vuoi, ALERT_EMAIL (default info@inpostsocial.com).
+// Su Railway: RESEND_API_KEY (resend.com, gratuito) e, se vuoi, ALERT_EMAIL (default ilaria.visciglia9@gmail.com).
 const lastAlerts = new Map();
 async function notifyOwner(key, subject, text) {
   try {
@@ -79,7 +79,7 @@ async function notifyOwner(key, subject, text) {
     if (!process.env.RESEND_API_KEY) return;
     await axios.post('https://api.resend.com/emails', {
       from: process.env.ALERT_FROM || 'InPostSocial <onboarding@resend.dev>',
-      to: [process.env.ALERT_EMAIL || 'info@inpostsocial.com'],
+      to: [process.env.ALERT_EMAIL || 'ilaria.visciglia9@gmail.com'],
       subject: '⚠️ InPostSocial: ' + subject,
       html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5"><p><b>${subject}</b></p><p>${text}</p><p style="color:#777;font-size:13px">I clienti in questo momento ricevono un errore quando generano. Ricarica il credito e tutto riprende da solo.</p></div>`
     }, { headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY }, timeout: 15000 });
@@ -98,7 +98,7 @@ async function mailOwner(subject, html) {
     if (!process.env.RESEND_API_KEY) return;
     await axios.post('https://api.resend.com/emails', {
       from: process.env.ALERT_FROM || 'InPostSocial <onboarding@resend.dev>',
-      to: [process.env.ALERT_EMAIL || 'info@inpostsocial.com'],
+      to: [process.env.ALERT_EMAIL || 'ilaria.visciglia9@gmail.com'],
       subject: 'InPostSocial: ' + subject,
       html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6">${html}</div>`
     }, { headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY }, timeout: 15000 });
@@ -1168,7 +1168,7 @@ app.post('/api/admin/test-alert', async (req, res) => {
   lastAlerts.delete('test');
   const r = await notifyOwner('test', 'email di prova', 'Se leggi questa email, gli avvisi funzionano.');
   if (!r || !r.ok) return res.status(400).json({ error: 'Resend ha risposto: ' + ((r && r.error) || 'errore sconosciuto') });
-  res.json({ success: true, to: process.env.ALERT_EMAIL || 'info@inpostsocial.com' });
+  res.json({ success: true, to: process.env.ALERT_EMAIL || 'ilaria.visciglia9@gmail.com' });
 });
 
 // pacchetti di crediti: pagamento singolo (il prezzo è definito qui, non serve creare prodotti su Stripe)
