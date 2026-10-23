@@ -770,6 +770,13 @@ async function generateImage(prompt, brand, opts) {
             continue;
           }
           if (st === 429) throw new Error('OpenAI: limite di immagini al minuto raggiunto. Riprova tra qualche minuto.');
+          // Errore temporaneo dei server OpenAI (500/502/503/504) o connessione caduta: riprova da solo fino a 3 volte
+          if ((!st || st >= 500) && attempt < 4) {
+            console.log(`⏳ OpenAI ${st || 'nessuna risposta'} (errore temporaneo), riprovo tra ${attempt * 5}s (tentativo ${attempt})`);
+            await new Promise(res => setTimeout(res, attempt * 5000));
+            continue;
+          }
+          if (!st || st >= 500) throw new Error('Il servizio immagini di OpenAI è momentaneamente in difficoltà. Riprova tra qualche minuto (i crediti ti vengono restituiti).');
           if (oe.message) throw new Error('OpenAI: ' + oe.message);
           throw err;
         }
