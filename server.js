@@ -181,7 +181,7 @@ app.use((req, res, next) => {
 
 // ===== ACCOUNT TITOLARE: nessun limite, piano Business =====
 // altri indirizzi si aggiungono su Railway in OWNER_EMAIL, separati da virgola
-const OWNER_EMAILS = ['info@inpostsocial.com', 'ilaria.visciglia9@gmail.com']
+const OWNER_EMAILS = ['info@inpostsocial.com', 'ilaria.visciglia9@gmail.com', 'info@emifotoottica.it']
   .concat((process.env.OWNER_EMAIL || '').split(','))
   .map(e => e.trim().toLowerCase()).filter(Boolean);
 function isOwnerEmail(email) { return !!email && OWNER_EMAILS.includes(String(email).trim().toLowerCase()); }
