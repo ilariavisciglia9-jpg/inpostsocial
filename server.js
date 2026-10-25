@@ -716,7 +716,9 @@ async function productScene(scene, brand, refUrl, mode) {
   return prepareRealPhoto(img.url, mode); // salva su Supabase nel formato giusto (feed 4:5, reel 9:16)
 }
 
-// ===== DALL-E 3 =====
+// ===== IMMAGINI OPENAI =====
+// gpt-image-1 non è più disponibile: si usa gpt-image-1.5 (su Railway OPENAI_IMAGE_MODEL per cambiarlo, es. gpt-image-1-mini)
+const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5';
 // opts.size: '1024x1024' (feed/carosello) o '1024x1536' (reel verticale)
 // opts.refs: link di foto reali del cliente da usare come riferimento visivo
 async function generateImage(prompt, brand, opts) {
@@ -743,9 +745,9 @@ async function generateImage(prompt, brand, opts) {
   try {
     let r;
     if (refs.length) {
-      // modifica guidata da foto reali (gpt-image-1 accetta più immagini di riferimento)
+      // modifica guidata da foto reali (gpt-image accetta più immagini di riferimento)
       const form = new FormData();
-      form.append('model', 'gpt-image-1');
+      form.append('model', IMAGE_MODEL);
       form.append('prompt', safePrompt);
       form.append('size', size);
       form.append('quality', quality);
@@ -772,7 +774,7 @@ async function generateImage(prompt, brand, opts) {
         try {
           r = await axios.post(
             'https://api.openai.com/v1/images/generations',
-            { model: 'gpt-image-1', prompt: safePrompt, n: 1, size, quality },
+            { model: IMAGE_MODEL, prompt: safePrompt, n: 1, size, quality },
             { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 120000 }
           );
           break;
