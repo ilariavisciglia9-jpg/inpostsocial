@@ -95,14 +95,19 @@ function escHtml(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c =>
 async function mailOwner(subject, html) {
   try {
     console.log('📧 Avviso alla proprietaria:', subject);
-    if (!process.env.RESEND_API_KEY) return;
+    if (!process.env.RESEND_API_KEY) { console.error('📧 Email NON inviata: manca RESEND_API_KEY su Railway'); return { ok: false, error: 'Manca RESEND_API_KEY' }; }
     await axios.post('https://api.resend.com/emails', {
       from: process.env.ALERT_FROM || 'InPostSocial <onboarding@resend.dev>',
       to: [process.env.ALERT_EMAIL || 'ilaria.visciglia9@gmail.com'],
       subject: 'InPostSocial: ' + subject,
       html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6">${html}</div>`
     }, { headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY }, timeout: 15000 });
-  } catch (e) { console.error('Email alla proprietaria non inviata:', (e.response && e.response.data && e.response.data.message) || e.message); }
+    return { ok: true };
+  } catch (e) {
+    const m = (e.response && e.response.data && (e.response.data.message || JSON.stringify(e.response.data))) || e.message;
+    console.error('📧 Email alla proprietaria NON inviata:', m);
+    return { ok: false, error: m };
+  }
 }
 function newSignupMail(name, email, via) {
   mailOwner('nuova registrazione' + (name ? ' — ' + name : ''),
@@ -1300,12 +1305,18 @@ app.post('/api/instagram/tester-request', async (req, res) => {
     let name = '';
     try { const { data } = await supabase.from('users').select('name').eq('id', uid).single(); name = (data && data.name) || ''; } catch (e) {}
     const appId = process.env.META_APP_ID || '2329145960824291';
-    await mailOwner('richiesta accesso Instagram — @' + username,
+    const sent = await mailOwner('richiesta accesso Instagram — @' + username,
       `<p><b>Da aggiungere come tester Instagram</b></p>` +
       `<p>Instagram: <b><a href="https://www.instagram.com/${escHtml(username)}/">@${escHtml(username)}</a></b><br>Nome: ${escHtml(name || '—')}<br>Email: ${escHtml(req.authEmail || '—')}</p>` +
       `<p><b>Cosa fare:</b><br>1. Apri <a href="https://developers.facebook.com/apps/${appId}/roles/roles/">Meta for Developers → Ruoli dell'app</a><br>` +
       `2. Aggiungi persone → <b>Tester Instagram</b> → scrivi <b>${escHtml(username)}</b> → Invia<br>` +
       `3. Il cliente trova già nella pagina "Social collegati" le istruzioni per accettare l'invito.</p>`);
+    if (!sent || !sent.ok) {
+      // la richiesta resta comunque nei log di Railway, così non va persa
+      console.error('📧 RICHIESTA TESTER NON RECAPITATA — Instagram @' + username + ' | nome: ' + (name || '—') + ' | email: ' + (req.authEmail || '—'));
+      lastTesterReq.delete(uid);
+      return res.status(502).json({ error: 'Invio non riuscito. Riprova tra qualche minuto o scrivi a info@inpostsocial.com con il nome del tuo Instagram.' });
+    }
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
