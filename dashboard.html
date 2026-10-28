@@ -624,7 +624,7 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
           </label>
           <label class="media-opt"><input type="checkbox" id="gen-video"> Video Reel (Seedance AI)</label>
         </div>
-        <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Piano gratuito: hai <b>6 crediti di benvenuto</b>, fino a <b>4 immagini</b> e <b>2 reel da 5 secondi</b> al giorno. Quando finiscono i crediti li ricarichi in "Piano e fatturazione"; con un piano hai anche reel più lunghi e Avatar AI.</p>
+        <p id="free-note" style="display:none;font-size:0.82rem;color:var(--gray);background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.9rem">Piano gratuito per 1 mese: ogni giorno hai <b>20 crediti</b>, che si ricaricano il giorno dopo. Con un piano hai anche reel più lunghi e Avatar AI.</p>
         <button class="btn-gen" id="btn-gen">Genera strategia e post AI</button>
       </div>
       <!-- REEL CON LA TUA VOCE -->
@@ -768,10 +768,10 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
       <div class="plan-grid">
         <div class="plan-card" id="pc-free">
           <div class="plan-name">Gratuito</div>
-          <div class="plan-price">€0 <small>/mese</small></div>
-          <div class="plan-credits">⚡ 6 crediti di benvenuto</div>
+          <div class="plan-price">€0 <small>per 1 mese</small></div>
+          <div class="plan-credits">⚡ 20 crediti al giorno</div>
           <ul class="plan-feats">
-            <li>6 crediti di benvenuto, poi ricarichi quando vuoi</li><li>Fino a 4 immagini al giorno (post e caroselli)</li><li>Fino a 2 reel AI al giorno da 5 secondi</li><li>Strategia e testi dei post illimitati</li><li>Reel con la tua voce e sottotitoli</li><li class="no">Reel Avatar AI e reel più lunghi</li><li class="no">Agente AI automatico</li>
+            <li>Gratis per 1 mese dalla registrazione</li><li>20 crediti ogni giorno, si ricaricano in automatico</li><li>Immagini, caroselli e reel AI da 5 secondi</li><li>Strategia e testi dei post illimitati</li><li>Reel con la tua voce e sottotitoli</li><li class="no">Reel Avatar AI e reel più lunghi</li><li class="no">Agente AI automatico</li>
           </ul>
           <button class="btn-plan btn-plan-current" id="pb-free" disabled>Piano base</button>
         </div>
@@ -926,6 +926,7 @@ function migrateLocalData() {
   } catch (e) {}
 }
 var userPlan = 'free';
+var userFree = null; // piano gratuito di 1 mese: { days_left, ends_at, expired, daily }
 var userTrial = null; // settimana di prova: { days_left, left:{posts,reels,avatars}, limits }
 var posts = [];
 var socialCount = 0;
@@ -1099,6 +1100,7 @@ async function loadUser() {
     if (data && !data.error) {
       userPlan = data.plan || 'free';
       userTrial = data.trial || null;
+      userFree = data.free || null;
       showCredits(data.credits, data.unlimited);
       // Owner ha sempre piano business gratis
       if (user.email === 'info@inpostsocial.com') userPlan = 'business';
@@ -1174,13 +1176,19 @@ function updatePlanUI() {
     document.getElementById('pb-business').className = 'btn-plan btn-plan-current';
     document.getElementById('pb-business').textContent = '✓ Piano attuale';
   } else {
-    badge.textContent = userTrial ? 'Prova gratuita · ' + userTrial.days_left + (userTrial.days_left === 1 ? ' giorno' : ' giorni') : 'Piano Gratuito';
+    badge.textContent = userTrial ? 'Prova gratuita · ' + userTrial.days_left + (userTrial.days_left === 1 ? ' giorno' : ' giorni')
+      : userFree ? (userFree.expired ? 'Mese gratuito terminato' : 'Gratis · ancora ' + userFree.days_left + (userFree.days_left === 1 ? ' giorno' : ' giorni')) : 'Piano Gratuito';
     badge.className = 'plan-badge badge-free';
   }
   var fn = document.getElementById('free-note');
   if (fn && userTrial) {
     var L = userTrial.left;
     fn.innerHTML = '<b>Settimana di prova gratuita</b> (ancora ' + userTrial.days_left + (userTrial.days_left === 1 ? ' giorno' : ' giorni') + '): ti restano <b>' + L.posts + ' immagini</b>, <b>' + L.reels + ' reel AI</b> da 10 secondi e <b>' + L.avatars + ' reel Avatar AI</b> (max 30 secondi). I reel con la tua voce sono inclusi.';
+  }
+  if (fn && !userTrial && userFree) {
+    fn.innerHTML = userFree.expired
+      ? '<b>Il mese gratuito è terminato.</b> Per continuare a creare contenuti scegli un piano oppure acquista un pacchetto di crediti in "Piano e fatturazione".'
+      : '<b>Piano gratuito</b> (ancora ' + userFree.days_left + (userFree.days_left === 1 ? ' giorno' : ' giorni') + '): ogni giorno hai <b>' + userFree.daily + ' crediti</b>, che si ricaricano il giorno dopo. Con un piano hai anche reel più lunghi e Avatar AI.';
   }
   if (fn) fn.style.display = userPlan === 'free' ? 'block' : 'none';
   renderMyPlan();
@@ -1196,7 +1204,9 @@ function renderMyPlan() {
   var ex = '';
   if (PLAN_MONTHLY[userPlan]) ex = 'Crediti inclusi: <b>' + PLAN_MONTHLY[userPlan] + ' ogni mese</b>';
   else if (userTrial) ex = 'Prova: ancora <b>' + userTrial.days_left + (userTrial.days_left === 1 ? ' giorno' : ' giorni') + '</b> · restano <b>' + userTrial.left.posts + ' immagini</b>, <b>' + userTrial.left.reels + ' reel AI</b>, <b>' + userTrial.left.avatars + ' reel Avatar AI</b>';
-  else ex = 'Piano gratuito: max <b>4 immagini</b> e <b>2 reel da 5 s</b> al giorno · niente Avatar AI';
+  else if (userFree && userFree.expired) ex = 'Mese gratuito terminato: scegli un piano o acquista crediti';
+  else if (userFree) ex = 'Piano gratuito: <b>' + userFree.daily + ' crediti al giorno</b> · ancora <b>' + userFree.days_left + (userFree.days_left === 1 ? ' giorno' : ' giorni') + '</b> · reel da 5 s · niente Avatar AI';
+  else ex = 'Piano gratuito: <b>20 crediti al giorno</b> per 1 mese · reel da 5 s · niente Avatar AI';
   document.getElementById('mp-extra').innerHTML = ex;
   ['free', 'starter', 'pro', 'business'].forEach(function(k) { var c = document.getElementById('pc-' + k); if (c) c.classList.toggle('is-current', k === (userPlan || 'free')); });
   var pf = document.getElementById('pb-free'); if (pf) pf.textContent = userPlan === 'free' ? '✓ Piano attuale' : 'Piano base';

@@ -219,7 +219,13 @@ async function getAccess(userId, authEmail) {
   if (isNaN(created)) {
     try { const { data } = await supabase.auth.admin.getUserById(userId); created = Date.parse(data && data.user && data.user.created_at); } catch (e) {}
   }
-  if (!TRIAL_ENABLED) return { kind: 'free' };
+  if (!TRIAL_ENABLED) {
+    // PIANO GRATUITO: dura FREE_MONTH_DAYS giorni dalla registrazione (per chi era già iscritto: da FREE_START)
+    if (isNaN(created)) created = Date.now();
+    const fEnds = Math.max(created, FREE_START) + FREE_MONTH_DAYS * 86400000;
+    if (Date.now() >= fEnds) return { kind: 'free', expired: true, free_ends_at: new Date(fEnds).toISOString() };
+    return { kind: 'free', free_ends_at: new Date(fEnds).toISOString(), free_days_left: Math.max(1, Math.ceil((fEnds - Date.now()) / 86400000)) };
+  }
   if (isNaN(created)) created = Date.now();
   const start = Math.max(created, TRIAL_START);
   const ends = start + TRIAL_DAYS * 86400000;
@@ -272,7 +278,21 @@ const noCredits = (n) => ({ error: `Crediti insufficienti: servono ${n} crediti.
 // PIANO GRATUITO: 6 crediti di benvenuto, poi si ricomprano; al massimo 4 immagini e 2 reel (solo 5 s) al giorno; niente avatar.
 // PIANI A PAGAMENTO: tutto (post, caroselli, reel di ogni durata, avatar), quanto dipende dai crediti.
 const WELCOME_CREDITS = 6;
-const FREE_DAILY = { images: 4, reels: 2 };
+const FREE_DAILY = { images: 4, reels: 2 }; // (non più usato: il limite ora sono i 20 crediti al giorno)
+// PIANO GRATUITO DI 1 MESE: ogni giorno i crediti tornano a FREE_DAILY_CREDITS (non si sommano da un giorno all'altro).
+// Finito il mese, niente più ricarica: si sceglie un piano o si comprano crediti.
+const FREE_MONTH_DAYS = 30;
+const FREE_DAILY_CREDITS = 20;
+const FREE_START = Date.parse(process.env.FREE_START || '2026-10-28T00:00:00+01:00');
+async function topUpFreeDaily(userId, acc) {
+  if (!userId || !acc || acc.kind !== 'free' || acc.expired) return;
+  const ref = 'daily-' + userId + '-' + dayKey();
+  const { data: done } = await supabase.from('credit_ledger').select('id').eq('user_id', userId).eq('ref', ref).maybeSingle();
+  if (done) return;
+  const have = await getCredits(userId);
+  // anche se il saldo è già pieno registro la ricarica del giorno (0 crediti), così non si ripete
+  await addCredits(userId, Math.max(0, FREE_DAILY_CREDITS - have), 'Ricarica giornaliera piano gratuito', ref);
+}
 const FREE_REEL_SECONDS = 5;
 function dayKey() { return 'day-' + new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' }); }
 async function freeDailyUsed(userId) {
@@ -288,14 +308,12 @@ async function bumpFreeDaily(userId, field) {
 async function payAction(userId, authEmail, cap, credits, reason) {
   const acc = await getAccess(userId, authEmail);
   if (acc.kind === 'owner') return { ok: true, via: 'owner' };
-  if (acc.kind === 'free' && (cap === 'images' || cap === 'reels')) {
-    const used = await freeDailyUsed(userId);
-    if (used[cap] >= FREE_DAILY[cap]) return { ok: false, body: { error: cap === 'images'
-      ? `Piano gratuito: massimo ${FREE_DAILY.images} immagini al giorno. Riprova domani o passa a un piano.`
-      : `Piano gratuito: massimo ${FREE_DAILY.reels} reel al giorno. Riprova domani o passa a un piano.`, upgrade: true } };
+  await topUpFreeDaily(userId, acc);
+  if (!(await spendCredits(userId, credits, reason))) {
+    if (acc.kind === 'free' && acc.expired) return { ok: false, body: { error: 'Il mese gratuito è terminato: scegli un piano o acquista un pacchetto di crediti per continuare.', credits_needed: true, upgrade: true } };
+    if (acc.kind === 'free') return { ok: false, body: { error: `Hai usato i ${FREE_DAILY_CREDITS} crediti di oggi: domani si ricaricano. Per continuare subito acquista un pacchetto di crediti o passa a un piano.`, credits_needed: true, upgrade: true } };
+    return { ok: false, body: noCredits(credits) };
   }
-  if (!(await spendCredits(userId, credits, reason))) return { ok: false, body: noCredits(credits) };
-  if (acc.kind === 'free' && (cap === 'images' || cap === 'reels')) await bumpFreeDaily(userId, cap);
   return { ok: true, via: 'credits' };
 }
 
@@ -1123,14 +1141,14 @@ app.get('/api/user/profile', async (req, res) => {
     if (error || !data) {
       // account senza riga in users (es. accesso con Google): la creiamo, così riceve anche i crediti di benvenuto
       await supabase.from('users').insert({ id: userId, email: req.authEmail || null, plan: 'free', created_at: new Date().toISOString() });
-      await addCredits(userId, WELCOME_CREDITS, 'Crediti di benvenuto', 'welcome_' + userId);
-      if (!isOwnerEmail(req.authEmail)) newSignupMail('', req.authEmail, 'accesso con Google');
+      if (!isOwnerEmail(req.authEmail)) { await topUpFreeDaily(userId, await getAccess(userId, req.authEmail)); newSignupMail('', req.authEmail, 'accesso con Google'); }
       return res.json({ plan: isOwnerEmail(req.authEmail) ? 'business' : 'free', brand: '', sector: '', name: '', email: req.authEmail || '', credits: await getCredits(userId), unlimited: isOwnerEmail(req.authEmail) });
     }
     if (isOwnerEmail(data.email) || isOwnerEmail(req.authEmail)) data.plan = 'business';
     const acc = await getAccess(userId, req.authEmail);
     if (acc.kind === 'trial') data.trial = { days_left: acc.days_left, ends_at: acc.ends_at, left: acc.left, limits: acc.limits };
-    await addCredits(userId, WELCOME_CREDITS, 'Crediti di benvenuto', 'welcome_' + userId); // una sola volta per account
+    if (acc.kind === 'free') data.free = { days_left: acc.free_days_left || 0, ends_at: acc.free_ends_at, expired: !!acc.expired, daily: FREE_DAILY_CREDITS };
+    await topUpFreeDaily(userId, acc);
     data.credits = await getCredits(userId);
     data.unlimited = acc.kind === 'owner';
     res.json(data);
@@ -1204,7 +1222,8 @@ app.get('/api/credits', async (req, res) => {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId mancante' });
     const acc = await getAccess(userId, req.authEmail);
-    const { data: moves } = await supabase.from('credit_ledger').select('delta,reason,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(20);
+    await topUpFreeDaily(userId, acc);
+    const { data: moves } = await supabase.from('credit_ledger').select('delta,reason,created_at').eq('user_id', userId).neq('delta', 0).order('created_at', { ascending: false }).limit(20);
     res.json({ credits: await getCredits(userId), unlimited: acc.kind === 'owner', costs: CREDIT_COSTS, reel_costs: { 5: reelCost(5), 8: reelCost(8), 10: reelCost(10), 15: reelCost(15) },
       packs: CREDIT_PACKS, plan_credits: PLAN_CREDITS, moves: moves || [] });
   } catch (e) { res.status(500).json({ error: e.message }); }
