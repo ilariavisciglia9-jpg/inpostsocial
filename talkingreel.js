@@ -185,14 +185,14 @@ function silences(file) {
 async function splitAudioAtPauses(audioPath, maxSeg) {
   maxSeg = maxSeg || 55;
   const D = await probeDuration(audioPath);
-  const n = Math.ceil(D / maxSeg);
   const pauses = await silences(audioPath);
   const bounds = [0];
-  for (let k = 1; k < n; k++) {
-    const target = (D * k) / n, prev = bounds[bounds.length - 1];
-    const ok = pauses.filter(p => p > prev + 5 && p < prev + maxSeg && p < D - 5);
-    let cut = ok.length ? ok.reduce((a, b) => Math.abs(b - target) < Math.abs(a - target) ? b : a) : Math.min(target, prev + maxSeg);
-    bounds.push(cut);
+  // continua a tagliare finché il pezzo restante supera maxSeg (pezzi di durata simile, tagli nelle pause)
+  while (D - bounds[bounds.length - 1] > maxSeg) {
+    const prev = bounds[bounds.length - 1], rest = D - prev;
+    const target = prev + rest / Math.ceil(rest / maxSeg);
+    const ok = pauses.filter(p => p > prev + 5 && p <= prev + maxSeg && p < D - 5);
+    bounds.push(ok.length ? ok.reduce((a, b) => Math.abs(b - target) < Math.abs(a - target) ? b : a) : Math.min(target, prev + maxSeg));
   }
   bounds.push(D);
   const segs = [];
