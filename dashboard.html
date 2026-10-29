@@ -363,6 +363,8 @@ label.talk-pick{display:inline-flex;align-items:center;padding:0.6rem 0.9rem;bor
 .pv-dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:4px}
 .pv-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.55)}
 .pv-dots i.on{background:#fff}
+.pv-dl{position:absolute;top:10px;right:10px;z-index:3;background:rgba(17,17,24,0.78);color:#fff;font-size:0.75rem;font-weight:600;padding:0.35rem 0.7rem;border-radius:100px;text-decoration:none}
+.pv-dl:hover{background:#111118}
 .pv-badge{position:absolute;top:10px;left:10px;background:rgba(17,17,24,0.7);color:#fff;font-size:0.7rem;font-weight:600;padding:0.15rem 0.5rem;border-radius:100px}
 .pv-processing{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(17,17,24,0.75);color:#fff;font-size:0.76rem;border-radius:8px;padding:0.45rem 0.6rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem}
 .pv-processing button{background:#fff;color:#111;border-radius:6px;padding:0.2rem 0.55rem;font-size:0.72rem;font-weight:600}
@@ -1427,7 +1429,7 @@ function pvMedia(post) {
       '<span class="pv-count">1/' + n + '</span><div class="pv-dots">' + post.carousel_images.map(function(_, i) { return '<i' + (i === 0 ? ' class="on"' : '') + '></i>'; }).join('') + '</div>' : '') +
     '</div>';
   }
-  if (isReel && post.video_url) return '<div class="' + cls + '"><video src="' + escH(post.video_url) + '" controls playsinline loop></video><span class="pv-badge">Reel</span></div>';
+  if (isReel && post.video_url) return '<div class="' + cls + '"><video src="' + escH(post.video_url) + '" controls playsinline loop></video><span class="pv-badge">Reel</span>' + dlLink(post.video_url, post.ai_avatar ? 'avatar' : 'reel') + '</div>';
   if (post.image_url) {
     var extra = isReel ? '<span class="pv-badge">Reel</span>' + (post.video_task_id ? '<div class="pv-processing" data-task="' + escH(post.video_task_id) + '" data-idx="' + post._uid + '">Video in elaborazione <button type="button" onclick="checkVideo(this)">Aggiorna</button></div>' : '') : '';
     return '<div class="' + cls + '"><img src="' + escH(post.image_url) + '" alt="" loading="lazy">' + extra + '</div>';
@@ -2519,9 +2521,16 @@ function agRenderProfile() {
   document.getElementById('ag-save').textContent = agState.profile ? 'Salva modifiche' : 'Salva e avvia l\'agente';
 }
 
+// link per scaricare il video sul dispositivo (Supabase invia il file come download con ?download=nome)
+function dlLink(url, kind) {
+  var name = 'inpostsocial-' + (kind || 'reel') + '-' + new Date().toISOString().slice(0, 10) + '.mp4';
+  var href = /\/storage\/v1\/object\/public\//.test(url) ? url + (url.indexOf('?') > -1 ? '&' : '?') + 'download=' + encodeURIComponent(name) : url;
+  return '<a class="pv-dl" href="' + escH(href) + '" download="' + name + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">⬇ Scarica</a>';
+}
+
 function agMediaHtml(p) {
   var badge = '<span class="badge">' + (AG_TYPE[p.type] || p.type) + '</span>';
-  if (p.type === 'reel' && p.video_url) return badge + '<video src="' + esc(p.video_url) + '" controls muted playsinline poster="' + esc(p.image_url || '') + '"></video>';
+  if (p.type === 'reel' && p.video_url) return badge + '<video src="' + esc(p.video_url) + '" controls muted playsinline poster="' + esc(p.image_url || '') + '"></video>' + dlLink(p.video_url, 'reel');
   if (p.media_status === 'failed') return badge + '<div class="wait">Immagine non creata<br>Prova "Nuova immagine"</div>';
   if (p.type === 'reel' && p.media_status === 'video_processing') return badge + (p.image_url ? '<img src="' + esc(p.image_url) + '" alt="">' : '') + '<div class="wait" style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.85)">Video in creazione...</div>';
   if (p.image_url) {
