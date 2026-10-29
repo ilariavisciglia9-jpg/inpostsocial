@@ -1502,6 +1502,8 @@ function buildPostCard(post) {
       '<button class="pBtn pBtn-delete">Elimina</button>' +
     '</div>';
   }
+  // pulsante ben visibile per scaricare il video (oltre a quello sopra l'anteprima)
+  if (post.type === 'reel' && post.video_url) actions = '<div class="post-actions">' + dlLink(post.video_url, post.ai_avatar ? 'avatar' : 'reel').replace('class="pv-dl"', 'class="pBtn pBtn-img" style="text-decoration:none;text-align:center"').replace('⬇ Scarica', '⬇ Scarica video') + '</div>' + actions;
 
   return '<div class="post-item pv-card" data-idx="' + post._uid + '">' + preview +
     '<div class="pv-side">' +
