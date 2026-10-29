@@ -172,4 +172,47 @@ async function editAvatarReel(avatarPath, audioPath, brolls, assText, duration) 
   return out;
 }
 
-module.exports = { extractAudio, thumbnail, groupWords, buildAss, renderReel, probeDuration, tmpFile, extractVoiceRef, concatAudio, editAvatarReel };
+// divide la voce in pezzi da massimo maxSeg secondi, tagliando nelle pause (silenzi) tra le frasi
+function silences(file) {
+  return new Promise((resolve) => {
+    execFile(ffmpegPath, ['-hide_banner', '-i', file, '-af', 'silencedetect=noise=-32dB:d=0.15', '-f', 'null', '-'], { timeout: 120000, maxBuffer: 1024 * 1024 * 20 }, (err, stdout, stderr) => {
+      const out = [], re = /silence_start:\s*([\d.]+)[\s\S]*?silence_end:\s*([\d.]+)/g; let m;
+      while ((m = re.exec(String(stderr || '')))) out.push((parseFloat(m[1]) + parseFloat(m[2])) / 2);
+      resolve(out);
+    });
+  });
+}
+async function splitAudioAtPauses(audioPath, maxSeg) {
+  maxSeg = maxSeg || 55;
+  const D = await probeDuration(audioPath);
+  const n = Math.ceil(D / maxSeg);
+  const pauses = await silences(audioPath);
+  const bounds = [0];
+  for (let k = 1; k < n; k++) {
+    const target = (D * k) / n, prev = bounds[bounds.length - 1];
+    const ok = pauses.filter(p => p > prev + 5 && p < prev + maxSeg && p < D - 5);
+    let cut = ok.length ? ok.reduce((a, b) => Math.abs(b - target) < Math.abs(a - target) ? b : a) : Math.min(target, prev + maxSeg);
+    bounds.push(cut);
+  }
+  bounds.push(D);
+  const segs = [];
+  for (let i = 0; i < bounds.length - 1; i++) {
+    const out = tmpFile('.mp3');
+    await run(['-i', audioPath, '-ss', bounds[i].toFixed(3), '-to', bounds[i + 1].toFixed(3), '-ac', '1', '-ar', '44100', '-b:a', '160k', out]);
+    segs.push({ path: out, start: bounds[i], end: bounds[i + 1] });
+  }
+  return segs;
+}
+
+// unisce più video dell'avatar uno dopo l'altro (stesso formato 1080x1920, 30 fps)
+async function concatVideos(files) {
+  const out = tmpFile('.mp4');
+  const inputs = [];
+  let fc = '';
+  files.forEach((f, i) => { inputs.push('-i', f); fc += `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30,format=yuv420p[v${i}];`; });
+  fc += files.map((_, i) => `[v${i}]`).join('') + `concat=n=${files.length}:v=1:a=0[v]`;
+  await run([...inputs, '-filter_complex', fc, '-map', '[v]', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', out], 600000);
+  return out;
+}
+
+module.exports = { splitAudioAtPauses, concatVideos, extractAudio, thumbnail, groupWords, buildAss, renderReel, probeDuration, tmpFile, extractVoiceRef, concatAudio, editAvatarReel };

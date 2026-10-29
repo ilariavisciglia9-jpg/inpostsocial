@@ -251,7 +251,7 @@ const isFull = (acc) => acc.kind === 'owner';
 // Ogni generazione costa crediti. I piani accreditano crediti ogni mese, i pacchetti si comprano a parte.
 // Prima si usa la settimana di prova (se attiva), poi i crediti. Saldo in users.credits (vedi credits.sql).
 const PLAN_CREDITS = { starter: 50, pro: 95, business: 200 };
-const CREDIT_COSTS = { image: 1, image_hq: 2, carousel: 3, carousel_hq: 6, voice_reel: 1, avatar_30: 8, avatar_60: 15 };
+const CREDIT_COSTS = { image: 1, image_hq: 2, carousel: 3, carousel_hq: 6, voice_reel: 1, avatar_30: 8, avatar_60: 15, avatar_90: 22 };
 function reelCost(sec) { return sec <= 5 ? 3 : sec <= 8 ? 4 : sec <= 10 ? 5 : 8; }
 const CREDIT_PACKS = {
   p20: { credits: 20, eur: 20 },
@@ -1966,13 +1966,15 @@ async function avatarScriptHandler(req, res) {
     const av = await getAvatar(userId);
     if (!av) return res.status(400).json({ error: 'Prima crea il tuo avatar caricando un video in cui parli' });
     const medium = length === 'medium';
+    // durate lunghe: ~1:00 e ~1:30 (testo più lungo e più immagini di approfondimento)
+    const LEN = { short: ['45-60 parole (circa 20 secondi)', 2], medium: ['75-95 parole (circa 35 secondi)', 3], long: ['140-160 parole (circa 1 minuto)', 5], xlong: ['205-230 parole (circa 1 minuto e 30 secondi)', 7] }[length] || ['45-60 parole (circa 20 secondi)', 2];
     const ai = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001', max_tokens: 2000,
+      model: 'claude-haiku-4-5-20251001', max_tokens: 3500,
       messages: [{ role: 'user', content: `Sei un social media manager e copywriter italiano esperto di reel. Scrivi un reel in cui il titolare di "${brand || 'un brand'}" parla in camera come un presentatore.
 Attività: ${description || ''}${sector ? ' — Settore: ' + sector : ''}. Tono: ${tone || 'amichevole'}. ${style ? 'Stile visivo e colori: ' + style + '.' : ''}
 ${topic && String(topic).trim() ? 'Argomento richiesto: ' + String(topic).trim() : 'Scegli tu un argomento utile e specifico per il suo pubblico (consiglio pratico, errore comune, dietro le quinte, caso tipico, domanda frequente) che porti nuovi contatti.'}
-Testo parlato: ${medium ? '75-95 parole (circa 35 secondi)' : '45-60 parole (circa 20 secondi)'}, italiano naturale in prima persona, frasi brevi; la prima frase è un gancio forte; chiudi con un invito all'azione; niente emoji, hashtag o elenchi; numeri scritti in lettere.
-Immagini di approfondimento (B-roll): ${medium ? 3 : 2} scene che compaiono mentre parla, per illustrare ciò che dice. Per ognuna: "at" = punto del testo in cui compare (numero da 0.2 a 0.85, crescente) e "prompt" = descrizione fotografica dettagliata in italiano (soggetto, ambiente, luce, inquadratura verticale), coerente con l'attività e lo stile, senza persone in primo piano e senza scritte.
+Testo parlato: ${LEN[0]}, italiano naturale in prima persona, frasi brevi; la prima frase è un gancio forte; chiudi con un invito all'azione; niente emoji, hashtag o elenchi; numeri scritti in lettere.
+Immagini di approfondimento (B-roll): ${LEN[1]} scene che compaiono mentre parla, per illustrare ciò che dice. Per ognuna: "at" = punto del testo in cui compare (numero da 0.2 a 0.85, crescente) e "prompt" = descrizione fotografica dettagliata in italiano (soggetto, ambiente, luce, inquadratura verticale), coerente con l'attività e lo stile, senza persone in primo piano e senza scritte.
 Rispondi SOLO con JSON: {"title":"titolo a inizio video, massimo 6 parole","script":"testo parlato","broll":[{"at":0.3,"prompt":"..."}],"text":"testo del post: hook nella prima riga, 2-3 frasi, call to action, qualche emoji","hashtags":["5-8 hashtag senza #"],"objective":"Notorietà | Fiducia | Interazione | Conversione","why":"perché questo reel serve alla strategia, in una frase"}` }]
     });
     let meta;
@@ -1994,7 +1996,7 @@ app.post('/api/reel/avatar/voice', async (req, res) => {
     const { userId, script } = req.body;
     const av = await getAvatar(userId);
     if (!av) return res.status(400).json({ error: 'Avatar non trovato' });
-    if (!script || String(script).length > 1500) return res.status(400).json({ error: 'Testo mancante o troppo lungo' });
+    if (!script || String(script).length > 2600) return res.status(400).json({ error: 'Testo mancante o troppo lungo' });
     res.json(Object.assign({ success: true }, await ttsWithVoice(String(script), av.voice_url)));
   } catch (e) { res.status(500).json({ error: (e && (e.status || e.body)) ? falErrorMessage(e) : e.message }); }
 });
@@ -2016,22 +2018,46 @@ async function avatarRenderHandler(req, res) {
     const a = await axios.get(audio_url, { responseType: 'arraybuffer', timeout: 60000 });
     const audioPath = talking.tmpFile('.mp3'); tmp.push(audioPath); await fsp.writeFile(audioPath, Buffer.from(a.data));
     const D = await talking.probeDuration(audioPath);
-    if (!D || D > 60) throw new Error('La voce dura ' + Math.round(D) + ' secondi: accorcia il testo (massimo 60 secondi)');
+    if (!D || D > 100) throw new Error('La voce dura ' + Math.round(D) + ' secondi: accorcia il testo (massimo 1 minuto e 30 secondi)');
     if (trialAv && D > TRIAL_AVATAR_MAX_SECONDS + 1) throw new Error(`Nella settimana di prova il reel avatar può durare al massimo ${TRIAL_AVATAR_MAX_SECONDS} secondi (ora ${Math.round(D)}): accorcia il testo e rigenera la voce`);
-    const avCost = D > TRIAL_AVATAR_MAX_SECONDS + 1 ? CREDIT_COSTS.avatar_60 : CREDIT_COSTS.avatar_30;
+    const avCost = D > 62 ? CREDIT_COSTS.avatar_90 : D > TRIAL_AVATAR_MAX_SECONDS + 1 ? CREDIT_COSTS.avatar_60 : CREDIT_COSTS.avatar_30;
     const payA = await payAction(userId, req.authEmail, null, avCost, 'Reel Avatar AI');
     if (!payA.ok) return res.status(402).json(payA.body);
     if (payA.via === 'credits') avatarCharge = { userId, cost: avCost };
     const photo = await avatarPhotoUrl(av);
 
     // avatar che parla (gesti e espressioni naturali) e, in parallelo, le immagini di approfondimento
-    const avatarJob = fal.subscribe(AVATAR_MODEL, { input: { image_url: photo, audio_url, prompt: 'A confident, friendly presenter talking directly to the camera for a social media reel, natural head movements and small hand gestures, the face and identity stay exactly the same as in the photo.' }, pollInterval: 5000 });
-    const shots = (Array.isArray(broll) ? broll : []).slice(0, 3);
+    // reel lunghi (oltre ~58 s): la voce si divide in pezzi da massimo 55 s nelle pause tra le frasi,
+    // si crea un avatar per pezzo (in parallelo) e poi si uniscono; il punto di unione è coperto da un'immagine
+    const avPrompt = 'A confident, friendly presenter talking directly to the camera for a social media reel, natural head movements and small hand gestures, the face and identity stay exactly the same as in the photo.';
+    let cuts = [];
+    const avatarJob = (async () => {
+      if (D <= 58) return (await fal.subscribe(AVATAR_MODEL, { input: { image_url: photo, audio_url, prompt: avPrompt }, pollInterval: 5000 })).data.video.url;
+      const segs = await talking.splitAudioAtPauses(audioPath, 55);
+      segs.forEach(sg => tmp.push(sg.path));
+      cuts = segs.slice(1).map(sg => sg.start);
+      const urls = await Promise.all(segs.map(async (sg) => {
+        const nm = `posts/voice-${crypto.randomUUID()}.mp3`;
+        const up = await supabase.storage.from('post-images').upload(nm, await fsp.readFile(sg.path), { contentType: 'audio/mpeg', upsert: false });
+        if (up.error) throw new Error('Salvataggio audio: ' + up.error.message);
+        const r = await fal.subscribe(AVATAR_MODEL, { input: { image_url: photo, audio_url: supabase.storage.from('post-images').getPublicUrl(nm).data.publicUrl, prompt: avPrompt }, pollInterval: 5000 });
+        return r.data.video.url;
+      }));
+      return urls;
+    })();
+    const shots = (Array.isArray(broll) ? broll : []).slice(0, 8);
     const brollJob = Promise.all(shots.map(b => generateImage(`${b.prompt}${style ? '. Stile e colori: ' + style : ''}`, brand || 'Brand', { size: '1024x1536', quality: 'medium' }).catch(e => { console.log('B-roll non creato:', e.message); return null; })));
     const [avRes, brollUrls] = await Promise.all([avatarJob, brollJob]);
-    const avPath = talking.tmpFile('.mp4'); tmp.push(avPath);
-    const v = await axios.get(avRes.data.video.url, { responseType: 'arraybuffer', timeout: 180000 });
-    await fsp.writeFile(avPath, Buffer.from(v.data));
+    let avPath;
+    if (Array.isArray(avRes)) {
+      const parts = [];
+      for (const u of avRes) { const f = talking.tmpFile('.mp4'); tmp.push(f); const vv = await axios.get(u, { responseType: 'arraybuffer', timeout: 180000 }); await fsp.writeFile(f, Buffer.from(vv.data)); parts.push(f); }
+      avPath = await talking.concatVideos(parts); tmp.push(avPath);
+    } else {
+      avPath = talking.tmpFile('.mp4'); tmp.push(avPath);
+      const v = await axios.get(avRes, { responseType: 'arraybuffer', timeout: 180000 });
+      await fsp.writeFile(avPath, Buffer.from(v.data));
+    }
 
     // tempi delle immagini: mai nei primi 3 secondi (gancio) né negli ultimi 4 (invito all'azione)
     const brolls = [];
@@ -2045,6 +2071,17 @@ async function avatarRenderHandler(req, res) {
       brolls.push({ url: brollUrls[i], start, end: start + len });
       lastEnd = start + len;
     });
+    // ogni punto di unione dei pezzi di avatar va coperto da un'immagine (così il passaggio non si nota)
+    for (const c of cuts) {
+      if (brolls.some(b => b.start <= c - 0.4 && b.end >= c + 0.4)) continue;
+      let best = -1, dist = 1e9;
+      brolls.forEach((b, i) => { if (b.forCut) return; const d0 = Math.abs((b.start + b.end) / 2 - c); if (d0 < dist) { dist = d0; best = i; } });
+      if (best < 0) continue;
+      const b = brolls[best], len = b.end - b.start;
+      b.start = Math.max(3, c - len / 2); b.end = b.start + len; b.forCut = true;
+    }
+    brolls.sort((x, y) => x.start - y.start);
+    for (let i = 1; i < brolls.length; i++) if (brolls[i].start < brolls[i - 1].end + 0.3) { if (brolls[i].forCut) brolls.splice(i - 1, 1); else brolls.splice(i, 1); i--; }
     for (const b of brolls) {
       const f = talking.tmpFile('.png'); tmp.push(f);
       const r = await axios.get(b.url, { responseType: 'arraybuffer', timeout: 60000 });
