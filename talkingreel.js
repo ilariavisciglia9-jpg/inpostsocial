@@ -122,9 +122,9 @@ async function renderReel(inputPath, assText, maxSeconds, opts) {
 }
 
 // campione della voce (12 secondi puliti) per clonare il timbro
-async function extractVoiceRef(videoPath, startSec) {
+async function extractVoiceRef(videoPath, startSec, lenSec) {
   const out = tmpFile('.wav');
-  await run(['-ss', String(startSec || 1), '-i', videoPath, '-t', '12', '-vn', '-ac', '1', '-ar', '24000', '-af', 'loudnorm=I=-18:TP=-2', out]);
+  await run(['-ss', String(startSec || 1), '-i', videoPath, '-t', String(lenSec || 12), '-vn', '-ac', '1', '-ar', '24000', '-af', 'highpass=f=70,loudnorm=I=-18:TP=-2', out]);
   return out;
 }
 

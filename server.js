@@ -1745,6 +1745,9 @@ app.post('/api/reel/talking', (req, res) => runAsJob(req, res, talkingReelHandle
 // Poi l'AI inventa l'argomento, scrive il testo, lo legge con la sua voce, sincronizza le labbra e monta il reel.
 const TTS_MODEL = 'fal-ai/chatterbox/text-to-speech/multilingual';
 const LIPSYNC_MODEL = 'fal-ai/sync-lipsync/v2';
+// voce clonata più fedele: Qwen3-TTS (clonazione con trascrizione del campione, italiano); Chatterbox resta come riserva
+const CLONE_MODEL = 'fal-ai/qwen-3-tts/clone-voice/1.7b';
+const QWEN_TTS_MODEL = 'fal-ai/qwen-3-tts/text-to-speech/1.7b';
 
 async function getAvatar(userId) {
   const { data: items } = await supabase.storage.from('post-images').list(`uploads/${userId}`, { limit: 100 });
@@ -1756,7 +1759,7 @@ async function getAvatar(userId) {
 }
 async function removeAvatar(userId) {
   const av = await getAvatar(userId);
-  if (av) await supabase.storage.from('post-images').remove(['source.mp4', 'voice.wav', 'meta.json', 'photo.jpg'].map(f => `${av.dir}/${f}`));
+  if (av) await supabase.storage.from('post-images').remove(['source.mp4', 'voice.wav', 'meta.json', 'photo.jpg', 'voice.safetensors', 'voice_ref.json'].map(f => `${av.dir}/${f}`));
 }
 
 app.get('/api/avatar', async (req, res) => {
@@ -1785,7 +1788,8 @@ async function avatarSetupHandler(req, res) {
     const dur = await talking.probeDuration(inPath);
     if (dur && dur < 10) return res.status(400).json({ error: 'Il video è troppo corto: servono almeno 10 secondi in cui parli guardando la camera' });
     const source = await talking.renderReel(inPath, null, 60, { noAudio: true, crf: '20' }); tmp.push(source);
-    const voice = await talking.extractVoiceRef(inPath, dur > 14 ? 1.5 : 0.5); tmp.push(voice);
+    // campione voce più lungo (fino a 30 s): più parlato = timbro più fedele
+    const voice = await talking.extractVoiceRef(inPath, dur > 14 ? 1.5 : 0.5, Math.max(10, Math.min(30, (dur || 12) - 2))); tmp.push(voice);
     await removeAvatar(userId);
     const base = `uploads/${userId}/avatar-${crypto.randomUUID()}`;
     const up = async (name, file, type) => {
@@ -1798,6 +1802,7 @@ async function avatarSetupHandler(req, res) {
     await up('meta.json', Buffer.from(JSON.stringify({ consent: true, consent_at: new Date().toISOString(), email: req.authEmail || null, seconds: Math.round(dur || 0) })), 'application/json');
     supabase.storage.from('post-images').remove([vPath]).catch(() => {});
     const av = await getAvatar(userId);
+    if (av) await getVoiceClone(av).catch(e => console.log('Clone voce (riprovo al primo reel):', e.message));
     res.json({ success: true, video_url: av && av.video_url });
   } catch (e) {
     console.error('Avatar:', e.message);
@@ -1918,13 +1923,50 @@ app.post('/api/reel/avatar', (req, res) => runAsJob(req, res, avatarReelHandler)
 // Passo 2 (solo se approvi): avatar che parla dalla tua foto + immagini di approfondimento + sottotitoli + titolo.
 const AVATAR_MODEL = 'fal-ai/kling-video/ai-avatar/v2/standard';
 
-async function ttsWithVoice(script, voiceUrl) {
+// impronta della voce del cliente (creata una volta dal campione e salvata accanto all'avatar)
+async function getVoiceClone(av) {
+  const refPath = `${av.dir}/voice_ref.json`, embPath = `${av.dir}/voice.safetensors`;
+  const { data: refBlob } = await supabase.storage.from('post-images').download(refPath);
+  if (refBlob) {
+    const ref = JSON.parse(Buffer.from(await refBlob.arrayBuffer()).toString('utf8'));
+    return { emb: supabase.storage.from('post-images').getPublicUrl(embPath).data.publicUrl, text: ref.text || '' };
+  }
+  // trascrizione del campione: aiuta il modello a copiare timbro, accento e ritmo
+  let text = '';
+  try {
+    const w = await axios.get(av.voice_url, { responseType: 'arraybuffer', timeout: 60000 });
+    const form = new FormData();
+    form.append('file', new Blob([Buffer.from(w.data)], { type: 'audio/wav' }), 'voice.wav');
+    form.append('model', 'whisper-1'); form.append('language', 'it');
+    const tr = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: form });
+    const tj = await tr.json(); if (tr.ok) text = String(tj.text || '').trim();
+  } catch (e) { console.log('Trascrizione campione voce non riuscita:', e.message); }
+  const r = await fal.subscribe(CLONE_MODEL, { input: Object.assign({ audio_url: av.voice_url }, text ? { reference_text: text } : {}) });
+  const e = await axios.get(r.data.speaker_embedding.url, { responseType: 'arraybuffer', timeout: 60000 });
+  const up = await supabase.storage.from('post-images').upload(embPath, Buffer.from(e.data), { contentType: 'application/octet-stream', upsert: true });
+  if (up.error) throw new Error('Salvataggio voce: ' + up.error.message);
+  await supabase.storage.from('post-images').upload(refPath, Buffer.from(JSON.stringify({ text, at: new Date().toISOString() })), { contentType: 'application/json', upsert: true });
+  return { emb: supabase.storage.from('post-images').getPublicUrl(embPath).data.publicUrl, text };
+}
+
+async function ttsWithVoice(script, voiceUrl, av) {
   const parts = splitForTts(script);
   if (!parts.length) throw new Error('Testo vuoto');
   const seed = Math.floor(Math.random() * 1e6) + 1;
-  const urls = await Promise.all(parts.map(text => fal.subscribe(TTS_MODEL, {
+  const chatterbox = () => Promise.all(parts.map(text => fal.subscribe(TTS_MODEL, {
     input: { text, voice: voiceUrl, custom_audio_language: 'italian', exaggeration: 0.5, cfg_scale: 0.5, temperature: 0.7, seed }
   }).then(r => r.data.audio.url)));
+  let urls;
+  try {
+    if (!av) throw new Error('nessun avatar');
+    const clone = await getVoiceClone(av);
+    urls = await Promise.all(parts.map(text => fal.subscribe(QWEN_TTS_MODEL, {
+      input: Object.assign({ text, language: 'Italian', speaker_voice_embedding_file_url: clone.emb, temperature: 0.7, subtalker_temperature: 0.7, max_new_tokens: 1200 }, clone.text ? { reference_text: clone.text } : {})
+    }).then(r => r.data.audio.url)));
+  } catch (e) {
+    console.log('Voce clonata Qwen non disponibile, uso Chatterbox:', (e && (e.status || e.body)) ? falErrorMessage(e) : e.message);
+    urls = await chatterbox();
+  }
   const files = [];
   try {
     for (const u of urls) {
@@ -1980,7 +2022,7 @@ Rispondi SOLO con JSON: {"title":"titolo a inizio video, massimo 6 parole","scri
     let meta;
     try { const t = ai.content.map(b => b.text || '').join(''); meta = JSON.parse((t.match(/\{[\s\S]*\}/) || [t])[0]); } catch (e) { throw new Error('Testo non generato, riprova'); }
     if (!meta.script) throw new Error('Testo non generato, riprova');
-    const voice = await ttsWithVoice(meta.script, av.voice_url);
+    const voice = await ttsWithVoice(meta.script, av.voice_url, av);
     res.json(Object.assign({ success: true }, meta, voice));
   } catch (e) {
     const msg = (e && (e.status || e.body)) ? falErrorMessage(e) : e.message;
@@ -1997,7 +2039,7 @@ app.post('/api/reel/avatar/voice', async (req, res) => {
     const av = await getAvatar(userId);
     if (!av) return res.status(400).json({ error: 'Avatar non trovato' });
     if (!script || String(script).length > 2600) return res.status(400).json({ error: 'Testo mancante o troppo lungo' });
-    res.json(Object.assign({ success: true }, await ttsWithVoice(String(script), av.voice_url)));
+    res.json(Object.assign({ success: true }, await ttsWithVoice(String(script), av.voice_url, av)));
   } catch (e) { res.status(500).json({ error: (e && (e.status || e.body)) ? falErrorMessage(e) : e.message }); }
 });
 
@@ -2027,13 +2069,13 @@ async function avatarRenderHandler(req, res) {
     const photo = await avatarPhotoUrl(av);
 
     // avatar che parla (gesti e espressioni naturali) e, in parallelo, le immagini di approfondimento
-    // reel lunghi (oltre ~58 s): la voce si divide in pezzi da massimo 55 s nelle pause tra le frasi,
-    // si crea un avatar per pezzo (in parallelo) e poi si uniscono; il punto di unione è coperto da un'immagine
+    // più veloce: oltre ~24 s la voce si divide in pezzi da massimo 20 s nelle pause tra le frasi,
+    // gli avatar dei pezzi si creano TUTTI IN PARALLELO e poi si uniscono; ogni unione è coperta da un'immagine
     const avPrompt = 'A confident, friendly presenter talking directly to the camera for a social media reel, natural head movements and small hand gestures, the face and identity stay exactly the same as in the photo.';
     let cuts = [];
     const avatarJob = (async () => {
-      if (D <= 58) return (await fal.subscribe(AVATAR_MODEL, { input: { image_url: photo, audio_url, prompt: avPrompt }, pollInterval: 5000 })).data.video.url;
-      const segs = await talking.splitAudioAtPauses(audioPath, 55);
+      if (D <= 24) return (await fal.subscribe(AVATAR_MODEL, { input: { image_url: photo, audio_url, prompt: avPrompt }, pollInterval: 5000 })).data.video.url;
+      const segs = await talking.splitAudioAtPauses(audioPath, 20);
       segs.forEach(sg => tmp.push(sg.path));
       cuts = segs.slice(1).map(sg => sg.start);
       const urls = await Promise.all(segs.map(async (sg) => {
